@@ -83,6 +83,11 @@ export interface Business {
   verificationStatus: VerificationStatus;
   isDemo: boolean;
   isFeatured: boolean;
+  /** Unclaimed listings were added from research and can be claimed by their owner. */
+  claimStatus: "claimed" | "unclaimed";
+  /** How the business wants customers to get in touch. */
+  contactPreference: "platform" | "whatsapp" | "phone" | "website" | "external_booking";
+  externalBookingUrl: string | null;
   ratingAvg: number | null;
   ratingCount: number;
   phone: string | null;

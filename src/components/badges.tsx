@@ -65,6 +65,14 @@ export function TrustNote({ business }: { business: Business }) {
       </p>
     );
   }
+  if (business.claimStatus === "unclaimed") {
+    return (
+      <p className="flex gap-3 text-sm">
+        <CircleDashed className="mt-0.5 h-5 w-5 shrink-0 text-muted" aria-hidden="true" />
+        <span>Island Connect added this listing from public information. The business hasn’t claimed it yet, so check details with them directly.</span>
+      </p>
+    );
+  }
   return (
     <p className="flex gap-3 text-sm">
       <CircleDashed className="mt-0.5 h-5 w-5 shrink-0 text-muted" aria-hidden="true" />

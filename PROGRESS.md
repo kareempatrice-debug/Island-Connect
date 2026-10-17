@@ -1,5 +1,41 @@
 # Progress
 
+## Increment 5 (17 October 2026): research batch 1 and Stage 2
+
+### Research batch 1: taxi and airport-transfer operators
+`supabase/research/2026-10-17-transport.sql` adds nine operators (six in Grenada, three on St. Vincent) as unclaimed listings awaiting review, each with its source and check date. `supabase/research/README.md` lists them with what to check. Trubb Taxi Tours SVG includes its own published airport rates as services. Bequia, Carriacou and Union Island operators need collecting locally.
+
+### Stage 2: business tools
+- **Contact preference.** Each business chooses how customers reach it: enquiries on Island Connect, WhatsApp, phone, its website, or its own booking page. The storefront’s main button follows that choice.
+- **Enquiries with conversations.** Signed-in customers send an enquiry (subject, optional service and date, message). Both sides continue the conversation in a thread (`/[country]/messages/[id]`). Limits: ten new enquiries per customer per day; no enquiries to demo or unclaimed listings, or to your own business. Threads are private to the customer and the business (admins can see them for moderation).
+- **Business dashboard** (`/[country]/dashboard/[slug]`): overview of enquiries and contact taps in the last 30 days; enquiries inbox; profile and contact preference; services and prices; opening hours.
+- **Contact-click tracking.** Taps on WhatsApp, call, email, website, booking and directions buttons are counted per business (no personal data), for the dashboard and for future paid plans.
+- Admin queue now shows the source of researched listings.
+- Migration `20261017000003`. Tests: 53 passing (34 database).
+
+### Not yet built in Stage 2
+- **Email or WhatsApp alerts** for new enquiries and replies. Businesses currently see enquiries when they open the dashboard. Needs an email provider (and later the WhatsApp Business API); this is the next item, because unanswered enquiries are the fastest way to lose both sides.
+- **Quotes and appointment booking** with availability. The enquiry thread covers both for now.
+- **Photo uploads** for logos, covers and galleries (needs a Supabase Storage bucket and upload rules).
+
+## Increment 4 (17 October 2026): Stage 1, accounts, registration, claims and admin
+
+### Built and tested
+- **Accounts** (`/[country]/sign-in`, `/[country]/account`): create an account with email and password, sign in with a password or an emailed link, sign out. Sessions are kept fresh by `src/middleware.ts`. The header shows an account icon once Supabase is connected.
+- **Business registration** (`/[country]/for-business/register`): four-step form (business and up to three categories, location, contact, about). Server-side validation, phone numbers normalised to international format, at most three registrations awaiting review per person. New listings stay hidden until approved.
+- **Researched listings** (`/admin/add-listing`): you add businesses found through research. Each needs a source link and the date it was checked, and goes live as **unclaimed**. Only facts the business publishes itself; no reviews, ratings or photos from other sites.
+- **Claims** (`/[country]/business/[slug]/claim`): unclaimed listings show “Is this your business?”. The owner submits how to confirm them; you approve; ownership transfers and any competing claims close.
+- **Admin panel** (`/admin`): counts, registration queue and claims queue with approve/reject and a note to the applicant. Every decision is written to the audit log.
+- **Fixed fares table** (`fare_rules`) for Stage 3: a fare can only be switched on once its source and check date are recorded.
+- Database: migration `20261017000002`. All writes go through database functions or Row Level Security; admins are checked inside the database, not only in the page.
+- Tests: 47 passing (28 database, including registration, research listings, claims, permissions and fares). Type-check, lint and build clean.
+
+### Can only be tested once Supabase is connected
+Sign-up emails, email links, sign-in sessions and the admin screens run against the live project. In demo mode these pages explain that the database is needed.
+
+### Next
+Stage 2: business dashboard (edit listing, services, prices, hours), enquiries, quote requests, bookings or redirect-out per business, click tracking. Then Stage 3: drivers, pre-booked and on-demand trips, fixed and driver-entered fares, commission ledger at 0% until charging starts.
+
 ## Increment 3 (17 October 2026): ride requests
 
 ### Working

@@ -43,7 +43,16 @@ Open http://localhost:3000. With no database connected, the site runs in **demo 
 
 The `anon` key is designed to be public. What it can read and write is controlled by the security rules in the migration. Never put the `service_role` key in this project's environment variables.
 
-To make yourself an administrator later, sign up once the sign-in feature is built, then run this in the SQL Editor with your email:
+Run the migration files in order (`20261017000001_foundation.sql`, `20261017000002_accounts_registration_claims.sql`, `20261017000003_dashboard_enquiries.sql`), then `seed.sql`. To load researched businesses into your review queue, run the files in `supabase/research/`.
+
+### Sign-in settings in Supabase
+
+1. **Authentication > URL Configuration:** set *Site URL* to your Netlify address, and add `https://YOUR-SITE.netlify.app/auth/callback` (and `http://localhost:3000/auth/callback` for testing) under *Redirect URLs*.
+2. **Authentication > Emails:** Supabase’s built-in email sender is limited to a small number of emails per hour and is meant for testing. Before launch, connect your own email provider under *SMTP Settings* so confirmation and sign-in emails arrive reliably and come from your own address.
+
+### Make yourself an administrator
+
+Create an account on the site, then run this in the SQL Editor with your email:
 
 ```sql
 update public.profiles set role = 'admin'
@@ -84,3 +93,12 @@ Edit the files in `src/data/`, then run `npm run seed:generate` to regenerate `s
 Destination photos are registered in `src/data/photos.ts` with their author and licence. To replace one, put the new file in `public/images/places/`, update its entry (including the credit) and check `/credits`. Business images are never taken from this set.
 
 The logo files in `public/brand/` are cut from the supplied raster artwork. When a production SVG is available, replace `ic-mark.png` and `ic-lockup.png` and update `components/wordmark.tsx`.
+
+## Adding businesses from research
+
+Google, TripAdvisor and similar sites are useful for *finding* businesses, but their terms forbid copying their content, and their reviews, ratings and photos must never be reused. For each business you find:
+
+1. Confirm the basic facts (name, what it does, where it is, public phone, WhatsApp, email or website) on the business’s **own** website or social page, an official directory (tourism authority, chamber of commerce, association member list), or by calling it.
+2. Add it at `/admin/add-listing`, with the link you checked and the date. It goes live as an unclaimed listing.
+3. Only use contact details the business publishes for customers. If a sole trader’s only number is a personal one shared somewhere else, leave it off.
+4. If a business asks to be removed, remove it promptly (set it to suspended or delete it).

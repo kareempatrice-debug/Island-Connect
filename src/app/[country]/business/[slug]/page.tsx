@@ -2,13 +2,14 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { Clock, CreditCard, Globe, Mail, MapPin, MessageCircle, Navigation, Phone, Star } from "lucide-react";
+import { CalendarCheck, Clock, CreditCard, Globe, Mail, MapPin, MessageCircle, MessageSquareText, Navigation, Phone, Star } from "lucide-react";
+import { ContactLink } from "@/components/contact-link";
 import { ListingBadges, TrustNote } from "@/components/badges";
 import { locationLine } from "@/components/business-card";
 import { BusinessCover, BusinessLogo } from "@/components/business-cover";
 import { OpenStatus } from "@/components/open-status";
 import { Container } from "@/components/ui";
-import { businessCountries, data, getCountry } from "@/lib/data";
+import { businessCountries, data, getCountry, isSupabaseConfigured } from "@/lib/data";
 import { PAYMENT_LABELS, formatPhone, localClock, mapsLink, priceLabel, weeklyHours, whatsappLink } from "@/lib/format";
 
 type Props = { params: Promise<{ country: string; slug: string }> };
@@ -42,14 +43,29 @@ export default async function BusinessPage({ params }: Props) {
   const alsoServes = business.serviceAreas.filter((a) => a.islandSlug !== location?.islandSlug);
   const rating = business.ratingCount > 0 && business.ratingAvg != null ? business.ratingAvg : null;
 
-  // The single most useful way to get in touch, used for the mobile action bar.
-  const mainAction = business.whatsapp
-    ? { href: whatsappLink(business.whatsapp, `Hello, I found ${business.name} on Island Connect.`), label: "WhatsApp", Icon: MessageCircle, external: true }
-    : business.phone
-      ? { href: `tel:${business.phone}`, label: "Call", Icon: Phone, external: false }
-      : business.email
-        ? { href: `mailto:${business.email}`, label: "Email", Icon: Mail, external: false }
-        : null;
+  const canEnquire = isSupabaseConfigured && !business.isDemo && business.claimStatus === "claimed";
+  const enquireHref = `/${code}/business/${business.slug}/enquire`;
+  const bookingHref = business.contactPreference === "external_booking" ? business.externalBookingUrl : null;
+
+  // The single most useful way to get in touch, used for the mobile action bar. The business chooses which.
+  const pref = business.contactPreference;
+  const mainAction = bookingHref
+    ? { href: bookingHref, label: "Book on their website", Icon: CalendarCheck, external: true, channel: "booking" as const }
+    : pref === "platform" && canEnquire
+      ? { href: enquireHref, label: "Send an enquiry", Icon: MessageSquareText, external: false, channel: null }
+      : pref === "phone" && business.phone
+        ? { href: `tel:${business.phone}`, label: "Call", Icon: Phone, external: false, channel: "phone" as const }
+        : pref === "website" && business.website
+          ? { href: business.website, label: "Visit website", Icon: Globe, external: true, channel: "website" as const }
+          : business.whatsapp
+            ? { href: whatsappLink(business.whatsapp, `Hello, I found ${business.name} on Island Connect.`), label: "WhatsApp", Icon: MessageCircle, external: true, channel: "whatsapp" as const }
+            : business.phone
+              ? { href: `tel:${business.phone}`, label: "Call", Icon: Phone, external: false, channel: "phone" as const }
+              : business.email
+                ? { href: `mailto:${business.email}`, label: "Email", Icon: Mail, external: false, channel: "email" as const }
+                : canEnquire
+                  ? { href: enquireHref, label: "Send an enquiry", Icon: MessageSquareText, external: false, channel: null }
+                  : null;
 
   const sections = [
     { id: "about", label: "About" },
@@ -125,6 +141,14 @@ export default async function BusinessPage({ params }: Props) {
               <div className="mt-6 rounded-2xl bg-sunken/70 p-4">
                 <TrustNote business={business} />
               </div>
+              {business.claimStatus === "unclaimed" && !business.isDemo && (
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-dashed border-line p-4">
+                  <p className="text-sm">
+                    <span className="font-semibold text-ink">Is this your business?</span> Claim it to update the details and receive enquiries.
+                  </p>
+                  <Link href={`/${code}/business/${business.slug}/claim`} className="font-semibold text-link hover:underline">Claim this listing</Link>
+                </div>
+              )}
             </section>
 
             {business.services.length > 0 && (
@@ -191,9 +215,9 @@ export default async function BusinessPage({ params }: Props) {
                     <p className="mt-3 text-ink">{[location.districtName, location.islandName].filter(Boolean).join(", ")}</p>
                     {location.landmark && <p className="mt-1 text-[0.95rem]">{location.landmark}</p>}
                     {location.lat != null && location.lng != null && (
-                      <a href={mapsLink(location.lat, location.lng)} target="_blank" rel="noopener noreferrer" className={`${ghost} mt-4 w-full`}>
+                      <ContactLink slug={business.slug} channel="maps" country={code} href={mapsLink(location.lat, location.lng)} target="_blank" rel="noopener noreferrer" className={`${ghost} mt-4 w-full`}>
                         <Navigation className="h-4 w-4" aria-hidden="true" /> Open in maps
-                      </a>
+                      </ContactLink>
                     )}
                   </div>
                 )}
@@ -229,25 +253,41 @@ export default async function BusinessPage({ params }: Props) {
               <h2 className="font-sans text-base font-semibold">Get in touch</h2>
               {mainAction || business.website ? (
                 <div className="mt-4 grid gap-2">
-                  {business.whatsapp && (
-                    <a className="flex h-12 items-center justify-center gap-2 rounded-full bg-primary font-semibold text-primary-ink hover:brightness-110" href={whatsappLink(business.whatsapp, `Hello, I found ${business.name} on Island Connect.`)} target="_blank" rel="noopener noreferrer">
+                  {mainAction && (
+                    mainAction.channel ? (
+                      <ContactLink slug={business.slug} channel={mainAction.channel} country={code} href={mainAction.href}
+                        {...(mainAction.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                        className="flex h-12 items-center justify-center gap-2 rounded-full bg-primary font-semibold text-primary-ink hover:brightness-110">
+                        <mainAction.Icon className="h-5 w-5" aria-hidden="true" /> {mainAction.label}
+                      </ContactLink>
+                    ) : (
+                      <Link href={mainAction.href} className="flex h-12 items-center justify-center gap-2 rounded-full bg-primary font-semibold text-primary-ink hover:brightness-110">
+                        <mainAction.Icon className="h-5 w-5" aria-hidden="true" /> {mainAction.label}
+                      </Link>
+                    )
+                  )}
+                  {business.whatsapp && mainAction?.channel !== "whatsapp" && (
+                    <ContactLink slug={business.slug} channel="whatsapp" country={code} className={ghost} href={whatsappLink(business.whatsapp, `Hello, I found ${business.name} on Island Connect.`)} target="_blank" rel="noopener noreferrer">
                       <MessageCircle className="h-5 w-5" aria-hidden="true" /> WhatsApp
-                    </a>
+                    </ContactLink>
                   )}
-                  {business.phone && (
-                    <a className={ghost} href={`tel:${business.phone}`}>
+                  {business.phone && mainAction?.channel !== "phone" && (
+                    <ContactLink slug={business.slug} channel="phone" country={code} className={ghost} href={`tel:${business.phone}`}>
                       <Phone className="h-5 w-5" aria-hidden="true" /> {formatPhone(business.phone)}
-                    </a>
+                    </ContactLink>
                   )}
-                  {business.email && (
-                    <a className={ghost} href={`mailto:${business.email}`}>
+                  {business.email && mainAction?.channel !== "email" && (
+                    <ContactLink slug={business.slug} channel="email" country={code} className={ghost} href={`mailto:${business.email}`}>
                       <Mail className="h-5 w-5" aria-hidden="true" /> Email
-                    </a>
+                    </ContactLink>
                   )}
-                  {business.website && (
-                    <a className={ghost} href={business.website} target="_blank" rel="noopener noreferrer">
+                  {business.website && mainAction?.channel !== "website" && (
+                    <ContactLink slug={business.slug} channel="website" country={code} className={ghost} href={business.website} target="_blank" rel="noopener noreferrer">
                       <Globe className="h-5 w-5" aria-hidden="true" /> Website
-                    </a>
+                    </ContactLink>
+                  )}
+                  {canEnquire && mainAction?.href !== enquireHref && (
+                    <Link className={ghost} href={enquireHref}><MessageSquareText className="h-5 w-5" aria-hidden="true" /> Send an enquiry</Link>
                   )}
                 </div>
               ) : (
@@ -273,17 +313,21 @@ export default async function BusinessPage({ params }: Props) {
       {mainAction && (
         <div className="fixed inset-x-0 z-30 border-t border-line bg-raised/95 px-5 py-3 backdrop-blur lg:hidden" style={{ bottom: "calc(4.6rem + env(safe-area-inset-bottom, 0px))" }}>
           <div className="mx-auto flex max-w-lg gap-2">
-            <a
-              href={mainAction.href}
-              {...(mainAction.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-              className="flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-primary font-semibold text-primary-ink"
-            >
-              <mainAction.Icon className="h-5 w-5" aria-hidden="true" /> {mainAction.label}
-            </a>
-            {business.phone && mainAction.label !== "Call" && (
-              <a href={`tel:${business.phone}`} className="flex h-12 w-12 items-center justify-center rounded-full border border-line" aria-label={`Call ${business.name}`}>
+            {mainAction.channel ? (
+              <ContactLink slug={business.slug} channel={mainAction.channel} country={code} href={mainAction.href}
+                {...(mainAction.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                className="flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-primary font-semibold text-primary-ink">
+                <mainAction.Icon className="h-5 w-5" aria-hidden="true" /> {mainAction.label}
+              </ContactLink>
+            ) : (
+              <Link href={mainAction.href} className="flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-primary font-semibold text-primary-ink">
+                <mainAction.Icon className="h-5 w-5" aria-hidden="true" /> {mainAction.label}
+              </Link>
+            )}
+            {business.phone && mainAction.channel !== "phone" && (
+              <ContactLink slug={business.slug} channel="phone" country={code} href={`tel:${business.phone}`} className="flex h-12 w-12 items-center justify-center rounded-full border border-line" aria-label={`Call ${business.name}`}>
                 <Phone className="h-5 w-5 text-ink" aria-hidden="true" />
-              </a>
+              </ContactLink>
             )}
           </div>
         </div>

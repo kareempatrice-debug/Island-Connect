@@ -2,12 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CalendarCheck, CheckCircle2, CircleDashed, FileText, MessageSquare, Store } from "lucide-react";
 import { Container, btn } from "@/components/ui";
-import { getCountry } from "@/lib/data";
+import { getCountry, isSupabaseConfigured } from "@/lib/data";
 
 export const metadata: Metadata = { title: "Listing your business" };
 
 const STAGES = [
   { Icon: Store, title: "A free business profile", text: "Your services, prices, opening hours, location and contact details, found by people searching nearby.", live: true },
+  { Icon: CheckCircle2, title: "Claim an existing listing", text: "If we’ve already listed your business, claim it to take over and keep it up to date.", live: true },
   { Icon: CheckCircle2, title: "Verification", text: "Submit your documents and earn a Verified badge, so customers know you’re who you say you are.", live: false },
   { Icon: MessageSquare, title: "Enquiries and quote requests", text: "Customers describe the job, add photos and send it to you. You reply with a price.", live: false },
   { Icon: CalendarCheck, title: "Bookings", text: "Set your availability and let customers book appointments, tours and transfers.", live: false },
@@ -41,21 +42,28 @@ export default async function ForBusiness({ params }: { params: Promise<{ countr
                 <p className="mt-1">{s.text}</p>
                 <p className={`mt-3 inline-flex items-center gap-1.5 text-sm font-semibold ${s.live ? "text-success" : "text-muted"}`}>
                   {s.live ? <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> : <CircleDashed className="h-4 w-4" aria-hidden="true" />}
-                  {s.live ? "Pages are live; self-service sign-up is next" : "Planned"}
+                  {s.live ? "Available now" : "Planned"}
                 </p>
               </div>
             </li>
           ))}
         </ol>
-        <div className="mt-10 rounded-panel bg-sunken/70 p-6 sm:p-8">
-          <h2 className="text-xl font-semibold">Business registration isn’t open yet</h2>
-          <p className="mt-2 max-w-2xl">
-            Self-service sign-up is the next feature being built. Until then, browse how listings look to customers.
-          </p>
-          <Link href={`/${code}/explore`} className={`${btn.primary} mt-5`}>
-            See listings in {c.shortName}
-          </Link>
-        </div>
+        {isSupabaseConfigured ? (
+          <div className="mt-10 rounded-panel bg-deep p-6 text-white sm:p-8">
+            <h2 className="text-xl font-semibold text-white">Register for free</h2>
+            <p className="mt-2 max-w-2xl text-white/85">
+              Four short steps. We review each new listing before it goes live. If your business is already listed, open its page and
+              choose “Claim this listing” instead.
+            </p>
+            <Link href={`/${code}/for-business/register`} className={`${btn.gold} mt-5`}>Register your business</Link>
+          </div>
+        ) : (
+          <div className="mt-10 rounded-panel bg-sunken/70 p-6 sm:p-8">
+            <h2 className="text-xl font-semibold">Registration opens when the database is connected</h2>
+            <p className="mt-2 max-w-2xl">This preview runs on demonstration data. Browse how listings look to customers in the meantime.</p>
+            <Link href={`/${code}/explore`} className={`${btn.primary} mt-5`}>See listings in {c.shortName}</Link>
+          </div>
+        )}
       </Container>
     </main>
   );
