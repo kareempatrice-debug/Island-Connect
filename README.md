@@ -68,7 +68,7 @@ where id = (select id from auth.users where email = 'you@example.com');
 | Variable | Value |
 |---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase Project URL (leave unset for demo mode) |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Your Supabase anon key (leave unset for demo mode) |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Your Supabase publishable key, `sb_publishable_...` (leave unset for demo mode). The older name `NEXT_PUBLIC_SUPABASE_ANON_KEY` also works. |
 | `NEXT_PUBLIC_SITE_URL` | Your site address, e.g. `https://islandconnect.netlify.app` |
 
 4. Deploy. Every push to GitHub redeploys automatically.
