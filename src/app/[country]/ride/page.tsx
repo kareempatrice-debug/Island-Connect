@@ -1,0 +1,53 @@
+import type { Metadata } from "next";
+import { RideBooker, type RideOperator } from "@/components/ride/ride-booker";
+import { coastlines } from "@/data/coastlines";
+import { landmarks } from "@/data/landmarks";
+import { data, getCountry } from "@/lib/data";
+
+export const metadata: Metadata = { title: "Get a ride" };
+
+export default async function RidePage({ params }: { params: Promise<{ country: string }> }) {
+  const { country: code } = await params;
+  const country = (await getCountry(code))!;
+  const [islands, taxis, transfers] = await Promise.all([
+    data.getIslands(code),
+    data.searchBusinesses(code, { category: "taxis" }, 100),
+    data.searchBusinesses(code, { category: "airport-transfers" }, 100),
+  ]);
+
+  const seen = new Set<string>();
+  const operators: RideOperator[] = [...taxis, ...transfers]
+    .filter((b) => (seen.has(b.slug) ? false : (seen.add(b.slug), true)))
+    .map((b) => ({
+      slug: b.slug,
+      name: b.name,
+      tagline: b.tagline,
+      islands: [
+        ...b.locations.filter((l) => l.countryCode === code).map((l) => l.islandSlug),
+        ...b.serviceAreas.filter((a) => a.countryCode === code).map((a) => a.islandSlug),
+      ],
+      whatsapp: b.whatsapp,
+      phone: b.phone,
+      isDemo: b.isDemo,
+      verified: b.verificationStatus === "verified" && !b.isDemo,
+    }))
+    .sort((a, b) => Number(a.isDemo) - Number(b.isDemo) || Number(b.verified) - Number(a.verified));
+
+  const points = landmarks.filter((l) => l.countryCode === code);
+  const rideIslands = islands
+    .filter((i) => points.some((p) => p.island === i.slug) && coastlines[i.slug])
+    .map((i) => ({ slug: i.slug, name: i.name }));
+
+  return (
+    <main>
+      <RideBooker
+        countryCode={code}
+        countryName={country.name}
+        islands={rideIslands}
+        landmarks={points}
+        coastlines={Object.fromEntries(rideIslands.map((i) => [i.slug, coastlines[i.slug]]))}
+        operators={operators}
+      />
+    </main>
+  );
+}

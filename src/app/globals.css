@@ -1,0 +1,102 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Island Connect design tokens (RGB triplets so Tailwind opacity modifiers work).
+ *   deep    #064F56  deep Caribbean teal: header, navigation, premium surfaces
+ *   primary #087F75  tropical green: primary actions (white text passes AA at 4.9:1)
+ *   link    #064F56  text links (the brighter green is under 4.5:1 on ivory, so links use teal)
+ *   gold    #F5AE32  highlights, selected states, featured placements
+ *   coral   #E85B43  occasional promotional accent
+ *   surface #F6F4EF  warm ivory page background; raised #FFFFFF cards
+ *   ink     #1E2933  dark charcoal
+ */
+:root {
+  color-scheme: light;
+  --surface: 246 244 239;
+  --raised: 255 255 255;
+  --sunken: 237 233 224;
+  --ink: 30 41 51;
+  --muted: 79 90 99;
+  --line: 226 221 210;
+  --deep: 6 79 86;
+  --deep-ink: 255 255 255;
+  --primary: 8 127 117;
+  --primary-ink: 255 255 255;
+  --link: 6 79 86;
+  --gold: 245 174 50;
+  --coral: 232 91 67;
+  --success: 22 122 77;
+  --danger: 180 35 24;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --surface: 10 24 27;
+    --raised: 17 36 40;
+    --sunken: 24 47 51;
+    --ink: 236 242 240;
+    --muted: 166 183 180;
+    --line: 37 62 64;
+    --deep: 5 52 57;
+    --deep-ink: 236 242 240;
+    --primary: 52 186 168;
+    --primary-ink: 3 33 30;
+    --link: 120 214 200;
+    --gold: 245 174 50;
+    --coral: 240 122 99;
+    --success: 74 200 140;
+    --danger: 248 113 113;
+  }
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-padding-top: 6rem;
+}
+
+body {
+  @apply bg-surface font-sans text-muted antialiased;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+h1, h2, h3, h4 {
+  @apply font-display text-ink;
+  text-wrap: balance;
+  letter-spacing: -0.015em;
+}
+
+:focus-visible {
+  outline: 3px solid rgb(var(--gold));
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+::selection { background: rgb(var(--gold) / 0.35); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
+
+/* Room for the fixed bottom navigation on phones, including the home indicator. */
+.pb-nav { padding-bottom: calc(5.25rem + env(safe-area-inset-bottom, 0px)); }
+@media (min-width: 768px) { .pb-nav { padding-bottom: 0; } }
+
+/* Horizontal carousels on phones: snap, no visible scrollbar. */
+.rail { scroll-snap-type: x mandatory; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.rail::-webkit-scrollbar { display: none; }
+.rail > * { scroll-snap-align: start; }
+
+details > summary { list-style: none; }
+details > summary::-webkit-details-marker { display: none; }
+
+@keyframes shimmer { 100% { transform: translateX(100%); } }
+.skeleton { position: relative; overflow: hidden; background: rgb(var(--sunken)); }
+.skeleton::after {
+  content: ""; position: absolute; inset: 0; transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.35), transparent);
+  animation: shimmer 1.4s infinite;
+}

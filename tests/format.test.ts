@@ -1,0 +1,55 @@
+import { describe, expect, it } from "vitest";
+import { equivalentPath, formatMoney, formatPhone, isOpenNow, priceLabel, weeklyHours } from "@/lib/format";
+
+describe("money and prices", () => {
+  it("formats EC dollars", () => {
+    expect(formatMoney(150)).toBe("EC$150");
+    expect(formatMoney(2200)).toBe("EC$2,200");
+    expect(formatMoney(12.5)).toBe("EC$12.50");
+  });
+  it("describes price ranges and missing prices", () => {
+    expect(priceLabel({ priceMin: 150, priceMax: null, currency: "XCD", priceUnit: "visit" })).toBe("From EC$150 per visit");
+    expect(priceLabel({ priceMin: 900, priceMax: 2200, currency: "XCD", priceUnit: null })).toBe("EC$900–2,200");
+    expect(priceLabel({ priceMin: null, priceMax: null, currency: "XCD", priceUnit: null })).toBe("Price on request");
+  });
+});
+
+describe("phone numbers", () => {
+  it("formats Grenada and SVG numbers", () => {
+    expect(formatPhone("+14734401234")).toBe("+1 (473) 440-1234");
+    expect(formatPhone("+17844561234")).toBe("+1 (784) 456-1234");
+  });
+  it("leaves other formats alone", () => {
+    expect(formatPhone("+447700900123")).toBe("+447700900123");
+  });
+});
+
+describe("opening hours", () => {
+  const hours = [{ weekday: 1, opens: "08:00", closes: "17:00" }];
+  // Monday 19 October 2026, 13:00 UTC = 09:00 in Grenada (UTC-4, no daylight saving).
+  const mondayMorning = new Date("2026-10-19T13:00:00Z");
+  const mondayNight = new Date("2026-10-19T23:00:00Z");
+  it("uses the country's local time", () => {
+    expect(isOpenNow(hours, "America/Grenada", mondayMorning)).toBe(true);
+    expect(isOpenNow(hours, "America/Grenada", mondayNight)).toBe(false);
+  });
+  it("lists closed days", () => {
+    const week = weeklyHours(hours);
+    expect(week[0]).toEqual({ day: "Monday", label: "8am – 5pm" });
+    expect(week[6]).toEqual({ day: "Sunday", label: "Closed" });
+  });
+});
+
+describe("country switching", () => {
+  it("keeps the visitor on the equivalent page", () => {
+    expect(equivalentPath("/gd/services/electricians", "", "vc")).toBe("/vc/services/electricians");
+    expect(equivalentPath("/gd/guides/returning-home", "", "vc")).toBe("/vc/guides/returning-home");
+  });
+  it("keeps the search but drops island and parish filters", () => {
+    expect(equivalentPath("/gd/explore", "q=plumber&island=carriacou&district=st-george", "vc")).toBe("/vc/explore?q=plumber");
+  });
+  it("goes to the home page when there is no equivalent", () => {
+    expect(equivalentPath("/gd/business/harbourline-electrical", "", "vc")).toBe("/vc");
+    expect(equivalentPath("/gd", "", "vc")).toBe("/vc");
+  });
+});
