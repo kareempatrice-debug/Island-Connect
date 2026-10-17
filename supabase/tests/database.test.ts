@@ -203,3 +203,147 @@ describe("row level security", () => {
     expect(r.rows).toHaveLength(0);
   });
 });
+
+describe("stage 1: registration, research listings and claims", () => {
+  const listing = (extra: Record<string, unknown> = {}) =>
+    JSON.stringify({
+      country: "gd", island: "grenada", district: "st-george", name: "Test Plumbing", phone: "+14734400000",
+      categories: ["plumbers"], ...extra,
+    });
+
+  it("lets a signed-in user register a business that waits for review", async () => {
+    const r = await as("authenticated", STRANGER, () => db.query<{ r: { slug: string } }>(`select public.register_business($1::jsonb) as r`, [listing()]));
+    const slug = r.rows[0].r.slug;
+    const b = await db.query<{ listing_status: string; claim_status: string }>(`select listing_status, claim_status from public.businesses where slug = $1`, [slug]);
+    expect(b.rows[0]).toEqual({ listing_status: "pending_review", claim_status: "claimed" });
+    const owner = await db.query(`select 1 from public.business_members m join public.businesses b on b.id = m.business_id where b.slug = $1 and m.user_id = '${STRANGER}' and m.role = 'owner'`, [slug]);
+    expect(owner.rows).toHaveLength(1);
+    expect(await search("gd", { q: "Test Plumbing" })).not.toContain(slug);
+  });
+
+  it("refuses registration when signed out or with no contact details", async () => {
+    await expect(as("anon", null, () => db.query(`select public.register_business($1::jsonb)`, [listing()]))).rejects.toThrow();
+    await expect(
+      as("authenticated", STRANGER, () => db.query(`select public.register_business($1::jsonb)`, [listing({ phone: "" })])),
+    ).rejects.toThrow(/contact/);
+  });
+
+  it("only lets admins approve registrations", async () => {
+    const id = (await db.query<{ id: string }>(`select id from public.businesses where name = 'Test Plumbing'`)).rows[0].id;
+    await expect(as("authenticated", STRANGER, () => db.query(`select public.admin_review_business($1, true)`, [id]))).rejects.toThrow(/Administrators/);
+    await as("authenticated", ADMIN, () => db.query(`select public.admin_review_business($1, true)`, [id]));
+    expect(await search("gd", { q: "Test Plumbing" })).toHaveLength(1);
+  });
+
+  it("requires a source for researched listings and publishes them as unclaimed", async () => {
+    await expect(
+      as("authenticated", ADMIN, () => db.query(`select public.admin_add_listing($1::jsonb)`, [listing({ name: "Sourced Co" })])),
+    ).rejects.toThrow(/source/);
+    const r = await as("authenticated", ADMIN, () =>
+      db.query<{ r: { slug: string } }>(`select public.admin_add_listing($1::jsonb) as r`, [
+        listing({ name: "Sourced Co", sourceUrl: "https://example.com/sourced", sourceCheckedAt: "2026-10-17" }),
+      ]),
+    );
+    const b = await db.query<{ claim_status: string; listing_status: string }>(`select claim_status, listing_status from public.businesses where slug = $1`, [r.rows[0].r.slug]);
+    expect(b.rows[0]).toEqual({ claim_status: "unclaimed", listing_status: "published" });
+  });
+
+  it("transfers ownership when an admin approves a claim", async () => {
+    const id = (await db.query<{ id: string }>(`select id from public.businesses where name = 'Sourced Co'`)).rows[0].id;
+    await as("authenticated", OWNER, () =>
+      db.query(`insert into public.business_claims (business_id, user_id, claimant_name, role_at_business, evidence) values ($1, '${OWNER}', 'Owner Person', 'Owner', 'I run this business; call the listed number.')`, [id]),
+    );
+    await expect(
+      as("authenticated", OWNER, () =>
+        db.query(`insert into public.business_claims (business_id, user_id, claimant_name, role_at_business, evidence) values ($1, '${OWNER}', 'Owner Person', 'Owner', 'Second attempt at the same claim.')`, [id]),
+      ),
+    ).rejects.toThrow();
+    const claim = (await db.query<{ id: string }>(`select id from public.business_claims where business_id = $1`, [id])).rows[0].id;
+    await as("authenticated", ADMIN, () => db.query(`select public.admin_review_claim($1, true)`, [claim]));
+    const b = await db.query<{ claim_status: string }>(`select claim_status from public.businesses where id = $1`, [id]);
+    expect(b.rows[0].claim_status).toBe("claimed");
+    const m = await db.query(`select 1 from public.business_members where business_id = $1 and user_id = '${OWNER}' and role = 'owner'`, [id]);
+    expect(m.rows).toHaveLength(1);
+  });
+
+  it("does not allow claims on demo or already-claimed listings", async () => {
+    const demo = (await db.query<{ id: string }>(`select id from public.businesses where slug = 'harbourline-electrical'`)).rows[0].id;
+    await expect(
+      as("authenticated", STRANGER, () =>
+        db.query(`insert into public.business_claims (business_id, user_id, claimant_name, role_at_business, evidence) values ($1, '${STRANGER}', 'Someone', 'Owner', 'This is a demo listing claim.')`, [demo]),
+      ),
+    ).rejects.toThrow();
+  });
+
+  it("hides fares until they have a source and check date", async () => {
+    await expect(db.exec(`insert into public.fare_rules (country_code, from_place, to_place, amount, is_active) values ('gd', 'gnd-airport', 'st-georges', 50, true)`)).rejects.toThrow(/fare_active_requires_source/);
+  });
+});
+
+describe("research import", () => {
+  it("imports batch 1 as unclaimed listings awaiting review, with sources", async () => {
+    await db.exec(readFileSync("supabase/research/2026-10-17-transport.sql", "utf8"));
+    const r = await db.query<{ n: number; sourced: number }>(
+      `select count(*)::int as n, count(source_url)::int as sourced from public.businesses
+       where claim_status = 'unclaimed' and listing_status = 'pending_review' and source_checked_at = '2026-10-17'`,
+    );
+    expect(r.rows[0]).toEqual({ n: 9, sourced: 9 });
+    expect(await search("vc", { q: "Trubb" })).toEqual([]); // hidden until approved
+    const fares = await db.query<{ n: number }>(`select count(*)::int as n from public.services s join public.businesses b on b.id = s.business_id where b.name = 'Trubb Taxi Tours SVG'`);
+    expect(fares.rows[0].n).toBe(4);
+  });
+});
+
+describe("stage 2: enquiries and contact clicks", () => {
+  let bizId = "";
+  let enquiryId = "";
+  beforeAll(async () => {
+    bizId = (await db.query<{ id: string }>(`select id from public.businesses where slug = 'draft-co'`)).rows[0].id; // owned by OWNER, published earlier
+  });
+
+  it("lets a customer start an enquiry and the owner reply", async () => {
+    const r = await as("authenticated", STRANGER, () =>
+      db.query<{ id: string }>(`select public.start_enquiry($1, 'Leaking pipe', 'Kitchen pipe leaking under the sink, can you come this week?') as id`, [bizId]),
+    );
+    enquiryId = r.rows[0].id;
+    await as("authenticated", OWNER, () =>
+      db.query(`insert into public.enquiry_messages (enquiry_id, sender_id, body) values ($1, '${OWNER}', 'Yes, Thursday morning works.')`, [enquiryId]),
+    );
+    const thread = await as("authenticated", STRANGER, () => db.query(`select body from public.enquiry_messages where enquiry_id = $1 order by id`, [enquiryId]));
+    expect(thread.rows).toHaveLength(2);
+    const e = await db.query<{ status: string }>(`select status from public.enquiries where id = $1`, [enquiryId]);
+    expect(e.rows[0].status).toBe("open");
+  });
+
+  it("keeps threads private to the customer and the business", async () => {
+    const r = await as("authenticated", ADMIN, () => db.query(`select 1 from public.enquiry_messages where enquiry_id = $1`, [enquiryId]));
+    expect(r.rows.length).toBeGreaterThan(0); // admins can see for moderation
+    await db.exec(`insert into auth.users (id) values ('00000000-0000-0000-0000-000000000009')`);
+    const other = await as("authenticated", "00000000-0000-0000-0000-000000000009", () => db.query(`select 1 from public.enquiry_messages where enquiry_id = $1`, [enquiryId]));
+    expect(other.rows).toHaveLength(0);
+    await expect(
+      as("authenticated", "00000000-0000-0000-0000-000000000009", () =>
+        db.query(`insert into public.enquiry_messages (enquiry_id, sender_id, body) values ($1, '00000000-0000-0000-0000-000000000009', 'hi')`, [enquiryId]),
+      ),
+    ).rejects.toThrow();
+  });
+
+  it("refuses enquiries to demo or unclaimed listings, and to your own business", async () => {
+    const demo = (await db.query<{ id: string }>(`select id from public.businesses where slug = 'harbourline-electrical'`)).rows[0].id;
+    await expect(as("authenticated", STRANGER, () => db.query(`select public.start_enquiry($1, 'Hi', 'A question about wiring please.')`, [demo]))).rejects.toThrow(/can’t receive/);
+    await expect(as("authenticated", OWNER, () => db.query(`select public.start_enquiry($1, 'Hi', 'Messaging my own business here.')`, [bizId]))).rejects.toThrow(/own business/);
+  });
+
+  it("records contact clicks anonymously and shows them only to the business", async () => {
+    await as("anon", null, () => db.query(`select public.log_contact_click('draft-co', 'whatsapp', 'gd')`));
+    await as("anon", null, () => db.query(`select public.log_contact_click('harbourline-electrical', 'phone', 'gd')`)); // demo: ignored
+    const owner = await as("authenticated", OWNER, () => db.query(`select channel from public.contact_clicks`));
+    expect(owner.rows).toEqual([{ channel: "whatsapp" }]);
+    const anon = await as("anon", null, () => db.query(`select 1 from public.contact_clicks`));
+    expect(anon.rows).toHaveLength(0);
+  });
+
+  it("requires a booking link when a business sends customers to an external booking page", async () => {
+    await expect(db.exec(`update public.businesses set contact_preference = 'external_booking' where slug = 'draft-co'`)).rejects.toThrow(/external_booking_needs_url/);
+  });
+});
