@@ -152,6 +152,12 @@ export default async function Welcome({ searchParams }: { searchParams: Promise<
             </div>
           </div>
         </section>
+        <nav aria-label="About Island Connect" className="mt-10 flex flex-wrap gap-x-5 gap-y-2 border-t border-line pt-6 text-sm font-semibold">
+          <Link href="/contact" className="text-link hover:underline">Contact</Link>
+          <Link href="/privacy" className="text-link hover:underline">Privacy policy</Link>
+          <Link href="/terms" className="text-link hover:underline">Terms of use</Link>
+          <Link href="/credits" className="text-link hover:underline">Photo credits</Link>
+        </nav>
       </div>
     </main>
   );

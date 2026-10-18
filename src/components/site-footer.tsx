@@ -27,6 +27,9 @@ export function SiteFooter({ country, countries }: { country: Country; countries
       links: [
         { href: `/${c}/about`, label: "About" },
         ...countries.filter((x) => x.code !== c).map((x) => ({ href: `/${x.code}`, label: x.name })),
+        { href: "/contact", label: "Contact" },
+        { href: "/privacy", label: "Privacy policy" },
+        { href: "/terms", label: "Terms of use" },
         { href: "/credits", label: "Photo credits" },
       ],
     },

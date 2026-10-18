@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useState } from "react";
 import type { FormState } from "@/app/auth-actions";
 
@@ -95,6 +96,10 @@ export function AuthForm({
           <Status state={upState} />
           <button disabled={signingUp} className={primary}>{signingUp ? "Creating account…" : current.cta}</button>
           <p className="text-center text-sm">{current.note}</p>
+          <p className="text-center text-xs">
+            By creating an account you agree to the <Link href="/terms" className="font-semibold text-link underline">terms of use</Link> and{" "}
+            <Link href="/privacy" className="font-semibold text-link underline">privacy policy</Link>.
+          </p>
         </form>
       )}
 

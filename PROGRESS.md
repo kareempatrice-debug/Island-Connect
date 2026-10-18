@@ -1,5 +1,11 @@
 # Progress
 
+## Increment 11 (19 October 2026): privacy policy, terms and contact
+
+- `/privacy`, `/terms` and `/contact`, written to match how the site actually works (no payments, no ads or tracking, unclaimed listings from public sources, WhatsApp hand-off, Supabase/Netlify/Resend as processors). Operator: Island Connect, hello@islandconnect.cc. Governing law: Grenada for /gd, St Vincent and the Grenadines for /vc.
+- Linked from the country footers, the welcome page and the sign-up form (“By creating an account you agree…”).
+- **Drafts for legal review** in each country; registered company details to be added once the company exists.
+
 ## Increment 10 (19 October 2026): admin listing tools and enquiry alerts
 
 - **Admin listings** (`/admin/listings`): search by name, filter by country and status, Hide / Make live in one click, and an edit page for name, descriptions, location, phone, WhatsApp, email and website, plus permanent delete (typed confirmation; refused if customers have enquiries with the business, so conversations are never lost). Every change is written to `audit_events`. Migration `20261019000005_admin_listing_tools.sql`.
