@@ -377,3 +377,44 @@ describe("everyday trades import (18 October 2026)", () => {
     expect(solo.rows[0].n).toBe(3);
   });
 });
+
+describe("admin listing tools", () => {
+  const pick = async () =>
+    (await db.query<{ id: string }>(`select id from public.businesses where source_checked_at = '2026-10-18' order by name limit 1`)).rows[0].id;
+
+  it("refuses edits, status changes and deletes from non-admins", async () => {
+    const id = await pick();
+    await expect(as("authenticated", STRANGER, () => db.query(`select public.admin_edit_business($1, '{"name":"Hacked"}'::jsonb)`, [id]))).rejects.toThrow(/administrators/);
+    await expect(as("authenticated", STRANGER, () => db.query(`select public.admin_set_listing_status($1, 'suspended')`, [id]))).rejects.toThrow(/administrators/);
+    await expect(as("authenticated", STRANGER, () => db.query(`select public.admin_delete_business($1)`, [id]))).rejects.toThrow(/administrators/);
+  });
+
+  it("lets an admin edit details, hide and republish, with an audit trail", async () => {
+    const id = await pick();
+    await as("authenticated", ADMIN, () =>
+      db.query(`select public.admin_edit_business($1, $2::jsonb)`, [id, JSON.stringify({ tagline: "Corrected tagline", phone: "+14734401234", website: "" })]),
+    );
+    const b = (await db.query<{ tagline: string; phone_e164: string; website: string | null }>(`select tagline, phone_e164, website from public.businesses where id = $1`, [id])).rows[0];
+    expect(b).toEqual({ tagline: "Corrected tagline", phone_e164: "+14734401234", website: null });
+
+    await as("authenticated", ADMIN, () => db.query(`select public.admin_set_listing_status($1, 'suspended')`, [id]));
+    const hidden = await as("anon", null, () => db.query(`select 1 from public.businesses where id = $1`, [id]));
+    expect(hidden.rows).toHaveLength(0);
+    await as("authenticated", ADMIN, () => db.query(`select public.admin_set_listing_status($1, 'published')`, [id]));
+
+    const audit = await db.query<{ action: string }>(`select action from public.audit_events where entity_id = $1 order by id`, [id]);
+    expect(audit.rows.map((r) => r.action)).toEqual(expect.arrayContaining(["business.edited", "business.status_changed"]));
+  });
+
+  it("won't delete a business that has customer enquiries, but deletes one that has none", async () => {
+    const id = await pick();
+    await db.query(`update public.businesses set listing_status = 'published' where id = $1`, [id]);
+    const enq = await db.query<{ id: string }>(`insert into public.enquiries (business_id, customer_id, subject) values ($1, $2, 'Test') returning id`, [id, OWNER]);
+    await expect(as("authenticated", ADMIN, () => db.query(`select public.admin_delete_business($1)`, [id]))).rejects.toThrow(/Hide it instead/);
+    await db.query(`delete from public.enquiries where id = $1`, [enq.rows[0].id]);
+    await as("authenticated", ADMIN, () => db.query(`select public.admin_delete_business($1, 'Owner asked')`, [id]));
+    expect((await db.query(`select 1 from public.businesses where id = $1`, [id])).rows).toHaveLength(0);
+    const log = await db.query<{ data: { reason: string } }>(`select data from public.audit_events where entity_id = $1 and action = 'business.deleted'`, [id]);
+    expect(log.rows[0].data.reason).toBe("Owner asked");
+  });
+});

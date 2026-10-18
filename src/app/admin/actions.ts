@@ -65,3 +65,63 @@ export async function addListingAction(_: FormState, form: FormData): Promise<Fo
   if (error) return { error: error.message };
   redirect(`/admin/add-listing?country=${d.country}&added=${encodeURIComponent((data as { slug: string }).slug)}`);
 }
+
+/* ---------- Listing tools: edit, hide, publish, delete (all audited in the database) ---------- */
+
+const editListing = z.object({
+  id: z.string().uuid(),
+  country: z.string().regex(/^[a-z]{2}$/),
+  name: z.string().trim().min(2, "Enter the business name").max(120),
+  tagline: z.string().trim().max(160),
+  description: z.string().trim().max(4000),
+  landmark: z.string().trim().max(160),
+  phone: z.string().max(30),
+  whatsapp: z.string().max(30),
+  email: z.union([z.string().trim().email("Enter a valid email address"), z.literal("")]),
+  website: z.union([z.string().trim().url("Enter a full web address").startsWith("https://", "Website must start with https://"), z.literal("")]),
+});
+
+export async function editListingAction(_: FormState, form: FormData): Promise<FormState> {
+  await requireAdmin();
+  const parsed = editListing.safeParse(Object.fromEntries(form));
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const { id, country: code, ...d } = parsed.data;
+  const country = await getCountry(code);
+  let phone: string | null, whatsapp: string | null;
+  try {
+    phone = toE164(d.phone, country?.diallingCode ?? "+1");
+    whatsapp = toE164(d.whatsapp, country?.diallingCode ?? "+1");
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
+  const supabase = await supabaseForRequest();
+  const { error } = await supabase.rpc("admin_edit_business", { p_business: id, p: { ...d, phone: phone ?? "", whatsapp: whatsapp ?? "" } });
+  if (error) return { error: error.message };
+  revalidatePath("/", "layout");
+  return { message: "Saved. The listing is updated on the site." };
+}
+
+const statusChange = z.object({ id: z.string().uuid(), status: z.enum(["published", "suspended", "pending_review"]), back: z.string().startsWith("/admin").max(300) });
+
+export async function setListingStatusAction(form: FormData) {
+  await requireAdmin();
+  const d = statusChange.parse(Object.fromEntries(form));
+  const supabase = await supabaseForRequest();
+  const { error } = await supabase.rpc("admin_set_listing_status", { p_business: d.id, p_status: d.status, p_note: null });
+  revalidatePath("/", "layout");
+  const sep = d.back.includes("?") ? "&" : "?";
+  redirect(`${d.back}${sep}${error ? `error=${encodeURIComponent(error.message)}` : `done=${d.status}`}`);
+}
+
+const removal = z.object({ id: z.string().uuid(), confirm: z.literal("DELETE", "Type DELETE to confirm"), reason: z.string().trim().max(300) });
+
+export async function deleteListingAction(_: FormState, form: FormData): Promise<FormState> {
+  await requireAdmin();
+  const parsed = removal.safeParse(Object.fromEntries(form));
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const supabase = await supabaseForRequest();
+  const { error } = await supabase.rpc("admin_delete_business", { p_business: parsed.data.id, p_reason: parsed.data.reason || null });
+  if (error) return { error: error.message };
+  revalidatePath("/", "layout");
+  redirect("/admin/listings?done=deleted");
+}

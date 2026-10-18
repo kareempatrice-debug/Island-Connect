@@ -1,5 +1,12 @@
 # Progress
 
+## Increment 10 (19 October 2026): admin listing tools and enquiry alerts
+
+- **Admin listings** (`/admin/listings`): search by name, filter by country and status, Hide / Make live in one click, and an edit page for name, descriptions, location, phone, WhatsApp, email and website, plus permanent delete (typed confirmation; refused if customers have enquiries with the business, so conversations are never lost). Every change is written to `audit_events`. Migration `20261019000005_admin_listing_tools.sql`.
+- **Enquiry alerts** (`src/lib/notify.ts`, `src/lib/email.ts`): a new enquiry emails the business's team; each reply emails the other side, with a short preview and a link to the conversation. Sent through Resend from noreply@islandconnect.cc. Needs two **secret** Netlify settings, `RESEND_API_KEY` and `SUPABASE_SECRET_KEY`; without them alerts are skipped and nothing else changes. `/api/health` reports `emailAlerts`.
+- Email to business owners is only possible for claimed listings (unclaimed ones have no account to email).
+- Tests: 63 passing.
+
 ## Increment 9 (18 October 2026): category placeholder artwork
 
 - Eight approved illustrations, one per category group (`src/data/category-art.ts`), replace the plain colour-and-icon covers wherever a business has no photo of its own: cards and storefront banners. Each type uses its group’s illustration; a business’s own photo always takes priority.

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import type { FormState } from "@/app/auth-actions";
 import { getViewer } from "@/lib/auth";
+import { notifyEnquiryMessage } from "@/lib/notify";
 import { supabaseForRequest } from "@/lib/supabase/server";
 
 const start = z.object({
@@ -17,7 +18,8 @@ const start = z.object({
 });
 
 export async function startEnquiryAction(_: FormState, form: FormData): Promise<FormState> {
-  if (!(await getViewer())) return { error: "Please sign in again." };
+  const viewer = await getViewer();
+  if (!viewer) return { error: "Please sign in again." };
   const parsed = start.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const d = parsed.data;
@@ -30,6 +32,7 @@ export async function startEnquiryAction(_: FormState, form: FormData): Promise<
     p_date: d.preferredDate || null,
   });
   if (error) return { error: error.message };
+  await notifyEnquiryMessage(String(data), viewer.id, d.body, true);
   redirect(`/${d.country}/messages/${data}`);
 }
 
@@ -43,6 +46,7 @@ export async function replyAction(_: FormState, form: FormData): Promise<FormSta
   const supabase = await supabaseForRequest();
   const { error } = await supabase.from("enquiry_messages").insert({ enquiry_id: parsed.data.enquiryId, sender_id: viewer.id, body: parsed.data.body });
   if (error) return { error: "Your message couldn’t be sent." };
+  await notifyEnquiryMessage(parsed.data.enquiryId, viewer.id, parsed.data.body, false);
   revalidatePath(`/${parsed.data.country}/messages/${parsed.data.enquiryId}`);
   return { message: "sent" };
 }

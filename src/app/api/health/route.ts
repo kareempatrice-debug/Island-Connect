@@ -28,5 +28,14 @@ export async function GET() {
     const { data, error } = await db.from("countries").select("code");
     report.database = error ? `error: ${error.message}` : `ok, ${data?.length ?? 0} countries`;
   }
+  const resend = process.env.RESEND_API_KEY ?? "";
+  const secret = process.env.SUPABASE_SECRET_KEY ?? "";
+  report.emailAlerts =
+    !resend && !secret ? "off (add RESEND_API_KEY and SUPABASE_SECRET_KEY to switch on)"
+    : !resend ? "missing RESEND_API_KEY"
+    : !resend.startsWith("re_") ? "RESEND_API_KEY looks wrong (should start re_)"
+    : !secret ? "missing SUPABASE_SECRET_KEY"
+    : !secret.startsWith("sb_secret_") ? "SUPABASE_SECRET_KEY looks wrong (should start sb_secret_)"
+    : "on";
   return NextResponse.json(report, { headers: { "cache-control": "no-store" } });
 }
