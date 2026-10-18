@@ -7,17 +7,19 @@ import { SearchForm } from "@/components/search-form";
 import { Chip, Container } from "@/components/ui";
 import { categoryVisual, coverStyle } from "@/components/visuals";
 import { data, getCountry } from "@/lib/data";
+import { PAGE_SIZE, ShowMore, pageFrom } from "@/components/pager";
 
-type Props = { params: Promise<{ country: string; category: string }> };
+type Props = { params: Promise<{ country: string; category: string }>; searchParams: Promise<{ page?: string }> };
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({ params }: Omit<Props, "searchParams">): Promise<Metadata> {
   const { country, category } = await params;
   const c = (await data.getCategories(country)).find((x) => x.slug === category);
   return { title: c?.name ?? "Services" };
 }
 
-export default async function CategoryPage({ params }: Props) {
+export default async function CategoryPage({ params, searchParams }: Props) {
   const { country: code, category: slug } = await params;
+  const page = pageFrom((await searchParams).page);
   const country = (await getCountry(code))!;
   const [categories, islands] = await Promise.all([data.getCategories(code), data.getIslands(code)]);
   const category = categories.find((c) => c.slug === slug);
@@ -38,7 +40,9 @@ export default async function CategoryPage({ params }: Props) {
   const children = categories.filter((c) => c.parentSlug === category.slug);
   const siblings = parent ? categories.filter((c) => c.parentSlug === parent.slug) : [];
   const chips = children.length ? children : siblings;
-  const results = await data.searchBusinesses(code, { category: slug });
+  const found = await data.searchBusinesses(code, { category: slug }, page * PAGE_SIZE + 1);
+  const results = found.slice(0, page * PAGE_SIZE);
+  const hasMore = found.length > results.length;
   const { Icon, tone } = categoryVisual(slug);
   const islandList = islands.map((i) => i.name);
   const where = islandList.length > 2 ? `${islandList.slice(0, -1).join(", ")} and ${islandList.at(-1)}` : islandList.join(" and ");
@@ -86,7 +90,7 @@ export default async function CategoryPage({ params }: Props) {
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
           <p className="font-medium text-ink" aria-live="polite">
-            {results.length === 1 ? "1 business" : `${results.length} businesses`} in {country.name}
+            {results.length === 1 ? "1 business" : `${hasMore ? `${results.length}+` : results.length} businesses`} in {country.name}
           </p>
           <Link
             href={`/${code}/explore?category=${slug}`}
@@ -106,6 +110,9 @@ export default async function CategoryPage({ params }: Props) {
                 </li>
               ))}
             </BusinessGrid>
+          ) : null}
+          {results.length ? (
+            <ShowMore basePath={`/${code}/services/${slug}`} params={{}} page={page} shown={results.length} hasMore={hasMore} />
           ) : (
             <EmptyState title={`No ${category.name.toLowerCase()} listed in ${country.name} yet`}>
               <p>Listings are being added and checked. Try a related type above, or search for what you need.</p>

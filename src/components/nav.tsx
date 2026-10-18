@@ -18,9 +18,9 @@ interface NavItem {
 
 const items: NavItem[] = [
   { href: "", label: "Home", Icon: Home, live: true },
-  { href: "/explore", label: "Explore", Icon: Compass, live: true },
   { href: "/ride", label: "Ride", Icon: CarFront, live: true },
   { href: "/services", label: "Services", Icon: LayoutGrid, live: true },
+  { href: "/explore", label: "Explore", Icon: Compass, live: true },
   { href: "/guides", label: "Guides", Icon: BookOpen, live: true },
   // { href: "/bookings", label: "Bookings", Icon: CalendarCheck, live: false },
   // { href: "/saved", label: "Saved", Icon: Heart, live: false },

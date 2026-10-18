@@ -25,15 +25,28 @@ export async function signInAction(_: FormState, form: FormData): Promise<FormSt
 
 export async function signUpAction(_: FormState, form: FormData): Promise<FormState> {
   const parsed = z
-    .object({ name: z.string().trim().min(2, "Enter your name").max(80), email, password })
+    .object({
+      name: z.string().trim().min(2, "Enter your name").max(80),
+      email,
+      password,
+      role: z.enum(["customer", "business", "operator"]).catch("customer"),
+      country: z.string().regex(/^[a-z]{2}$/).catch("gd"),
+    })
     .safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
-  const next = safeNext(String(form.get("next") ?? ""), "/");
+  const { role, country } = parsed.data;
+  // Where a new account goes next depends on why the person joined.
+  const next =
+    role === "business"
+      ? `/${country}/for-business/register`
+      : role === "operator"
+        ? `/${country}/ride/operate`
+        : safeNext(String(form.get("next") ?? ""), `/${country}`);
   const supabase = await supabaseForRequest();
   const { data, error } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
-    options: { data: { full_name: parsed.data.name }, emailRedirectTo: `${site()}/auth/callback?next=${encodeURIComponent(next)}` },
+    options: { data: { full_name: parsed.data.name, joined_as: role }, emailRedirectTo: `${site()}/auth/callback?next=${encodeURIComponent(next)}` },
   });
   if (error) return { error: error.message };
   if (data.session) redirect(next);

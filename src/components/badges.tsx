@@ -28,6 +28,11 @@ export function ListingBadges({
           Demo listing
         </span>
       )}
+      {!business.isDemo && business.claimStatus === "unclaimed" && (
+        <span className={`${pill} ${s} ${neutral}`} title="Listed from a public directory; not yet confirmed by the business">
+          Unclaimed
+        </span>
+      )}
       {!business.isDemo && business.verificationStatus === "verified" && (
         <span className={`${pill} ${s} ${onImage ? "bg-white/90 text-[#167A4D]" : "bg-success/10 text-success"}`}>
           <BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />

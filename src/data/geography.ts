@@ -45,6 +45,8 @@ export const islands: Island[] = [
   { slug: "canouan", countryCode: "vc", name: "Canouan", lat: 12.71, lng: -61.33, isMain: false },
   { slug: "mayreau", countryCode: "vc", name: "Mayreau", lat: 12.64, lng: -61.39, isMain: false },
   { slug: "union-island", countryCode: "vc", name: "Union Island", lat: 12.6, lng: -61.43, isMain: false },
+  { slug: "palm-island", countryCode: "vc", name: "Palm Island", lat: 12.58, lng: -61.4, isMain: false },
+  { slug: "petit-st-vincent", countryCode: "vc", name: "Petit St Vincent", lat: 12.535, lng: -61.384, isMain: false },
 ];
 
 export const districts: District[] = [

@@ -1,23 +1,35 @@
 import Image from "next/image";
+import { categoryArt } from "@/data/category-art";
 import type { Business } from "@/lib/types";
-import { categoryVisual, coverStyle } from "./visuals";
+import { categoryVisual, coverStyle, groupOf } from "./visuals";
 
 /*
- * A business's own cover photo, or a branded cover built from its category.
+ * A business's own cover photo, or its category group's placeholder illustration.
  * We never show stock photography on a business's behalf.
  */
 export function BusinessCover({ business, sizes, priority, large }: { business: Business; sizes: string; priority?: boolean; large?: boolean }) {
   const primary = business.categories.find((c) => c.isPrimary) ?? business.categories[0];
-  const { Icon, tone } = categoryVisual(primary?.slug ?? "");
   if (business.coverUrl) {
     return <Image src={business.coverUrl} alt="" fill sizes={sizes} priority={priority} className="object-cover" />;
   }
+  const art = categoryArt[groupOf(primary?.slug ?? "")];
+  if (art) {
+    return (
+      <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${art.from}, ${art.to})` }} aria-hidden="true">
+        <svg
+          viewBox="0 0 320 200"
+          preserveAspectRatio="xMidYMid slice"
+          className="h-full w-full"
+          dangerouslySetInnerHTML={{ __html: `<circle cx="268" cy="44" r="60" fill="#fff" opacity=".05"/>${art.svg}` }}
+        />
+      </div>
+    );
+  }
+  // Fallback for any future group without artwork yet.
+  const { Icon, tone } = categoryVisual(primary?.slug ?? "");
   return (
     <div className="absolute inset-0" style={coverStyle(tone)} aria-hidden="true">
-      <Icon
-        className={`absolute text-white/15 ${large ? "-right-6 -top-10 h-72 w-72" : "-bottom-6 -right-4 h-36 w-36"}`}
-        strokeWidth={1.25}
-      />
+      <Icon className={`absolute text-white/15 ${large ? "-right-6 -top-10 h-72 w-72" : "-bottom-6 -right-4 h-36 w-36"}`} strokeWidth={1.25} />
     </div>
   );
 }

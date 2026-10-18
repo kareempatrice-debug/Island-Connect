@@ -2,11 +2,12 @@ import { cookies } from "next/headers";
 import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Briefcase, CarFront, Search } from "lucide-react";
+import { getViewer } from "@/lib/auth";
 import { IslandChain } from "@/components/island-chain";
 import { PlacePhoto } from "@/components/photo";
 import { countryImagery, fallbackImagery } from "@/data/photos";
-import { data, getCountries } from "@/lib/data";
+import { data, getCountries, isSupabaseConfigured } from "@/lib/data";
 
 /* Destination card copy, as approved. Countries without an entry fall back to their data. */
 const CARD: Record<string, { flag: string; title: string; islands: string; text: string; cta: string }> = {
@@ -32,11 +33,23 @@ export default async function Welcome({ searchParams }: { searchParams: Promise<
   if (!params.choose && remembered && countries.some((c) => c.code === remembered)) redirect(`/${remembered}`);
 
   const islands = (await Promise.all(countries.map((c) => data.getIslands(c.code)))).flat();
+  const viewer = isSupabaseConfigured ? await getViewer() : null;
+  const home = countries.some((c) => c.code === remembered) ? remembered! : countries[0].code;
 
   return (
     <main className="min-h-dvh bg-surface">
       <div className="mx-auto max-w-content px-5 pb-20 pt-8 sm:px-8 sm:pt-12">
-        <Image src="/brand/ic-lockup.png" alt="Island Connect: people, places, services" width={180} height={120} priority className="h-auto w-32 sm:w-40" />
+        <div className="flex items-start justify-between gap-4">
+          <Image src="/brand/ic-lockup.png" alt="Island Connect: people, places, services" width={180} height={120} priority className="h-auto w-32 sm:w-40" />
+          {viewer ? (
+            <Link href={`/${home}/account`} className="inline-flex h-11 items-center rounded-full border border-line bg-raised px-5 font-semibold text-ink hover:border-ink/30">Your account</Link>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Link href="/join?mode=sign-in" className="inline-flex h-11 items-center rounded-full px-4 font-semibold text-link hover:underline">Sign in</Link>
+              <Link href="/join" className="inline-flex h-11 items-center rounded-full bg-primary px-5 font-semibold text-primary-ink hover:brightness-110">Join free</Link>
+            </div>
+          )}
+        </div>
 
         <header className="mt-10 max-w-3xl sm:mt-14">
           <p className="text-[0.8rem] font-semibold tracking-[0.2em] text-link">WELCOME TO ISLAND CONNECT</p>
@@ -87,6 +100,35 @@ export default async function Welcome({ searchParams }: { searchParams: Promise<
             );
           })}
         </ul>
+
+
+        {!viewer && (
+          <section aria-labelledby="join-heading" className="mt-14 rounded-panel bg-deep p-6 text-white sm:p-10">
+            <div className="grid gap-8 lg:grid-cols-[1fr_1.4fr] lg:items-center">
+              <div>
+                <h2 id="join-heading" className="text-3xl font-bold leading-tight text-white sm:text-4xl">One free account for both countries</h2>
+                <p className="mt-3 text-lg text-white/85">Join as a customer, list your business, or apply to drive, sail or haul for Island Connect.</p>
+                <Link href="/join?mode=sign-in" className="mt-5 inline-block font-semibold text-gold hover:underline">Already have an account? Sign in</Link>
+              </div>
+              <ul className="grid gap-3 sm:grid-cols-3">
+                {[
+                  { as: "customer", Icon: Search, title: "Find services", text: "Save places, message businesses and request rides." },
+                  { as: "business", Icon: Briefcase, title: "List a business", text: "A free listing, reviewed before it goes live." },
+                  { as: "operator", Icon: CarFront, title: "Drive or haul", text: "Taxis, boats and freight across the islands." },
+                ].map((r) => (
+                  <li key={r.as}>
+                    <Link href={`/join?as=${r.as}`} className="flex h-full flex-col rounded-2xl bg-white/[0.08] p-5 ring-1 ring-white/15 transition hover:bg-white/[0.14]">
+                      <r.Icon className="h-6 w-6 text-gold" aria-hidden="true" />
+                      <span className="mt-3 font-display text-lg font-bold">{r.title}</span>
+                      <span className="mt-1 flex-1 text-sm text-white/80">{r.text}</span>
+                      <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-gold">Join free <ArrowRight className="h-4 w-4" aria-hidden="true" /></span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </section>
+        )}
 
         <section aria-labelledby="chain-heading" className="mt-16 overflow-hidden rounded-panel bg-raised shadow-card ring-1 ring-line/60 sm:mt-20">
           <div className="grid items-center gap-6 md:grid-cols-[1fr_minmax(0,32rem)]">

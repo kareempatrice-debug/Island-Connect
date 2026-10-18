@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { SUPABASE_PUBLIC_KEY, SUPABASE_URL } from "@/lib/supabase/env";
 
 /*
  * A Supabase client that acts as the signed-in visitor, using their session
@@ -8,7 +9,7 @@ import { cookies } from "next/headers";
  */
 export async function supabaseForRequest() {
   const jar = await cookies();
-  return createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+  return createServerClient(SUPABASE_URL, SUPABASE_PUBLIC_KEY, {
     cookies: {
       getAll: () => jar.getAll(),
       setAll: (list) => {

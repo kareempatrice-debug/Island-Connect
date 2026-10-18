@@ -53,3 +53,14 @@ describe("country switching", () => {
     expect(equivalentPath("/gd", "", "vc")).toBe("/vc");
   });
 });
+
+import { categoryArt } from "@/data/category-art";
+import { categories } from "@/data/categories";
+
+describe("category placeholders", () => {
+  it("has artwork for every top-level group", () => {
+    const groups = categories.filter((c) => !c.parentSlug).map((c) => c.slug);
+    expect(groups.every((g) => categoryArt[g])).toBe(true);
+    expect(Object.keys(categoryArt)).toHaveLength(8);
+  });
+});

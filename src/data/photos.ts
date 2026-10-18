@@ -15,12 +15,73 @@ export interface Photo {
   countryCode: string;
   author: string;
   license: string;
-  licenseUrl: string;
-  source: string;
+  licenseUrl?: string;
+  source?: string;
   focus?: string; // CSS object-position
 }
 
 export const photos: Record<string, Photo> = {
+  // Supplied by the site owner (18 October 2026).
+  "mbia-arrivals": {
+    key: "mbia-arrivals",
+    src: "/images/places/mbia-arrivals.jpg",
+    alt: "Travellers with luggage walking towards the arrivals entrance at Maurice Bishop International Airport, Grenada",
+    place: "Maurice Bishop International Airport, Grenada",
+    countryCode: "gd",
+    author: "Island Connect",
+    license: "Supplied by Island Connect",
+    focus: "50% 55%",
+  },
+  "grenada-beach-aerial": {
+    key: "grenada-beach-aerial",
+    src: "/images/places/grenada-beach-aerial.jpg",
+    alt: "Looking straight down on turquoise water breaking on a white-sand beach lined with green trees in Grenada",
+    place: "Grenada",
+    countryCode: "gd",
+    author: "Island Connect",
+    license: "Supplied by Island Connect",
+    focus: "50% 45%",
+  },
+  "salt-whistle-beach": {
+    key: "salt-whistle-beach",
+    src: "/images/places/salt-whistle-beach.jpg",
+    alt: "Looking down on turquoise umbrellas, palms and a white-sand beach at Salt Whistle Bay on Mayreau, with a dinghy in the clear water",
+    place: "Salt Whistle Bay, Mayreau",
+    countryCode: "vc",
+    author: "Island Connect",
+    license: "Supplied by Island Connect",
+    focus: "50% 40%",
+  },
+  "mayreau-aerial": {
+    key: "mayreau-aerial",
+    src: "/images/places/mayreau-aerial.jpg",
+    alt: "Aerial view of Salt Whistle Bay on Mayreau, with yachts at anchor and other Grenadine islands on the horizon",
+    place: "Salt Whistle Bay, Mayreau",
+    countryCode: "vc",
+    author: "Island Connect",
+    license: "Supplied by Island Connect",
+    focus: "55% 55%",
+  },
+  "opening-soon-shop": {
+    key: "opening-soon-shop",
+    src: "/images/places/opening-soon-shop.jpg",
+    alt: "A new shop being fitted out behind open green doors, with an Opening Soon sign outside and a harbour view down the street",
+    place: "Grenada",
+    countryCode: "gd",
+    author: "Island Connect",
+    license: "Supplied by Island Connect",
+    focus: "60% 50%",
+  },
+  "grenada-villa": {
+    key: "grenada-villa",
+    src: "/images/places/grenada-villa.jpg",
+    alt: "A modern single-storey villa with a pool and lawn at dusk, with houses on the hillside behind",
+    place: "Grenada",
+    countryCode: "gd",
+    author: "Island Connect",
+    license: "Supplied by Island Connect",
+    focus: "50% 60%",
+  },
   "st-georges-bay": {
     key: "st-georges-bay",
     src: "/images/places/st-georges-bay.jpg",
@@ -152,12 +213,12 @@ export const photos: Record<string, Photo> = {
 export const countryImagery: Record<string, { hero: string; guides: Record<string, string>; picker: string }> = {
   gd: {
     hero: "st-georges-bay",
-    picker: "grenada-beach",
-    guides: { "returning-home": "st-georges-bay", "property-investment": "st-georges-hillside", "start-a-business": "sauteurs-bay" },
+    picker: "grenada-beach-aerial",
+    guides: { "returning-home": "mbia-arrivals", "property-investment": "grenada-villa", "start-a-business": "opening-soon-shop" },
   },
   vc: {
-    hero: "mayreau-salt-whistle-bay",
-    picker: "mayreau-salt-whistle-bay",
+    hero: "salt-whistle-beach",
+    picker: "mayreau-aerial",
     guides: { "returning-home": "kingstown-ferry", "property-investment": "st-vincent-leeward", "start-a-business": "kingstown" },
   },
 };

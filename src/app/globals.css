@@ -4,29 +4,28 @@
 
 /*
  * Island Connect design tokens (RGB triplets so Tailwind opacity modifiers work).
- *   deep    #064F56  deep Caribbean teal: header, navigation, premium surfaces
- *   primary #087F75  tropical green: primary actions (white text passes AA at 4.9:1)
- *   link    #064F56  text links (the brighter green is under 4.5:1 on ivory, so links use teal)
- *   gold    #F5AE32  highlights, selected states, featured placements
- *   coral   #E85B43  occasional promotional accent
- *   surface #F6F4EF  warm ivory page background; raised #FFFFFF cards
- *   ink     #1E2933  dark charcoal
+ *   deep    #063E44  deep Caribbean teal: header, footer, premium panels
+ *   primary #07565A  primary actions (white text 8.5:1)
+ *   link    #07565A  text links
+ *   gold    #F4B846  highlights, featured placements; never text on white
+ *   coral   #EB6955  occasional accent
+ *   surface #F8F8F5  page; raised #FFFFFF cards; ink #172B32; muted #56666B
  */
 :root {
   color-scheme: light;
-  --surface: 246 244 239;
+  --surface: 248 248 245;
   --raised: 255 255 255;
-  --sunken: 237 233 224;
-  --ink: 30 41 51;
-  --muted: 79 90 99;
-  --line: 226 221 210;
-  --deep: 6 79 86;
+  --sunken: 239 242 239;
+  --ink: 23 43 50;
+  --muted: 86 102 107;
+  --line: 230 235 232;
+  --deep: 6 62 68;
   --deep-ink: 255 255 255;
-  --primary: 8 127 117;
+  --primary: 7 86 90;
   --primary-ink: 255 255 255;
-  --link: 6 79 86;
-  --gold: 245 174 50;
-  --coral: 232 91 67;
+  --link: 7 86 90;
+  --gold: 244 184 70;
+  --coral: 235 105 85;
   --success: 22 122 77;
   --danger: 180 35 24;
 }
@@ -42,7 +41,7 @@
     --line: 37 62 64;
     --deep: 5 52 57;
     --deep-ink: 236 242 240;
-    --primary: 52 186 168;
+    --primary: 64 178 170;
     --primary-ink: 3 33 30;
     --link: 120 214 200;
     --gold: 245 174 50;

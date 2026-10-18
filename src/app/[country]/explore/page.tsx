@@ -7,6 +7,7 @@ import { SearchForm } from "@/components/search-form";
 import { Container, btn } from "@/components/ui";
 import { data, getCountry } from "@/lib/data";
 import { parseFilters } from "@/lib/filters";
+import { PAGE_SIZE, ShowMore, pageFrom } from "@/components/pager";
 import type { SearchFilters } from "@/lib/types";
 
 type Props = {
@@ -41,13 +42,17 @@ function without(code: string, f: SearchFilters, key: string): string {
 export default async function Explore({ params, searchParams }: Props) {
   const { country: code } = await params;
   const country = (await getCountry(code))!;
-  const filters = parseFilters(await searchParams);
-  const [results, categories, islands, districts] = await Promise.all([
-    data.searchBusinesses(code, filters),
+  const sp = await searchParams;
+  const filters = parseFilters(sp);
+  const page = pageFrom(sp.page);
+  const [found, categories, islands, districts] = await Promise.all([
+    data.searchBusinesses(code, filters, page * PAGE_SIZE + 1),
     data.getCategories(code),
     data.getIslands(code),
     data.getDistricts(code),
   ]);
+  const results = found.slice(0, page * PAGE_SIZE);
+  const hasMore = found.length > results.length;
   const parents = categories.filter((c) => !c.parentSlug);
   const categoryName = categories.find((c) => c.slug === filters.category)?.name;
   const islandName = islands.find((i) => i.slug === filters.island)?.name;
@@ -170,7 +175,7 @@ export default async function Explore({ params, searchParams }: Props) {
                   {heading}
                 </h1>
                 <p className="mt-1" aria-live="polite">
-                  {results.length === 1 ? "1 business" : `${results.length} businesses`} in {country.name}
+                  {results.length === 1 ? "1 business" : `${hasMore ? `${results.length}+` : results.length} businesses`} in {country.name}
                 </p>
               </div>
             </div>
@@ -214,6 +219,9 @@ export default async function Explore({ params, searchParams }: Props) {
                     </li>
                   ))}
                 </BusinessGrid>
+              ) : null}
+              {results.length ? (
+                <ShowMore basePath={`/${code}/explore`} params={Object.fromEntries(Object.entries(sp).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v]))} page={page} shown={results.length} hasMore={hasMore} />
               ) : (
                 <EmptyState title="No businesses match yet">
                   <p>

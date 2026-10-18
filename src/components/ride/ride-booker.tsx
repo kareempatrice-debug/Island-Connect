@@ -35,6 +35,8 @@ export function RideBooker({
   landmarks,
   coastlines,
   operators,
+  initialVehicle = "car",
+  startAtAirport = false,
 }: {
   countryCode: string;
   countryName: string;
@@ -42,15 +44,19 @@ export function RideBooker({
   landmarks: Landmark[];
   coastlines: Record<string, [number, number][]>;
   operators: RideOperator[];
+  initialVehicle?: Vehicle;
+  startAtAirport?: boolean;
 }) {
   const [island, setIsland] = useState(islands[0]?.slug ?? "");
-  const [pickupId, setPickupId] = useState("");
+  const [pickupId, setPickupId] = useState(
+    startAtAirport ? (landmarks.find((l) => l.island === islands[0]?.slug && l.kind === "airport")?.id ?? "") : "",
+  );
   const [destId, setDestId] = useState("");
   const [when, setWhen] = useState<"now" | "later">("now");
   const [at, setAt] = useState("");
-  const [passengers, setPassengers] = useState(1);
+  const [passengers, setPassengers] = useState(initialVehicle === "van" ? 5 : 1);
   const [notes, setNotes] = useState("");
-  const [vehicle, setVehicle] = useState<Vehicle>("car");
+  const [vehicle, setVehicle] = useState<Vehicle>(initialVehicle);
   const [step, setStep] = useState<Step>("where");
 
   // Each step starts at the top, with the map in view.

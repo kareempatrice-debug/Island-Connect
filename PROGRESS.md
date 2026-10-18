@@ -1,5 +1,40 @@
 # Progress
 
+## Increment 9 (18 October 2026): category placeholder artwork
+
+- Eight approved illustrations, one per category group (`src/data/category-art.ts`), replace the plain colour-and-icon covers wherever a business has no photo of its own: cards and storefront banners. Each type uses its group’s illustration; a business’s own photo always takes priority.
+- Photos: Grenada Start a Business guide now uses the supplied “Opening Soon” shopfront image.
+- Tests: 57 passing.
+
+## Increment 8 (18 October 2026): everyday trades and two supplied photos
+
+- **Everyday trades:** 109 new providers from the supplied research pack (hardware, electricians, plumbers, mechanics, contractors, dentists, salons and more), in `src/data/directory-2026-10-18-trades.json` and `supabase/research/2026-10-18-everyday-trades.sql`. Imported unclaimed and pending review; twelve already in the directory were skipped. Three are individual sole traders: they are in the review queue with a note to get consent first, and are left out of the preview. The pack’s contractor outreach list (names from a government contracts record) is deliberately not imported, as its README instructs.
+- **New categories:** Marine services and repairs, Security services, Vets and animal care.
+- **Photos supplied by the owner:** Maurice Bishop International Airport arrivals (Grenada Returning Home guide only) and a modern villa with pool (Grenada Property and Investment guide). Credited on /credits as supplied by Island Connect.
+- Tests: 56 passing.
+
+## Increment 7 (18 October 2026): business directory of 265 listings
+
+- **Source:** the supplied Island Connect Business Database (265 public-source records from the Grenada and SVG tourism authority directories and trade directories), stored as `src/data/directory-2026-10-18.json`.
+- **Live site:** `supabase/research/2026-10-18-directory-265.sql` imports every record as **unclaimed** and **pending review**, matching the database’s status (“Hold: merchant verification and consent pending”). Nothing goes live until approved in `/admin`. Re-running it adds nothing twice.
+- **Not imported:** images (the database says their rights are not cleared) and the database’s indicative business size.
+- **New reference data:** Palm Island and Petit St Vincent; categories Banks and finance, Printing and office supplies, Utilities and telecoms, Local food, drink and products, Gifts, jewellery and duty-free, Colleges and universities.
+- **Mapping:** each source category mapped to up to three Island Connect categories; parishes taken from the address where it names one (42 St Vincent and 4 Grenada records have no parish).
+- **Long lists:** explore and category pages show 24 at a time with “Show more”; search now allows up to 500 results (migration `20261018000004`).
+- **Labels:** directory listings carry an “Unclaimed” label and a note explaining they come from public information.
+- Nine records were found only via Google Maps searches; their review notes say to confirm with the business before approving.
+- Tests: 55 passing.
+
+## Increment 6 (18 October 2026): join on the welcome page, all transport types, new look
+
+- **Look:** palette and fonts from the master brief (deep teal #063E44, primary #07565A, gold #F4B846, coral #EB6955; Manrope headings, DM Sans body).
+- **Joining and signing in** moved to the welcome page (`/`) and a new `/join` page. Country pages no longer carry an account button. People choose why they’re joining (find services, list a business, drive or haul) and are sent to the right next step. The old `/[country]/sign-in` redirects to `/join`.
+- **Ride hub** (`/[country]/ride`) for both countries: taxi, airport transfer, minivan and groups (fixed or driver’s fare), plus boat and water taxi, trucking and haulage, and freight to the Grenadines (custom quote from the operator). The taxi flow moved to `/[country]/ride/taxi`.
+- **Custom quotes** (`/[country]/ride/quote?type=freight|haulage|boat`): route across both countries (customs notice when it crosses the border), cargo or passengers, date, validation; then the operators covering that route, with the request written out for WhatsApp or a call. Nothing is booked until a price is agreed. In-app quotes (operators reply in the app, customer accepts) need the trips/quotes tables in Stage 3.
+- **Operators page** (`/[country]/ride/operate`) explaining what’s available now and what’s next.
+- New demo operator: Kingstown Island Freight (St. Vincent, serves Bequia, Union Island and Carriacou).
+- Tests: 53 passing; build, type-check and lint clean.
+
 ## Increment 5 (17 October 2026): research batch 1 and Stage 2
 
 ### Research batch 1: taxi and airport-transfer operators

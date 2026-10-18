@@ -1,5 +1,7 @@
 import { categories as allCategories, disabledIn } from "@/data/categories";
 import { demoBusinesses } from "@/data/demo";
+import directory from "@/data/directory-2026-10-18.json";
+import trades from "@/data/directory-2026-10-18-trades.json";
 import { countries, districts, islands } from "@/data/geography";
 import { isOpenNow } from "@/lib/format";
 import type { Business, SearchFilters } from "@/lib/types";
@@ -70,7 +72,55 @@ function build(): Business[] {
   });
 }
 
-const businesses = build();
+/*
+ * Researched directory listings (public sources, not yet confirmed by the businesses).
+ * Shown in demo mode as unclaimed listings so the preview reflects the real directory.
+ * On the live site the same records arrive through supabase/research/ and the admin queue.
+ */
+interface DirectoryRecord {
+  slug: string; name: string; country: string; island: string; district: string; landmark: string;
+  categories: string[]; tagline: string; description: string; phone: string; whatsapp: string; website: string;
+}
+
+function buildDirectory(): Business[] {
+  return ([...directory, ...trades] as DirectoryRecord[]).map((r, index) => {
+    const island = islands.find((i) => i.countryCode === r.country && i.slug === r.island)!;
+    const district = districts.find((d) => d.countryCode === r.country && d.slug === r.district) ?? null;
+    return {
+      id: `dir-${index + 1}`,
+      slug: r.slug,
+      name: r.name,
+      tagline: r.tagline,
+      description: r.description || null,
+      verificationStatus: "unverified",
+      isDemo: false,
+      isFeatured: false,
+      claimStatus: "unclaimed",
+      contactPreference: "platform",
+      externalBookingUrl: null,
+      ratingAvg: null,
+      ratingCount: 0,
+      phone: r.phone || null,
+      whatsapp: r.whatsapp || null,
+      email: null,
+      website: r.website || null,
+      logoUrl: null,
+      coverUrl: null,
+      gallery: [],
+      paymentMethods: [],
+      cancellationPolicy: null,
+      categories: r.categories.map((slug, i) => ({ slug, name: allCategories.find((c) => c.slug === slug)?.name ?? slug, isPrimary: i === 0 })),
+      locations: [{ countryCode: r.country, islandSlug: island.slug, islandName: island.name, districtSlug: district?.slug ?? null,
+        districtName: district?.name ?? null, landmark: r.landmark || null, lat: null, lng: null, isPrimary: true }],
+      serviceAreas: [{ countryCode: r.country, islandSlug: island.slug, islandName: island.name }],
+      services: [],
+      hours: [],
+      createdAt: "2026-10-18T00:00:00.000Z",
+    };
+  });
+}
+
+const businesses = [...build(), ...buildDirectory()];
 
 function haystack(b: Business): string {
   return [b.name, b.tagline, b.description, ...b.categories.map((c) => c.name), ...b.services.map((s) => `${s.name} ${s.description ?? ""}`)]

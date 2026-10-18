@@ -244,6 +244,29 @@ export const demoBusinesses: DemoBusiness[] = [
     daysAgo: 2,
   },
   {
+    slug: "kingstown-island-freight",
+    name: "Kingstown Island Freight",
+    tagline: "Truck and cargo-boat freight from Kingstown to the Grenadines",
+    description:
+      "Collection by truck anywhere on St. Vincent, shipping on scheduled cargo sailings, and delivery on Bequia, Union Island and across to Carriacou. Quotes are given per job after seeing what needs to move.",
+    categories: ["trucking-haulage", "courier-delivery"],
+    location: { country: "vc", island: "st-vincent", district: "st-george", landmark: "Near the Kingstown cargo jetty", lat: 13.152, lng: -61.232 },
+    serves: [
+      { country: "vc", island: "st-vincent" },
+      { country: "vc", island: "bequia" },
+      { country: "vc", island: "union-island" },
+      { country: "gd", island: "carriacou" },
+    ],
+    paymentMethods: ["cash", "bank_transfer"],
+    cancellationPolicy: null,
+    services: [
+      { name: "Door-to-door freight to the Grenadines", description: "Quoted per job", models: ["quote"] },
+      { name: "Truck hire on St. Vincent", description: "Quoted per job", models: ["quote"] },
+    ],
+    hours: weekdays("07:00", "16:00", ["07:00", "12:00"]),
+    daysAgo: 1,
+  },
+  {
     slug: "windward-transfers",
     name: "Windward Transfers",
     tagline: "Airport pick-ups and island transfers",

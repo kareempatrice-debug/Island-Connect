@@ -347,3 +347,33 @@ describe("stage 2: enquiries and contact clicks", () => {
     await expect(db.exec(`update public.businesses set contact_preference = 'external_booking' where slug = 'draft-co'`)).rejects.toThrow(/external_booking_needs_url/);
   });
 });
+
+describe("directory import (18 October 2026)", () => {
+  it("imports 265 unclaimed listings into the review queue, with sources, and none go live", async () => {
+    await db.exec(readFileSync("supabase/migrations/20261018000004_search_limit.sql", "utf8"));
+    await db.exec(readFileSync("supabase/research/2026-10-18-directory-265.sql", "utf8"));
+    const r = await db.query<{ n: number; sourced: number }>(
+      `select count(*)::int as n, count(source_url)::int as sourced from public.businesses where source_checked_at = '2026-10-18'`,
+    );
+    expect(r.rows[0]).toEqual({ n: 265, sourced: 265 });
+    const live = await db.query<{ n: number }>(`select count(*)::int as n from public.businesses where source_checked_at = '2026-10-18' and listing_status = 'published'`);
+    expect(live.rows[0].n).toBe(0);
+    // Running the import again adds nothing.
+    await db.exec(readFileSync("supabase/research/2026-10-18-directory-265.sql", "utf8"));
+    const again = await db.query<{ n: number }>(`select count(*)::int as n from public.businesses where source_checked_at = '2026-10-18'`);
+    expect(again.rows[0].n).toBe(265);
+  });
+});
+
+describe("everyday trades import (18 October 2026)", () => {
+  it("adds the new providers to the review queue without duplicating directory businesses", async () => {
+    const before = await db.query<{ n: number }>(`select count(*)::int as n from public.businesses`);
+    await db.exec(readFileSync("supabase/research/2026-10-18-everyday-trades.sql", "utf8"));
+    const after = await db.query<{ n: number }>(`select count(*)::int as n from public.businesses`);
+    expect(after.rows[0].n - before.rows[0].n).toBeGreaterThanOrEqual(100);
+    const live = await db.query<{ n: number }>(`select count(*)::int as n from public.businesses where source_checked_at = '2026-10-18' and listing_status = 'published'`);
+    expect(live.rows[0].n).toBe(0);
+    const solo = await db.query<{ n: number }>(`select count(*)::int as n from public.businesses where source_note like '%sole trader%'`);
+    expect(solo.rows[0].n).toBe(3);
+  });
+});

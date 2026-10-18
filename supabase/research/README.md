@@ -17,3 +17,18 @@ Each SQL file adds businesses found through research as **unclaimed** listings *
 | Stefano Taxi Service & Tours | St. Vincent | Phone, email | Business Facebook page | |
 
 Found but not added, because no website or page of their own turned up: Topdawg Taxi and Tours, Sky Blue Taxi Tours SVG and Sammy Taxi and Tours (St. Vincent; seen only on booking sites). Bequia, Carriacou and Union Island operators mostly have no web presence and need collecting locally. The Bequia Tourism Association office in Port Elizabeth reportedly hands out a taxi rate card, which is a good lead for the fixed-fare table.
+
+## Batch 2: business directory, 265 listings (18 October 2026)
+
+Run `2026-10-18-directory-265.sql` (or the combined update file) after re-running `seed.sql`. All 265 arrive in `/admin` as unclaimed registrations awaiting review.
+
+To publish a group in one step after you’ve checked it, for example every hotel and guest house on Bequia, run in the SQL Editor:
+
+```sql
+update public.businesses b set listing_status = 'published'
+from public.business_locations l join public.islands i on i.id = l.island_id
+where l.business_id = b.id and i.slug = 'bequia'
+  and b.source_checked_at = '2026-10-18' and b.listing_status = 'pending_review';
+```
+
+The database itself asks for operating status and phone numbers to be confirmed before launch; a quick call or WhatsApp is the best check.

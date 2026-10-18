@@ -2,6 +2,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { isOpenNow } from "@/lib/format";
 import type { Article, ArticleSection, Business, BookingModel, Category, Country, District, Island } from "@/lib/types";
 import type { DataSource } from "./source";
+import { SUPABASE_PUBLIC_KEY, SUPABASE_URL } from "@/lib/supabase/env";
 
 /*
  * Supabase implementation. Uses the public anon key only: what each visitor can
@@ -11,7 +12,7 @@ import type { DataSource } from "./source";
 let client: SupabaseClient | null = null;
 function db(): SupabaseClient {
   if (!client) {
-    client = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+    client = createClient(SUPABASE_URL, SUPABASE_PUBLIC_KEY, {
       auth: { persistSession: false },
     });
   }
@@ -19,7 +20,7 @@ function db(): SupabaseClient {
 }
 
 const BUSINESS_SELECT = `
-  id, slug, name, tagline, description, verification_status, is_demo, is_featured, rating_avg, rating_count,
+  id, slug, name, tagline, description, verification_status, is_demo, claim_status, contact_preference, external_booking_url, is_featured, rating_avg, rating_count,
   phone_e164, whatsapp_e164, email, website, logo_path, cover_path, payment_methods, cancellation_policy, created_at,
   business_categories ( is_primary, categories ( slug, name ) ),
   business_locations ( is_primary, landmark, lat, lng, country_code, islands ( slug, name ), districts ( slug, name ) ),
@@ -43,6 +44,9 @@ function toBusiness(r: any): Business {
     description: r.description,
     verificationStatus: r.verification_status,
     isDemo: r.is_demo,
+    claimStatus: r.claim_status ?? "claimed",
+    contactPreference: r.contact_preference ?? "platform",
+    externalBookingUrl: r.external_booking_url ?? null,
     isFeatured: r.is_featured,
     ratingAvg: r.rating_avg == null ? null : Number(r.rating_avg),
     ratingCount: r.rating_count,

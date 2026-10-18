@@ -34,6 +34,7 @@ export const categoryTree: CategorySeed[] = [
       { slug: "courier-delivery", name: "Courier and delivery", models: Q },
       { slug: "trucking-haulage", name: "Trucking and haulage", models: Q },
       { slug: "mechanics", name: "Mechanics", models: QA },
+      { slug: "marine-services", name: "Marine services and repairs", models: Q },
     ],
   },
   {
@@ -70,6 +71,10 @@ export const categoryTree: CategorySeed[] = [
       { slug: "customs-brokers", name: "Customs brokers", models: Q },
       { slug: "it-web", name: "IT and web services", models: QA },
       { slug: "business-consultants", name: "Business consultants", models: A },
+      { slug: "banks-finance", name: "Banks and finance", models: E },
+      { slug: "printing-office", name: "Printing and office supplies", models: Q },
+      { slug: "utilities-telecoms", name: "Utilities and telecoms", models: E },
+      { slug: "security-services", name: "Security services", models: Q },
     ],
   },
   {
@@ -104,6 +109,8 @@ export const categoryTree: CategorySeed[] = [
       { slug: "fitness", name: "Gyms and fitness", models: A },
       { slug: "laundry", name: "Laundry", models: E },
       { slug: "farm-produce", name: "Farm produce and agricultural supplies", models: E },
+      { slug: "local-products", name: "Local food, drink and products", models: E },
+      { slug: "gifts-retail", name: "Gifts, jewellery and duty-free", models: E },
     ],
   },
   {
@@ -115,6 +122,7 @@ export const categoryTree: CategorySeed[] = [
       { slug: "doctors-clinics", name: "Doctors and clinics", models: A },
       { slug: "dentists", name: "Dentists", models: A },
       { slug: "opticians", name: "Opticians", models: A },
+      { slug: "vets", name: "Vets and animal care", models: A },
     ],
   },
   {
@@ -126,6 +134,7 @@ export const categoryTree: CategorySeed[] = [
       { slug: "tutors", name: "Tutors", models: A },
       { slug: "childcare", name: "Childcare", models: A },
       { slug: "driving-schools", name: "Driving schools", models: A },
+      { slug: "colleges-universities", name: "Colleges and universities", models: E },
     ],
   },
   {

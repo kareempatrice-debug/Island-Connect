@@ -2,9 +2,10 @@ import { cache } from "react";
 import { demoSource } from "./demo";
 import type { DataSource } from "./source";
 import { supabaseSource } from "./supabase";
+import { SUPABASE_PUBLIC_KEY, SUPABASE_URL } from "@/lib/supabase/env";
 
 export const isSupabaseConfigured = Boolean(
-  process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  SUPABASE_URL && SUPABASE_PUBLIC_KEY,
 );
 
 export const data: DataSource = isSupabaseConfigured ? supabaseSource : demoSource;

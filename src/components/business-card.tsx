@@ -43,14 +43,17 @@ export function BusinessCard({
       href={`/${country}/business/${business.slug}`}
       className="group flex h-full flex-col overflow-hidden rounded-card bg-raised shadow-card ring-1 ring-line/60 transition duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lift"
     >
-      <div className="relative aspect-[16/10] overflow-hidden">
-        <BusinessCover business={business} sizes="(min-width: 1024px) 380px, (min-width: 640px) 50vw, 90vw" priority={priority} />
-        <div className="absolute left-3 top-3">
-          <ListingBadges business={business} onImage />
+      {/* The logo sits outside the clipped cover so it overlaps the edge without being cut off. */}
+      <div className="relative">
+        <div className="relative aspect-[16/10] overflow-hidden">
+          <BusinessCover business={business} sizes="(min-width: 1024px) 380px, (min-width: 640px) 50vw, 90vw" priority={priority} />
+          <div className="absolute left-3 top-3">
+            <ListingBadges business={business} onImage />
+          </div>
         </div>
-        <BusinessLogo business={business} className="absolute -bottom-6 left-4 h-14 w-14 rounded-2xl text-lg shadow-card ring-4 ring-raised" />
+        <BusinessLogo business={business} className="absolute -bottom-7 left-4 z-10 h-14 w-14 rounded-2xl text-lg shadow-card ring-4 ring-raised" />
       </div>
-      <div className="flex flex-1 flex-col px-4 pb-4 pt-8">
+      <div className="flex flex-1 flex-col px-4 pb-4 pt-9">
         <p className="text-[0.8rem] font-semibold text-link">{primary?.name}</p>
         <h3 className="mt-0.5 text-[1.15rem] font-semibold leading-snug group-hover:text-primary">{business.name}</h3>
         <p className="mt-1 flex items-start gap-1 text-sm">
