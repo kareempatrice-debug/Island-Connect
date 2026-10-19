@@ -10,7 +10,7 @@ export default async function Operate({ params }: { params: Promise<{ country: s
   const { country: code } = await params;
   const c = (await getCountry(code))!;
   const how = [
-    { Icon: FileCheck2, title: "Apply in about five minutes", text: "One form: your details, the trips you take, and photos of your licence. You don’t need a registered business; drivers with their own car or boat are welcome." },
+    { Icon: FileCheck2, title: "Apply in about five minutes", text: "One form: your details, the trips you take, and photos of your licence, insurance and registration. You don’t need a registered business; drivers with their own car or boat are welcome." },
     { Icon: CheckCircle2, title: "We check and approve you", text: "Usually within two working days. You get an email, and your listing goes live at the same time." },
     { Icon: Bell, title: "Get trip requests on your phone", text: "Add Island Connect to your home screen and turn on notifications. Every request also arrives by email." },
     { Icon: Zap, title: "Accept rides at the official fare", text: "Where a published fare applies, tap Accept and the trip is yours. For everything else, send your own price." },
@@ -41,8 +41,8 @@ export default async function Operate({ params }: { params: Promise<{ country: s
           <h2 id="need-h" className="text-lg font-bold">What you’ll need</h2>
           <ul className="mt-2 list-disc space-y-1 pl-5">
             <li>A valid driving licence and taxi or hire permit (or a boat licence, or a goods vehicle permit for haulage)</li>
-            <li>Your vehicle or boat details, and its registration</li>
-            <li>Insurance details, if you have them to hand</li>
+            <li>Your vehicle or boat registration</li>
+            <li>Your insurance certificate</li>
             <li>A phone that can take photos of your documents</li>
           </ul>
         </section>

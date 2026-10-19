@@ -227,13 +227,16 @@ export async function applyAsDriverAction(_: FormState, form: FormData): Promise
     country: z.string().regex(/^[a-z]{2}$/), providerType: z.enum(["individual", "business"]),
     name: z.string().trim().min(2, "Enter your name").max(120), island: z.string().regex(/^[a-z0-9-]{2,40}$/), area: z.string().trim().max(120).optional(),
     phone: z.string().max(30), whatsapp: z.string().max(30).optional(), whatsappSame: z.string().optional(),
-    licence: z.string().trim().max(500).optional(), vehicles: z.string().trim().min(3, "Say what you drive or sail, e.g. Toyota Noah, 7 seats").max(500),
-    insurance: z.string().trim().max(500).optional(),
+    licence: z.string().trim().min(3, "Add your licence and permit numbers").max(500), vehicles: z.string().trim().min(3, "Say what you drive or sail, e.g. Toyota Noah, 7 seats").max(500),
+    insurance: z.string().trim().min(3, "Add your insurer and type of cover").max(500),
   }).safeParse(Object.fromEntries(form));
   if (!d.success) return { error: d.error.issues[0].message };
   const kinds = form.getAll("kinds").map(String).filter((k) => (KINDS as readonly string[]).includes(k));
   if (!kinds.length) return { error: "Choose at least one kind of trip" };
   const documents = form.getAll("documents").map(String).filter((p) => p.startsWith(`${viewer.id}/`)).slice(0, 5);
+  for (const [kind, name] of [["licence", "licence and permit"], ["insurance", "insurance certificate"], ["vehicle", "vehicle registration"]] as const) {
+    if (!documents.some((p) => p.split("/")[1]?.startsWith(`${kind}-`))) return { error: `Add a photo of your ${name}.` };
+  }
   let phone: string | null, whatsapp: string | null;
   try {
     const code = d.data.country === "vc" ? "+1784" : "+1473";
@@ -248,7 +251,7 @@ export async function applyAsDriverAction(_: FormState, form: FormData): Promise
   const { data, error } = await supabase.rpc("apply_as_driver", { p: {
     country: d.data.country, island: d.data.island, area: d.data.area ?? "", name: d.data.name, provider_type: d.data.providerType,
     tagline: `${label}${d.data.area ? ` from ${d.data.area}` : ""}`.slice(0, 160), phone, whatsapp, kinds,
-    licence: d.data.licence && d.data.licence.length >= 3 ? d.data.licence : "See licence photo", vehicles: d.data.vehicles, insurance: d.data.insurance ?? "", documents,
+    licence: d.data.licence, vehicles: d.data.vehicles, insurance: d.data.insurance, documents,
   } });
   if (error) return { error: error.message };
   revalidatePath("/admin/operators");

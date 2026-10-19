@@ -10,9 +10,9 @@ const KINDS = [
   ["boat", "Boat and water taxi"], ["haulage", "Trucking and haulage"],
 ] as const;
 const DOCS = [
-  ["licence", "Driving licence and taxi or hire permit (or boat or goods licence)", true],
-  ["insurance", "Insurance certificate", false],
-  ["vehicle", "Vehicle or vessel registration", false],
+  ["licence", "Driving licence and taxi or hire permit (or boat or goods licence)"],
+  ["insurance", "Insurance certificate"],
+  ["vehicle", "Vehicle or vessel registration"],
 ] as const;
 
 const field = "h-12 w-full rounded-xl border border-line bg-raised px-3.5 text-ink focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/15";
@@ -113,36 +113,41 @@ export function DriverSignup({ country, islands, defaultName }: { country: strin
             </label>
           ))}
         </div>
-        <label className="mt-4 block"><span className={label}>Licence or permit numbers (optional)</span>
-          <input name="licence" maxLength={500} placeholder="If you don’t have them to hand, the photo is enough" className={field} /></label>
+        <label className="mt-4 block"><span className={label}>Licence and permit numbers</span>
+          <input name="licence" required minLength={3} maxLength={500} placeholder="e.g. Licence D12345, taxi permit T678" className={field} /></label>
         <label className="mt-4 block"><span className={label}>Your vehicle or boat</span>
           <input name="vehicles" required minLength={3} maxLength={500} placeholder="e.g. Toyota Noah, 7 seats" className={field} /></label>
-        <label className="mt-4 block"><span className={label}>Insurance (optional)</span>
-          <input name="insurance" maxLength={500} placeholder="Insurer and type of cover" className={field} /></label>
+        <label className="mt-4 block"><span className={label}>Insurance</span>
+          <input name="insurance" required minLength={3} maxLength={500} placeholder="Insurer and type of cover" className={field} /></label>
       </fieldset>
 
-      <fieldset className="rounded-2xl bg-raised p-5 ring-1 ring-line/60">
-        <legend className={label}>Documents</legend>
-        <p className="text-sm">Take a clear photo of each one. Only Island Connect’s team can see them; they’re used to check your application.</p>
+      <section className="rounded-2xl bg-raised p-5 ring-1 ring-line/60" aria-labelledby="docs-h">
+        <h2 id="docs-h" className="text-base font-semibold text-ink">Documents</h2>
+        <p className="mt-1 text-sm">All three are needed for approval. Take a clear photo of each one. Only Island Connect’s team can see them.</p>
         <ul className="mt-3 space-y-2">
-          {DOCS.map(([k, l, required]) => (
+          {DOCS.map(([k, l]) => (
             <li key={k}>
               <input id={`doc-${k}`} type="file" accept="image/*,application/pdf" className="sr-only" onChange={(e) => upload(k, e.target.files?.[0])} />
               <label htmlFor={`doc-${k}`} className={`flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-3 ${docs[k] ? "border-success/40 bg-success/10" : "border-dashed border-line"}`}>
                 {busy === k ? <Loader2 className="h-5 w-5 animate-spin text-primary" aria-hidden="true" /> : docs[k] ? <Check className="h-5 w-5 text-success" aria-hidden="true" /> : <FileUp className="h-5 w-5 text-primary" aria-hidden="true" />}
-                <span className="min-w-0 flex-1 text-ink">{l}{required ? "" : " (optional)"}</span>
+                <span className="min-w-0 flex-1 text-ink">{l}</span>
                 <span className="text-sm font-semibold text-link">{docs[k] ? "Replace" : "Add photo"}</span>
               </label>
             </li>
           ))}
         </ul>
         {uploadError && <p role="alert" className="mt-3 rounded-xl bg-danger/10 px-4 py-3 text-sm font-medium text-danger">{uploadError}</p>}
-      </fieldset>
+      </section>
 
       {state.error && <p role="alert" className="rounded-xl bg-danger/10 px-4 py-3 text-sm font-medium text-danger">{state.error}</p>}
-      <button disabled={pending || Boolean(busy) || !docs.licence} className="h-14 w-full rounded-full bg-primary text-[1.0625rem] font-semibold text-primary-ink disabled:opacity-50">
-        {pending ? "Sending…" : !docs.licence ? "Add your licence photo to continue" : "Send application"}
-      </button>
+      {(() => {
+        const missing = DOCS.filter(([k]) => !docs[k]).length;
+        return (
+          <button disabled={pending || Boolean(busy) || missing > 0} className="h-14 w-full rounded-full bg-primary text-[1.0625rem] font-semibold text-primary-ink disabled:opacity-50">
+            {pending ? "Sending…" : missing ? `Add ${missing === 1 ? "the last document" : `${missing} more documents`} to continue` : "Send application"}
+          </button>
+        );
+      })()}
       <p className="text-center text-sm">Free while Island Connect launches. We usually check applications within two working days and email you when you’re approved.</p>
     </form>
   );

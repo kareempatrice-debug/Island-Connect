@@ -600,7 +600,8 @@ describe("one-step driver sign-up", () => {
   });
 
   it("creates an individual listing and an operator application together; approval publishes both", async () => {
-    const { r } = (await apply([`${DRIVER}/licence-1.jpg`])).rows[0];
+    await expect(apply([`${DRIVER}/licence-1.jpg`])).rejects.toThrow(/insurance/);
+    const { r } = (await apply([`${DRIVER}/licence-1.jpg`, `${DRIVER}/insurance-1.jpg`, `${DRIVER}/vehicle-1.jpg`])).rows[0];
     const b = await db.query<{ listing_status: string; provider_type: string; claim_status: string }>(`select listing_status, provider_type, claim_status from public.businesses where id = $1`, [r.id]);
     expect(b.rows[0]).toEqual({ listing_status: "pending_review", provider_type: "individual", claim_status: "claimed" });
     const op = await db.query<{ status: string; docs: string }>(`select status, document_paths::text as docs from public.operator_profiles where business_id = $1`, [r.id]);
@@ -617,7 +618,7 @@ describe("deleting an account", () => {
     await db.exec(`insert into auth.users (id, email) values ('${GONE}', 'gone@example.com') on conflict do nothing`);
     const { r } = (await as("authenticated", GONE, () => db.query<{ r: { id: string } }>(`select public.apply_as_driver($1::jsonb) as r`, [JSON.stringify({
       country: "gd", island: "grenada", name: "Leaving Driver", tagline: "Taxi", provider_type: "individual", phone: "+14734400000",
-      kinds: ["taxi"], licence: "Licence D123", vehicles: "Toyota car", documents: [`${GONE}/licence-1.jpg`],
+      kinds: ["taxi"], licence: "Licence D123", vehicles: "Toyota car", insurance: "Comprehensive", documents: [`${GONE}/licence-1.jpg`, `${GONE}/insurance-1.jpg`, `${GONE}/vehicle-1.jpg`],
     })]))).rows[0];
     await as("authenticated", ADMIN, () => db.query(`select public.admin_review_operator($1, true)`, [r.id]));
     await as("authenticated", GONE, () => db.query(`select public.prepare_account_deletion()`));
