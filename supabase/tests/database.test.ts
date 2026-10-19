@@ -610,3 +610,22 @@ describe("one-step driver sign-up", () => {
     expect(after.rows[0].listing_status).toBe("published");
   });
 });
+
+describe("deleting an account", () => {
+  it("hides listings the person alone owns, then removes the account cleanly", async () => {
+    const GONE = "00000000-0000-0000-0000-000000000030";
+    await db.exec(`insert into auth.users (id, email) values ('${GONE}', 'gone@example.com') on conflict do nothing`);
+    const { r } = (await as("authenticated", GONE, () => db.query<{ r: { id: string } }>(`select public.apply_as_driver($1::jsonb) as r`, [JSON.stringify({
+      country: "gd", island: "grenada", name: "Leaving Driver", tagline: "Taxi", provider_type: "individual", phone: "+14734400000",
+      kinds: ["taxi"], licence: "Licence D123", vehicles: "Toyota car", documents: [`${GONE}/licence-1.jpg`],
+    })]))).rows[0];
+    await as("authenticated", ADMIN, () => db.query(`select public.admin_review_operator($1, true)`, [r.id]));
+    await as("authenticated", GONE, () => db.query(`select public.prepare_account_deletion()`));
+    expect((await db.query<{ s: string }>(`select listing_status as s from public.businesses where id = $1`, [r.id])).rows[0].s).toBe("suspended");
+    await db.query(`delete from auth.users where id = $1`, [GONE]);
+    expect((await db.query(`select 1 from public.business_members where user_id = $1`, [GONE])).rows).toHaveLength(0);
+  });
+  it("won't let the only administrator delete themselves", async () => {
+    await expect(as("authenticated", ADMIN, () => db.query(`select public.prepare_account_deletion()`))).rejects.toThrow(/only administrator/);
+  });
+});

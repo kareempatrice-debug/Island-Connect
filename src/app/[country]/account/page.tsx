@@ -3,6 +3,7 @@ import Link from "next/link";
 import { CheckCircle2, Clock3, ShieldCheck, Store, XCircle } from "lucide-react";
 import { signOutAction } from "@/app/auth-actions";
 import { NeedsDatabase } from "@/components/demo-notice";
+import { DeleteAccountForm } from "@/components/forms/account-forms";
 import { Container, btn } from "@/components/ui";
 import { requireViewer } from "@/lib/auth";
 import { isSupabaseConfigured } from "@/lib/data";
@@ -110,6 +111,14 @@ export default async function Account({
           </ul>
         </section>
       )}
+
+      <section className="mt-12" aria-labelledby="settings-heading">
+        <h2 id="settings-heading" className="text-2xl font-semibold">Account settings</h2>
+        <div className="mt-4 space-y-3">
+          <Link href="/join?mode=reset" className="flex items-center justify-between rounded-2xl bg-raised p-4 font-semibold text-ink ring-1 ring-line/60">Change my password <span aria-hidden="true">→</span></Link>
+          <DeleteAccountForm />
+        </div>
+      </section>
     </Container>
   );
 }

@@ -4,13 +4,14 @@ import Link from "next/link";
 import { useActionState, useState } from "react";
 import type { FormState } from "@/app/auth-actions";
 
-type Mode = "sign-in" | "sign-up" | "link";
+type Mode = "sign-in" | "sign-up" | "link" | "reset";
 type Action = (prev: FormState, form: FormData) => Promise<FormState>;
 
 export interface AuthActions {
   signIn: Action;
   signUp: Action;
   emailLink: Action;
+  reset: Action;
 }
 
 /* Without a database (demo and preview), forms explain instead of submitting. */
@@ -56,8 +57,9 @@ export function AuthForm({
   const [inState, signIn, signingIn] = useActionState(actions?.signIn ?? demoAction, {});
   const [upState, signUp, signingUp] = useActionState(actions?.signUp ?? demoAction, {});
   const [linkState, sendLink, sending] = useActionState(actions?.emailLink ?? demoAction, {});
+  const [resetState, sendReset, resetting] = useActionState(actions?.reset ?? demoAction, {});
   const current = ROLES.find((r) => r.id === role)!;
-  const signInTab = mode === "sign-in" || mode === "link";
+  const signInTab = mode === "sign-in" || mode === "link" || mode === "reset";
 
   return (
     <div>
@@ -110,8 +112,21 @@ export function AuthForm({
           <label className="block"><span className={label}>Password</span><input name="password" type="password" autoComplete="current-password" required className={field} /></label>
           <Status state={inState} />
           <button disabled={signingIn} className={primary}>{signingIn ? "Signing in…" : "Sign in"}</button>
-          <button type="button" onClick={() => setMode("link")} className="w-full text-center text-sm font-semibold text-link hover:underline">
-            Email me a sign-in link instead
+          <div className="flex flex-wrap justify-between gap-2 text-sm font-semibold">
+            <button type="button" onClick={() => setMode("reset")} className="text-link hover:underline">Forgot password?</button>
+            <button type="button" onClick={() => setMode("link")} className="text-link hover:underline">Email me a sign-in link</button>
+          </div>
+        </form>
+      )}
+
+      {mode === "reset" && (
+        <form action={sendReset} className="mt-6 space-y-4">
+          <p className="text-sm">Enter your email and we’ll send you a link to choose a new password.</p>
+          <label className="block"><span className={label}>Email</span><input name="email" type="email" autoComplete="email" required className={field} /></label>
+          <Status state={resetState} />
+          <button disabled={resetting} className={primary}>{resetting ? "Sending…" : "Send reset link"}</button>
+          <button type="button" onClick={() => setMode("sign-in")} className="w-full text-center text-sm font-semibold text-link hover:underline">
+            Back to sign in
           </button>
         </form>
       )}

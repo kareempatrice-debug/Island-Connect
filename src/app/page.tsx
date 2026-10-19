@@ -28,7 +28,7 @@ const CARD: Record<string, { flag: string; title: string; islands: string; text:
   },
 };
 
-export default async function Welcome({ searchParams }: { searchParams: Promise<{ choose?: string }> }) {
+export default async function Welcome({ searchParams }: { searchParams: Promise<{ choose?: string; deleted?: string }> }) {
   const [countries, params, jar] = await Promise.all([getCountries(), searchParams, cookies()]);
   const remembered = jar.get("ic_country")?.value;
   // Open straight into a country only if the person saved it as their favourite.
@@ -42,6 +42,7 @@ export default async function Welcome({ searchParams }: { searchParams: Promise<
   return (
     <main className="min-h-dvh bg-surface">
       <div className="mx-auto max-w-content px-5 pb-20 pt-8 sm:px-8 sm:pt-12">
+        {params.deleted && <p role="status" className="mb-6 rounded-xl bg-success/10 px-4 py-3 font-medium text-success">Your account has been deleted. Thank you for using Island Connect.</p>}
         <div className="flex items-start justify-between gap-4">
           <Image src="/brand/ic-lockup.png" alt="Island Connect: people, places, services" width={180} height={120} priority className="h-auto w-32 sm:w-40" />
           {viewer ? (

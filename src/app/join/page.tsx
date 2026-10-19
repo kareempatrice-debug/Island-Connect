@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { emailLinkAction, signInAction, signUpAction } from "@/app/auth-actions";
+import { emailLinkAction, requestPasswordResetAction, signInAction, signUpAction } from "@/app/auth-actions";
 import { AuthForm } from "@/components/forms/auth-form";
 import { getViewer, safeNext } from "@/lib/auth";
 import { getCountries, isSupabaseConfigured } from "@/lib/data";
@@ -35,9 +35,9 @@ export default async function Join({ searchParams }: { searchParams: Promise<{ n
           <AuthForm
             next={next}
             country={country}
-            initial={sp.mode === "sign-in" ? "sign-in" : "sign-up"}
+            initial={sp.mode === "sign-in" ? "sign-in" : sp.mode === "reset" ? "reset" : "sign-up"}
             initialRole={sp.as}
-            actions={isSupabaseConfigured ? { signIn: signInAction, signUp: signUpAction, emailLink: emailLinkAction } : undefined}
+            actions={isSupabaseConfigured ? { signIn: signInAction, signUp: signUpAction, emailLink: emailLinkAction, reset: requestPasswordResetAction } : undefined}
           />
         </div>
       </div>

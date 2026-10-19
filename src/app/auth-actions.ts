@@ -71,3 +71,44 @@ export async function signOutAction(form: FormData) {
   await supabase.auth.signOut();
   redirect(safeNext(String(form.get("next") ?? ""), "/"));
 }
+
+/* ---------- Forgotten password ---------- */
+export async function requestPasswordResetAction(_: FormState, form: FormData): Promise<FormState> {
+  const parsed = z.object({ email }).safeParse(Object.fromEntries(form));
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const supabase = await supabaseForRequest();
+  await supabase.auth.resetPasswordForEmail(parsed.data.email, { redirectTo: `${site()}/auth/callback?next=${encodeURIComponent("/reset-password")}` });
+  // Same answer whether or not the address has an account, so nobody can test which emails are registered.
+  return { message: "If that email has an account, we’ve sent a link to choose a new password. It works for one hour." };
+}
+
+export async function updatePasswordAction(_: FormState, form: FormData): Promise<FormState> {
+  const parsed = z.object({ password, confirm: z.string() }).safeParse(Object.fromEntries(form));
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  if (parsed.data.password !== parsed.data.confirm) return { error: "The two passwords don’t match." };
+  const supabase = await supabaseForRequest();
+  const { data } = await supabase.auth.getUser();
+  if (!data.user) return { error: "This link has expired. Ask for a new one from the sign-in page." };
+  const { error } = await supabase.auth.updateUser({ password: parsed.data.password });
+  if (error) return { error: error.message };
+  return { message: "Your password has been changed. You’re signed in." };
+}
+
+/* ---------- Delete my account ---------- */
+export async function deleteAccountAction(_: FormState, form: FormData): Promise<FormState> {
+  if (String(form.get("confirm") ?? "").trim().toUpperCase() !== "DELETE") return { error: "Type DELETE to confirm." };
+  const secret = process.env.SUPABASE_SECRET_KEY;
+  if (!secret) return { error: "Account deletion isn’t switched on yet. Email hello@islandconnect.cc and we’ll delete it for you." };
+  const supabase = await supabaseForRequest();
+  const { data } = await supabase.auth.getUser();
+  if (!data.user) return { error: "Please sign in again." };
+  const { error: prepError } = await supabase.rpc("prepare_account_deletion");
+  if (prepError) return { error: prepError.message };
+  const { createClient } = await import("@supabase/supabase-js");
+  const { SUPABASE_URL } = await import("@/lib/supabase/env");
+  const admin = createClient(SUPABASE_URL, secret, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { error } = await admin.auth.admin.deleteUser(data.user.id);
+  if (error) return { error: "Your account couldn’t be deleted. Please try again, or email hello@islandconnect.cc." };
+  await supabase.auth.signOut();
+  redirect("/?choose=1&deleted=1");
+}
