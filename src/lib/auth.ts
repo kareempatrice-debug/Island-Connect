@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import { isSupabaseConfigured } from "./data";
 import { supabaseForRequest } from "./supabase/server";
@@ -10,14 +11,23 @@ export interface Viewer {
 }
 
 /** The signed-in person, or null. Always null in demo mode. */
-export async function getViewer(): Promise<Viewer | null> {
-  if (!isSupabaseConfigured) return null;
+async function loadViewer(): Promise<Viewer | null> {
   const supabase = await supabaseForRequest();
   const { data } = await supabase.auth.getUser();
   if (!data.user) return null;
   const { data: profile } = await supabase.from("profiles").select("full_name, role").eq("id", data.user.id).maybeSingle();
   return { id: data.user.id, email: data.user.email ?? null, name: profile?.full_name ?? null, role: profile?.role ?? "customer" };
 }
+
+/** The signed-in person, if any. Gives up after 4 seconds so a slow moment never stops a page loading. */
+export const getViewer = cache(async (): Promise<Viewer | null> => {
+  if (!isSupabaseConfigured) return null;
+  try {
+    return await Promise.race([loadViewer(), new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000))]);
+  } catch {
+    return null;
+  }
+});
 
 export async function requireViewer(returnTo: string, _country = "gd"): Promise<Viewer> {
   void _country;
