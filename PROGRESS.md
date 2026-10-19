@@ -1,5 +1,12 @@
 # Progress
 
+## Increment 12 (19 October 2026): business photos
+
+- Owners of claimed listings get a **Photos** tab in their dashboard: cover photo, logo and a gallery of up to 10. Photos are resized in the browser before upload (cover 1920 px, gallery 1600 px, logo 512 px; WebP, JPEG fallback), so phone photos upload quickly on mobile data.
+- Files live in the public Supabase Storage bucket `business-media`, one folder per business id. Storage rules (`can_manage_media`) let only that business's owners or an admin change files; a database check keeps every stored path inside the business's own folder and caps the gallery at 10.
+- Listing cards and pages show the business's own photos in place of the category illustration; the gallery appears on the business page.
+- Migration `20261019000006_business_photos.sql`. Tests: 68 passing.
+
 ## Increment 11 (19 October 2026): privacy policy, terms and contact
 
 - `/privacy`, `/terms` and `/contact`, written to match how the site actually works (no payments, no ads or tracking, unclaimed listings from public sources, WhatsApp hand-off, Supabase/Netlify/Resend as processors). Operator: Island Connect, hello@islandconnect.cc. Governing law: Grenada for /gd, St Vincent and the Grenadines for /vc.

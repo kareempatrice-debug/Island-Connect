@@ -5,6 +5,7 @@ import { z } from "zod";
 import type { FormState } from "@/app/auth-actions";
 import { getCountry } from "@/lib/data";
 import { toE164 } from "@/lib/phone";
+import { MAX_GALLERY, MEDIA_BUCKET, pathBelongsTo } from "@/lib/media";
 import { supabaseForRequest } from "@/lib/supabase/server";
 
 /* All writes run as the signed-in user; Row Level Security decides what they may change. */
@@ -114,4 +115,62 @@ export async function saveHoursAction(_: FormState, form: FormData): Promise<For
   }
   done(d.country, d.slug);
   return { message: "Hours saved." };
+}
+
+/* ---------- Photos: logo, cover and gallery (files are uploaded from the browser first) ---------- */
+
+const photo = z.object({
+  businessId: z.string().uuid(),
+  country: z.string().regex(/^[a-z]{2}$/),
+  slug: z.string().regex(/^[a-z0-9-]{1,80}$/),
+  kind: z.enum(["logo", "cover", "gallery"]),
+  path: z.string().max(130),
+});
+type PhotoInput = z.infer<typeof photo>;
+
+export async function savePhotoAction(input: PhotoInput): Promise<{ error?: string }> {
+  const parsed = photo.safeParse(input);
+  if (!parsed.success || !pathBelongsTo(parsed.data.businessId, parsed.data.path)) return { error: "That photo couldn’t be saved." };
+  const { businessId, country, slug, kind, path } = parsed.data;
+  const supabase = await supabaseForRequest();
+  const { data: b } = await supabase.from("businesses").select("logo_path, cover_path, gallery_paths").eq("id", businessId).maybeSingle();
+  if (!b) return { error: "Only the business’s owners can change its photos." };
+
+  let update: Record<string, unknown>;
+  let replaced: string | null = null;
+  if (kind === "gallery") {
+    const gallery = (b.gallery_paths ?? []) as string[];
+    if (gallery.length >= MAX_GALLERY) return { error: `You can have up to ${MAX_GALLERY} gallery photos. Remove one first.` };
+    update = { gallery_paths: [...gallery, path] };
+  } else {
+    replaced = (kind === "logo" ? b.logo_path : b.cover_path) as string | null;
+    update = kind === "logo" ? { logo_path: path } : { cover_path: path };
+  }
+  // Row Level Security silently skips rows the user may not change, so check one was updated.
+  const { data: saved, error } = await supabase.from("businesses").update(update).eq("id", businessId).select("id");
+  if (error || !saved?.length) {
+    await supabase.storage.from(MEDIA_BUCKET).remove([path]);
+    return { error: "Only the business’s owners can change its photos." };
+  }
+  if (replaced && pathBelongsTo(businessId, replaced)) await supabase.storage.from(MEDIA_BUCKET).remove([replaced]);
+  revalidatePath(`/${country}/business/${slug}`);
+  revalidatePath(`/${country}/dashboard/${slug}`);
+  return {};
+}
+
+export async function removePhotoAction(input: PhotoInput): Promise<{ error?: string }> {
+  const parsed = photo.safeParse(input);
+  if (!parsed.success || !pathBelongsTo(parsed.data.businessId, parsed.data.path)) return { error: "That photo couldn’t be removed." };
+  const { businessId, country, slug, kind, path } = parsed.data;
+  const supabase = await supabaseForRequest();
+  const { data: b } = await supabase.from("businesses").select("gallery_paths").eq("id", businessId).maybeSingle();
+  if (!b) return { error: "Only the business’s owners can change its photos." };
+  const update =
+    kind === "gallery" ? { gallery_paths: ((b.gallery_paths ?? []) as string[]).filter((p) => p !== path) } : kind === "logo" ? { logo_path: null } : { cover_path: null };
+  const { data: saved, error } = await supabase.from("businesses").update(update).eq("id", businessId).select("id");
+  if (error || !saved?.length) return { error: "That photo couldn’t be removed." };
+  await supabase.storage.from(MEDIA_BUCKET).remove([path]);
+  revalidatePath(`/${country}/business/${slug}`);
+  revalidatePath(`/${country}/dashboard/${slug}`);
+  return {};
 }

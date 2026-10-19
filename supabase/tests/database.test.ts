@@ -418,3 +418,33 @@ describe("admin listing tools", () => {
     expect(log.rows[0].data.reason).toBe("Owner asked");
   });
 });
+
+describe("business photos", () => {
+  const pick = async () => (await db.query<{ id: string }>(`select id from public.businesses where is_demo order by name limit 1`)).rows[0].id;
+
+  it("accepts photo paths only inside the business's own folder", async () => {
+    const id = await pick();
+    await db.query(`update public.businesses set cover_path = $2, gallery_paths = array[$3] where id = $1`, [id, `${id}/cover-1.webp`, `${id}/gallery-1.webp`]);
+    await expect(db.query(`update public.businesses set cover_path = '00000000-0000-0000-0000-00000000dead/x.webp' where id = $1`, [id])).rejects.toThrow(/media_paths_ok/);
+    await expect(db.query(`update public.businesses set logo_path = $2 where id = $1`, [id, `${id}/../../etc/passwd`])).rejects.toThrow(/media_paths_ok/);
+  });
+
+  it("allows at most 10 gallery photos", async () => {
+    const id = await pick();
+    const eleven = Array.from({ length: 11 }, (_, i) => `${id}/gallery-${i}.webp`);
+    await expect(db.query(`update public.businesses set gallery_paths = $2 where id = $1`, [id, eleven])).rejects.toThrow(/media_paths_ok/);
+    await db.query(`update public.businesses set gallery_paths = $2 where id = $1`, [id, eleven.slice(0, 10)]);
+  });
+
+  it("lets owners, not strangers, manage the business's photo folder", async () => {
+    const { rows } = await db.query<{ business_id: string }>(`select business_id from public.business_members where user_id = $1 and role = 'owner' limit 1`, [OWNER]);
+    if (!rows.length) return; // no owned business in this fixture
+    const folder = `${rows[0].business_id}/logo-1.webp`;
+    const owner = await as("authenticated", OWNER, () => db.query<{ ok: boolean }>(`select public.can_manage_media($1) as ok`, [folder]));
+    const stranger = await as("authenticated", STRANGER, () => db.query<{ ok: boolean }>(`select public.can_manage_media($1) as ok`, [folder]));
+    expect(owner.rows[0].ok).toBe(true);
+    expect(stranger.rows[0].ok).toBe(false);
+    const junk = await as("authenticated", OWNER, () => db.query<{ ok: boolean }>(`select public.can_manage_media('not-a-folder/x.webp') as ok`));
+    expect(junk.rows[0].ok).toBe(false);
+  });
+});

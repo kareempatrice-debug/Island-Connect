@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { deleteServiceAction } from "./actions";
 import { NeedsDatabase } from "@/components/demo-notice";
 import { AddServiceForm, HoursForm, ProfileForm } from "@/components/forms/dashboard-forms";
+import { PhotosManager } from "@/components/forms/photos-manager";
 import { Container } from "@/components/ui";
 import { requireViewer } from "@/lib/auth";
 import { isSupabaseConfigured } from "@/lib/data";
@@ -12,7 +13,7 @@ import { supabaseForRequest } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Business dashboard", robots: { index: false } };
 
-const TABS = [["overview", "Overview"], ["enquiries", "Enquiries"], ["profile", "Profile"], ["services", "Services"], ["hours", "Hours"]] as const;
+const TABS = [["overview", "Overview"], ["enquiries", "Enquiries"], ["profile", "Profile"], ["photos", "Photos"], ["services", "Services"], ["hours", "Hours"]] as const;
 const CHANNELS: Record<string, string> = { whatsapp: "WhatsApp", phone: "Calls", email: "Emails", website: "Website visits", booking: "Booking page", maps: "Directions" };
 
 export default async function Dashboard({
@@ -28,7 +29,7 @@ export default async function Dashboard({
   const supabase = await supabaseForRequest();
   const { data: b } = await supabase
     .from("businesses")
-    .select("id, slug, name, tagline, description, phone_e164, whatsapp_e164, email, website, cancellation_policy, contact_preference, external_booking_url, payment_methods, listing_status, review_note, business_members!inner ( user_id, role )")
+    .select("id, slug, name, tagline, description, phone_e164, whatsapp_e164, email, website, cancellation_policy, contact_preference, external_booking_url, payment_methods, listing_status, review_note, logo_path, cover_path, gallery_paths, business_members!inner ( user_id, role )")
     .eq("slug", slug)
     .eq("business_members.user_id", viewer.id)
     .maybeSingle();
@@ -67,6 +68,14 @@ export default async function Dashboard({
       </nav>
 
       <div className="mt-8">
+        {tab === "photos" && (
+          (b as { business_members: { role: string }[] }).business_members.some((m) => m.role === "owner") ? (
+            <PhotosManager country={country} slug={slug} businessId={b.id as string} logoPath={(b.logo_path as string) ?? null}
+              coverPath={(b.cover_path as string) ?? null} gallery={((b.gallery_paths as string[]) ?? [])} />
+          ) : (
+            <p className="rounded-xl bg-sunken px-4 py-3">Only the business’s owner can change its photos.</p>
+          )
+        )}
         {tab === "overview" && (
           <div className="space-y-6">
             <h2 className="text-xl font-semibold">Customers sent to you in the last 30 days</h2>

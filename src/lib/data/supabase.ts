@@ -1,3 +1,4 @@
+import { mediaUrl } from "@/lib/media";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { isOpenNow } from "@/lib/format";
 import type { Article, ArticleSection, Business, BookingModel, Category, Country, District, Island } from "@/lib/types";
@@ -21,7 +22,7 @@ function db(): SupabaseClient {
 
 const BUSINESS_SELECT = `
   id, slug, name, tagline, description, verification_status, is_demo, claim_status, contact_preference, external_booking_url, is_featured, rating_avg, rating_count,
-  phone_e164, whatsapp_e164, email, website, logo_path, cover_path, payment_methods, cancellation_policy, created_at,
+  phone_e164, whatsapp_e164, email, website, logo_path, cover_path, gallery_paths, payment_methods, cancellation_policy, created_at,
   business_categories ( is_primary, categories ( slug, name ) ),
   business_locations ( is_primary, landmark, lat, lng, country_code, islands ( slug, name ), districts ( slug, name ) ),
   business_service_areas ( islands ( slug, name, country_code ) ),
@@ -29,10 +30,6 @@ const BUSINESS_SELECT = `
   opening_hours ( weekday, opens, closes )
 `;
 
-/** Only absolute https URLs are used until a storage bucket for business media is set up. */
-function mediaUrl(path: string | null): string | null {
-  return path && /^https:\/\//.test(path) ? path : null;
-}
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 function toBusiness(r: any): Business {
@@ -56,7 +53,7 @@ function toBusiness(r: any): Business {
     website: r.website,
     logoUrl: mediaUrl(r.logo_path),
     coverUrl: mediaUrl(r.cover_path),
-    gallery: [],
+    gallery: ((r.gallery_paths ?? []) as string[]).map(mediaUrl).filter((u): u is string => Boolean(u)),
     paymentMethods: r.payment_methods ?? [],
     cancellationPolicy: r.cancellation_policy,
     categories: (r.business_categories ?? [])
