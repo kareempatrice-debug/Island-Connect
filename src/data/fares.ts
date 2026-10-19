@@ -135,3 +135,11 @@ export function officialFare(a: { id: string; name: string }, b: { id: string; n
   }
   return null;
 }
+
+/** The fare for a whole trip: per-taxi tables, extra passengers (SVG airport), or per-passenger tables (Kingstown). */
+export function fareAmount(f: { table: FareTable; row: FareRow }, passengers: number): number {
+  const p = Math.max(1, passengers || 1);
+  if (f.table.id === "vc-kingstown") return f.row.xcd * p;
+  if (f.table.id === "vc-airport") return f.row.xcd + Math.max(0, p - 3) * 13;
+  return f.row.xcd;
+}

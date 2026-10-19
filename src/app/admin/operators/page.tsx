@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { reviewOperatorAction } from "@/app/trip-actions";
+import { approveOperatorAction, declineOperatorAction } from "@/app/trip-actions";
 import { supabaseForRequest } from "@/lib/supabase/server";
 import { TRIP_KIND_LABEL, fmtXcd } from "@/lib/trips";
 
@@ -71,11 +71,11 @@ export default async function Operators({ searchParams }: { searchParams: Promis
                   <dt>Insurance</dt><dd className="text-ink">{o.insurance_details ?? "Not given"}</dd>
                   <dt>Phone</dt><dd className="text-ink">{o.businesses?.phone_e164 ?? "None on listing"}</dd>
                 </dl>
-                <form action={reviewOperatorAction} className="mt-3 flex flex-wrap items-center gap-2">
+                <form action={approveOperatorAction} className="mt-3 flex flex-wrap items-center gap-2">
                   <input type="hidden" name="id" value={o.business_id} />
                   <input name="note" maxLength={300} placeholder="Note (e.g. licence seen)" className="h-10 min-w-0 flex-1 rounded-lg border border-line bg-raised px-3 text-sm" />
-                  <button name="approve" value="yes" className="h-10 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-ink">Approve</button>
-                  <button name="approve" value="no" className="h-10 rounded-lg border border-line px-4 text-sm font-semibold text-ink">Decline</button>
+                  <button formAction={approveOperatorAction} className="h-10 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-ink">Approve</button>
+                  <button formAction={declineOperatorAction} className="h-10 rounded-lg border border-line px-4 text-sm font-semibold text-ink">Decline</button>
                 </form>
               </li>
             ))}
@@ -89,8 +89,8 @@ export default async function Operators({ searchParams }: { searchParams: Promis
           {approved.map((o: any) => (
             <li key={o.business_id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
               <span><span className="font-semibold text-ink">{o.businesses?.name}</span> <span className="text-sm">· {(o.kinds as string[]).map((k) => TRIP_KIND_LABEL[k]).join(", ")}</span></span>
-              <form action={reviewOperatorAction}><input type="hidden" name="id" value={o.business_id} />
-                <button name="approve" value="no" className="text-sm font-semibold text-danger underline">Withdraw approval</button></form>
+              <form action={declineOperatorAction}><input type="hidden" name="id" value={o.business_id} />
+                <button className="text-sm font-semibold text-danger underline">Withdraw approval</button></form>
             </li>
           ))}
           {!approved.length && <li className="px-4 py-4 text-sm">None yet.</li>}

@@ -548,3 +548,37 @@ describe("admin assigns a listing to its owner's account", () => {
     expect(owners.rows.map((r) => r.email)).toContain("rider@example.com");
   });
 });
+
+describe("instant booking at the official fare, and trip chat", () => {
+  const RIDER = "00000000-0000-0000-0000-000000000010";
+  const OTHER = "00000000-0000-0000-0000-000000000011";
+  let biz: string;
+  beforeAll(async () => {
+    biz = (await db.query<{ business_id: string }>(`select business_id from public.operator_profiles where status = 'approved' limit 1`)).rows[0].business_id;
+    await db.query(`update public.operator_profiles set kinds = array['taxi','airport']::public.trip_kind[] where business_id = $1`, [biz]);
+  });
+  const fixed = () => as("authenticated", RIDER, () => db.query<{ id: string }>(`select public.create_trip_request($1::jsonb) as id`, [
+    JSON.stringify({ country: "gd", kind: "airport", from: "Grenada", to: "Grenada", pickup: "Airport", dropoff: "Grand Anse", passengers: 2, contact_phone: "+447835028032", fixed_fare_xcd: 40, fare_source: "GTA" }),
+  ])).then((r) => r.rows[0].id);
+
+  it("books the trip for the first operator to accept, at the fare", async () => {
+    const id = await fixed();
+    await as("authenticated", OWNER, () => db.query(`select public.accept_fixed_fare($1, $2)`, [id, biz]));
+    const r = await db.query<{ status: string; amount: string }>(`select r.status, q.amount_xcd::text as amount from public.trip_requests r join public.trip_quotes q on q.id = r.accepted_quote_id where r.id = $1`, [id]);
+    expect(r.rows[0]).toEqual({ status: "booked", amount: "40.00" });
+    await expect(as("authenticated", OWNER, () => db.query(`select public.accept_fixed_fare($1, $2)`, [id, biz]))).rejects.toThrow(/already taken/);
+  });
+
+  it("lets only the customer and the booked operator chat", async () => {
+    const id = await fixed();
+    await expect(as("authenticated", RIDER, () => db.query(`select public.send_trip_message($1, 'Hello?')`, [id]))).rejects.toThrow(/Only the customer/);
+    await as("authenticated", OWNER, () => db.query(`select public.accept_fixed_fare($1, $2)`, [id, biz]));
+    await as("authenticated", RIDER, () => db.query(`select public.send_trip_message($1, 'I''m at arrivals, blue jacket')`, [id]));
+    await as("authenticated", OWNER, () => db.query(`select public.send_trip_message($1, 'On my way, 5 minutes')`, [id]));
+    const seen = await as("authenticated", RIDER, () => db.query(`select body from public.trip_messages where request_id = $1 order by id`, [id]));
+    expect(seen.rows).toHaveLength(2);
+    const outsider = await as("authenticated", OTHER, () => db.query(`select 1 from public.trip_messages where request_id = $1`, [id]));
+    expect(outsider.rows).toHaveLength(0);
+    await expect(as("authenticated", OTHER, () => db.query(`select public.send_trip_message($1, 'hi')`, [id]))).rejects.toThrow(/Only the customer/);
+  });
+});

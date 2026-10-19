@@ -37,7 +37,7 @@ export default async function AdminListings({ searchParams }: { searchParams: Pr
 
       <form className="mt-4 flex flex-wrap items-center gap-2" role="search">
         <label className="sr-only" htmlFor="q">Search by name</label>
-        <input id="q" name="q" defaultValue={q} placeholder="Search by business name" className={`${input} min-w-0 flex-1`} />
+        <input id="q" name="q" defaultValue={q} placeholder="Search by business name" className={`${input} w-full min-w-0 sm:w-auto sm:flex-1`} />
         <select name="country" defaultValue={country} aria-label="Country" className={input}>
           <option value="">Both countries</option><option value="gd">Grenada</option><option value="vc">SVG</option>
         </select>
@@ -62,7 +62,8 @@ export default async function AdminListings({ searchParams }: { searchParams: Pr
               <Link href={`/admin/listings/${b.id}`} className="h-9 rounded-lg border border-line px-3 text-sm font-semibold leading-9 text-ink">Edit</Link>
               <form action={setListingStatusAction}>
                 <input type="hidden" name="id" value={b.id} /><input type="hidden" name="back" value={here} />
-                <button name="status" value={live ? "suspended" : "published"} className={`h-9 rounded-lg px-3 text-sm font-semibold ${live ? "border border-line text-ink" : "bg-primary text-primary-ink"}`}>
+                <input type="hidden" name="status" value={live ? "suspended" : "published"} />
+                <button className={`h-9 rounded-lg px-3 text-sm font-semibold ${live ? "border border-line text-ink" : "bg-primary text-primary-ink"}`}>
                   {live ? "Hide" : "Make live"}
                 </button>
               </form>

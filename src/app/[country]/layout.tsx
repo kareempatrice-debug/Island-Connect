@@ -36,7 +36,7 @@ export default async function CountryLayout({ children, params }: Props) {
       )}
       <header className="sticky top-0 z-40 bg-deep/95 shadow-[0_1px_0_rgb(255_255_255/0.06)] backdrop-blur-md">
         <div className="mx-auto flex h-[4.25rem] max-w-content items-center justify-between gap-3 px-5 sm:px-8">
-          <Link href={`/${country.code}`} aria-label={`Island Connect ${country.name} home`} className="shrink-0">
+          <Link href="/?choose=1" aria-label="Island Connect main page" className="shrink-0">
             <Wordmark onDark compact />
           </Link>
           <DesktopNav country={country.code} />

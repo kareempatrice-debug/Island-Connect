@@ -5,8 +5,10 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import type { FormState } from "@/app/auth-actions";
 import { getViewer, requireAdmin } from "@/lib/auth";
-import { toE164 } from "@/lib/phone";
-import { notifyCustomerOfQuote, notifyOperatorOfBooking, notifyOperatorsOfRequest } from "@/lib/notify";
+import { toE164International } from "@/lib/phone";
+import { fareAmount, officialFare } from "@/data/fares";
+import { landmarks } from "@/data/landmarks";
+import { notifyCustomerOfAcceptance, notifyCustomerOfQuote, notifyOperatorOfBooking, notifyOperatorsOfRequest, notifyTripMessage } from "@/lib/notify";
 import { supabaseForRequest } from "@/lib/supabase/server";
 
 const KINDS = ["taxi", "airport", "group", "boat", "haulage", "freight"] as const;
@@ -15,7 +17,7 @@ const KINDS = ["taxi", "airport", "group", "boat", "haulage", "freight"] as cons
 
 export interface TripPayload {
   country: string; kind: (typeof KINDS)[number]; from: string; to: string; pickup: string; dropoff: string;
-  travel_at?: string | null; passengers?: number | null; details?: string | null; cross_border?: boolean; contact_phone?: string;
+  travel_at?: string | null; passengers?: number | null; details?: string | null; cross_border?: boolean; contact_phone?: string; contact_code?: string; pickup_id?: string; dropoff_id?: string;
 }
 
 const payload = z.object({
@@ -30,6 +32,9 @@ const payload = z.object({
   details: z.string().max(1000).nullish(),
   cross_border: z.boolean().optional(),
   contact_phone: z.string().max(30).optional(),
+  contact_code: z.string().regex(/^(\+\d{1,4}|other)$/).optional(),
+  pickup_id: z.string().max(60).optional(),
+  dropoff_id: z.string().max(60).optional(),
 });
 
 /** Sends a trip request to every approved operator who can take it. Returns the trip page to open. */
@@ -40,13 +45,24 @@ export async function createTripRequestAction(input: TripPayload): Promise<{ url
   if (!(await getViewer())) return { signIn: `/join?mode=sign-in&next=${encodeURIComponent(`/${d.country}/ride`)}` };
   let phone: string | null = null;
   try {
-    phone = toE164(d.contact_phone ?? "", d.country === "vc" ? "+1784" : "+1473");
+    // Any country: visitors use the number they brought with them.
+    phone = toE164International(d.contact_phone ?? "", d.contact_code ?? (d.country === "vc" ? "+1784" : "+1473"));
   } catch (e) {
     return { error: (e as Error).message };
   }
   if (!phone) return { error: "Add a phone or WhatsApp number so the operator you choose can reach you." };
   const supabase = await supabaseForRequest();
-  const { data, error } = await supabase.rpc("create_trip_request", { p: { ...d, travel_at: d.travel_at || null, contact_phone: phone } });
+  // Official fare, worked out here on the server from the published tables (never taken from the browser).
+  let fixed: { fixed_fare_xcd: number; fare_source: string } | null = null;
+  if ((d.kind === "taxi" || d.kind === "airport") && d.pickup_id && d.dropoff_id) {
+    const a = landmarks.find((l) => l.id === d.pickup_id && l.countryCode === d.country);
+    const b = landmarks.find((l) => l.id === d.dropoff_id && l.countryCode === d.country);
+    const f = a && b ? officialFare(a, b) : null;
+    if (f) fixed = { fixed_fare_xcd: fareAmount(f, d.passengers ?? 1), fare_source: `${f.table.source}, ${f.table.sourceDate}` };
+  }
+  const { contact_code: _code, pickup_id: _a, dropoff_id: _b, ...trip } = d;
+  void _code; void _a; void _b;
+  const { data, error } = await supabase.rpc("create_trip_request", { p: { ...trip, travel_at: d.travel_at || null, contact_phone: phone, ...(fixed ?? {}) } });
   if (error) return { error: error.message };
   await notifyOperatorsOfRequest(String(data));
   return { url: `/${d.country}/trips/${data}` };
@@ -171,4 +187,34 @@ export async function adminRemoveOperatorAction(form: FormData) {
   const { error } = await supabase.rpc("admin_review_operator", { p_business: d.id, p_approve: false, p_note: "Withdrawn by admin" });
   revalidatePath("/admin/operators");
   redirect(`/admin/listings/${d.id}?${error ? `error=${encodeURIComponent(error.message)}` : "done=operator-removed"}#operator`);
+}
+
+export async function approveOperatorAction(form: FormData) { form.set("approve", "yes"); return reviewOperatorAction(form); }
+export async function declineOperatorAction(form: FormData) { form.set("approve", "no"); return reviewOperatorAction(form); }
+
+
+/* ---------- Instant booking at the official fare ---------- */
+export async function acceptFixedFareAction(form: FormData) {
+  const d = z.object({ request: z.string().uuid(), businessId: z.string().uuid(), country: z.string().regex(/^[a-z]{2}$/), slug: z.string().regex(/^[a-z0-9-]{1,80}$/) }).parse(Object.fromEntries(form));
+  const supabase = await supabaseForRequest();
+  const { data, error } = await supabase.rpc("accept_fixed_fare", { p_request: d.request, p_business: d.businessId });
+  if (!error) await notifyCustomerOfAcceptance(String(data));
+  const back = `/${d.country}/dashboard/${d.slug}?tab=trips`;
+  revalidatePath(back);
+  redirect(`${back}&${error ? `error=${encodeURIComponent(error.message)}` : "accepted=1"}`);
+}
+
+/* ---------- Trip chat ---------- */
+export async function sendTripMessageAction(form: FormData) {
+  const d = z.object({ id: z.string().uuid(), country: z.string().regex(/^[a-z]{2}$/), body: z.string().trim().min(1, "Type a message").max(2000) }).safeParse(Object.fromEntries(form));
+  const id = String(form.get("id")); const country = String(form.get("country"));
+  const page = `/${country}/trips/${id}/chat`;
+  if (!d.success) redirect(`${page}?error=${encodeURIComponent(d.error.issues[0].message)}`);
+  const viewer = await getViewer();
+  if (!viewer) redirect(`/join?mode=sign-in&next=${encodeURIComponent(page)}`);
+  const supabase = await supabaseForRequest();
+  const { error } = await supabase.rpc("send_trip_message", { p_request: d.data.id, p_body: d.data.body });
+  if (!error) await notifyTripMessage(d.data.id, viewer.id, d.data.body);
+  revalidatePath(page);
+  redirect(`${page}${error ? `?error=${encodeURIComponent(error.message)}` : ""}#latest`);
 }

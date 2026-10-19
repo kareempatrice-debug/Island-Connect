@@ -1,4 +1,4 @@
-import { completeTripAction, sendQuoteAction } from "@/app/trip-actions";
+import { acceptFixedFareAction, completeTripAction, sendQuoteAction } from "@/app/trip-actions";
 import { OperatorApply } from "@/components/forms/operator-apply";
 import { OperatorTrips } from "@/components/trips/operator-trips";
 import { supabaseForRequest } from "@/lib/supabase/server";
@@ -9,6 +9,7 @@ export async function TripsTab({ ids, isOwner, sp }: { ids: { businessId: string
   const card = "rounded-2xl bg-raised p-5 ring-1 ring-line/60";
   const notice = sp.error ? <p role="alert" className="rounded-xl bg-danger/10 px-4 py-3 text-sm font-medium text-danger">{sp.error}</p>
     : sp.quoted ? <p role="status" className="rounded-xl bg-success/10 px-4 py-3 text-sm font-medium text-success">Quote sent. The customer has been emailed.</p>
+    : sp.accepted ? <p role="status" className="rounded-xl bg-success/10 px-4 py-3 text-sm font-medium text-success">Trip accepted. The customer has been told; message them below to confirm the pickup.</p>
     : sp.completed ? <p role="status" className="rounded-xl bg-success/10 px-4 py-3 text-sm font-medium text-success">Trip marked as completed.</p> : null;
 
   if (!op || op.status === "declined") {
@@ -56,6 +57,14 @@ export async function TripsTab({ ids, isOwner, sp }: { ids: { businessId: string
           <label className="block"><span className="mb-1 block text-xs font-semibold text-ink">Valid for</span>
             <select name="hours" defaultValue="24" className={input}><option value="2">2 hours</option><option value="12">12 hours</option><option value="24">1 day</option><option value="72">3 days</option><option value="168">1 week</option></select></label>
           <button className="h-11 rounded-full bg-primary px-5 font-semibold text-primary-ink">{my ? "Update quote" : "Send quote"}</button>
+        </form>
+      )}
+      chatHref={(r) => `/${ids.country}/trips/${r.id}/chat`}
+      acceptFixed={(r) => (
+        <form action={acceptFixedFareAction}>
+          <input type="hidden" name="request" value={r.id} /><input type="hidden" name="businessId" value={ids.businessId} />
+          <input type="hidden" name="country" value={ids.country} /><input type="hidden" name="slug" value={ids.slug} />
+          <button className="h-11 rounded-full bg-primary px-5 font-semibold text-primary-ink">Accept trip</button>
         </form>
       )}
       complete={(r) => (

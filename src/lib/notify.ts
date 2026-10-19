@@ -116,13 +116,17 @@ export async function notifyOperatorsOfRequest(requestId: string) {
     /* eslint-disable @typescript-eslint/no-explicit-any */
     const slug = (members?.[0] as any)?.businesses?.slug;
     const tripsLink = slug ? `${site()}/${r.country_code}/dashboard/${slug}?tab=trips` : `${site()}/${r.country_code}/account`;
+    const fixed = r.fixed_fare_xcd ? ` · EC$${Number(r.fixed_fare_xcd).toFixed(0)} official fare, first to accept` : "";
     await pushToUsers((members ?? []).filter((m) => m.user_id !== r.customer_id).map((m) => m.user_id), {
-      title: `New ${TRIP_LABEL[r.kind].toLowerCase()} request`, body: `${r.pickup} to ${r.dropoff} · ${when(r.travel_at)}`, url: tripsLink, tag: `trip-${r.id}`,
+      title: r.fixed_fare_xcd ? `Ride available: EC$${Number(r.fixed_fare_xcd).toFixed(0)}` : `New ${TRIP_LABEL[r.kind].toLowerCase()} request`,
+      body: `${r.pickup} to ${r.dropoff} · ${when(r.travel_at)}${fixed}`, url: tripsLink, tag: `trip-${r.id}`,
     });
     await mail([...new Set(to)], {
       subject: `New ${TRIP_LABEL[r.kind].toLowerCase()} request: ${r.pickup} to ${r.dropoff}`,
       heading: `New ${TRIP_LABEL[r.kind].toLowerCase()} request`,
-      lead: "A customer is asking for a price. The first good quote usually wins, so reply from your dashboard.",
+      lead: r.fixed_fare_xcd
+        ? `This trip has an official fare of EC$${Number(r.fixed_fare_xcd).toFixed(2)}. The first approved driver to accept gets it.`
+        : "A customer is asking for a price. The first good quote usually wins, so reply from your dashboard.",
       lines: [["From", `${r.pickup}, ${r.from_place}`], ["To", `${r.dropoff}, ${r.to_place}`], ["When", when(r.travel_at)], ...(r.passengers ? [["Passengers", String(r.passengers)] as [string, string]] : [])],
       link: slug ? `${site()}/${r.country_code}/dashboard/${slug}?tab=trips` : `${site()}/${r.country_code}/account`,
       cta: "Send a quote",
@@ -176,6 +180,48 @@ export async function notifyOperatorOfBooking(quoteId: string) {
       link: `${site()}/${r.country_code}/dashboard/${(q.businesses as any)?.slug}?tab=trips`,
       cta: "Open your trips",
     });
+  } catch (e) {
+    console.error("Trip alert error:", e);
+  }
+}
+
+
+/** A driver accepted a fixed-fare trip: tell the customer. */
+export async function notifyCustomerOfAcceptance(quoteId: string) {
+  if (!alertsConfigured() && !pushConfigured()) return;
+  try {
+    const db = admin();
+    const { data: q } = await db.from("trip_quotes").select("amount_xcd, businesses ( name ), trip_requests!trip_quotes_request_id_fkey ( id, customer_id, country_code, pickup, dropoff )").eq("id", quoteId).maybeSingle();
+    const r = q?.trip_requests as any;
+    if (!q || !r) return;
+    const biz = (q.businesses as any)?.name ?? "A driver";
+    const url = `${site()}/${r.country_code}/trips/${r.id}`;
+    await pushToUsers([r.customer_id], { title: `${biz} is taking your trip`, body: `${r.pickup} to ${r.dropoff} · EC$${Number(q.amount_xcd).toFixed(2)}`, url, tag: `trip-${r.id}` });
+    const to = await emailOf(db, r.customer_id);
+    if (to) await mail([to], { subject: `${biz} accepted your trip`, heading: `${biz} is taking your trip`, lead: "Your driver has accepted at the official fare. They’ll contact you to confirm the pickup; you can also message them in the app.",
+      lines: [["Fare", `EC$${Number(q.amount_xcd).toFixed(2)}`], ["Trip", `${r.pickup} to ${r.dropoff}`]], link: url, cta: "See your trip" });
+  } catch (e) {
+    console.error("Trip alert error:", e);
+  }
+}
+
+/** New chat message on a booked trip: tell the other side. */
+export async function notifyTripMessage(requestId: string, senderId: string, body: string) {
+  if (!alertsConfigured() && !pushConfigured()) return;
+  try {
+    const db = admin();
+    const { data: r } = await db.from("trip_requests").select("id, customer_id, country_code, pickup, dropoff, accepted_quote_id").eq("id", requestId).maybeSingle();
+    if (!r?.accepted_quote_id) return;
+    const { data: q } = await db.from("trip_quotes").select("business_id, businesses ( name )").eq("id", r.accepted_quote_id).maybeSingle();
+    const { data: members } = await db.from("business_members").select("user_id").eq("business_id", q?.business_id ?? "");
+    const fromCustomer = senderId === r.customer_id;
+    const to = fromCustomer ? (members ?? []).map((m) => m.user_id) : [r.customer_id];
+    const url = `${site()}/${r.country_code}/trips/${r.id}/chat`;
+    const who = fromCustomer ? "Your customer" : ((q?.businesses as any)?.name ?? "Your driver");
+    await pushToUsers(to, { title: `${who}: ${r.pickup} to ${r.dropoff}`, body: body.slice(0, 140), url, tag: `chat-${r.id}` });
+    const emails = (await Promise.all(to.map((u) => emailOf(db, u)))).filter((x): x is string => Boolean(x));
+    await mail(emails, { subject: `New message about your trip: ${r.pickup} to ${r.dropoff}`, heading: `New message from ${who.toLowerCase().startsWith("your") ? who.toLowerCase() : who}`,
+      lead: body.length > 280 ? `${body.slice(0, 277)}…` : body, lines: [["Trip", `${r.pickup} to ${r.dropoff}`]], link: url, cta: "Reply in the app" });
   } catch (e) {
     console.error("Trip alert error:", e);
   }

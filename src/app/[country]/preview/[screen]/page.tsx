@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { OperatorTrips } from "@/components/trips/operator-trips";
+import { TripChat } from "@/components/trips/trip-chat";
 import { TripDetail, type QuoteView, type TripView } from "@/components/trips/trip-detail";
 import { Container } from "@/components/ui";
 import { isSupabaseConfigured } from "@/lib/data";
@@ -14,7 +15,7 @@ import { TRIP_KIND_LABEL, TRIP_STATUS_LABEL, fmtWhen, fmtXcd } from "@/lib/trips
  */
 export const metadata: Metadata = { title: "Trips preview", robots: { index: false } };
 
-const SCREENS = ["trips", "trip", "trip-booked", "operator", "operator-sent", "operator-completed", "admin", "admin-approved"] as const;
+const SCREENS = ["trips", "trip", "trip-booked", "operator", "operator-sent", "operator-accepted", "operator-completed", "chat", "admin", "admin-approved"] as const;
 export function generateStaticParams() {
   return ["gd", "vc"].flatMap((country) => SCREENS.map((screen) => ({ country, screen })));
 }
@@ -25,15 +26,14 @@ function sample(country: string) {
   const vc = country === "vc";
   const trip: TripView = vc
     ? { id: "sample", kind: "haulage", status: "open", pickup: "Hardware store, Kingstown", dropoff: "Building site, Lower Bay", from_place: "St Vincent", to_place: "Bequia", travel_at: inDays(5, 12), passengers: null, details: "Building materials. 40 bags of cement and 20 lengths of rebar, about 2 tonnes. Needs help loading and unloading. Dates flexible.", cross_border: false }
-    : { id: "sample", kind: "airport", status: "open", pickup: "Maurice Bishop International Airport", dropoff: "Grand Anse Beach", from_place: "Grenada", to_place: "Grenada", travel_at: inDays(2, 15), passengers: 3, details: "Flight lands 2:40pm. Two large suitcases.", cross_border: false };
+    : { id: "sample", kind: "airport", status: "open", pickup: "Maurice Bishop International Airport", dropoff: "Grand Anse Beach", from_place: "Grenada", to_place: "Grenada", travel_at: inDays(2, 15), passengers: 3, details: "Flight lands 2:40pm. Two large suitcases.", cross_border: false, fixed_fare_xcd: 40 };
   const quotes: QuoteView[] = vc
     ? [
         { id: "q1", amount_xcd: 1450, includes: "Truck collection, Thursday’s cargo boat to Port Elizabeth, delivery to site", valid_until: inDays(3), status: "offered", businesses: { name: "Kingstown Island Freight", slug: "kingstown-island-freight", phone_e164: null, whatsapp_e164: null } },
         { id: "q2", amount_xcd: 1290, includes: "Port to port only, loading included", valid_until: inDays(1), status: "offered", businesses: { name: "Grenadines Link Water Taxi", slug: "grenadines-link-water-taxi", phone_e164: null, whatsapp_e164: null } },
       ]
     : [
-        { id: "q1", amount_xcd: 70, includes: "Meet at arrivals with a name sign, luggage, up to 30 minutes’ waiting", valid_until: inDays(1), status: "offered", businesses: { name: "Point Salines Transfers", slug: "point-salines-transfers", phone_e164: null, whatsapp_e164: null } },
-        { id: "q2", amount_xcd: 65, includes: "Fixed fare, luggage included", valid_until: inDays(1), status: "offered", businesses: { name: "Windward Transfers", slug: "windward-transfers", phone_e164: null, whatsapp_e164: null } },
+        { id: "q1", amount_xcd: 40, includes: "Official fare", valid_until: inDays(1), status: "offered", businesses: { name: "Point Salines Transfers", slug: "point-salines-transfers", phone_e164: null, whatsapp_e164: null } },
       ];
   return { trip, quotes, operatorName: vc ? "Kingstown Island Freight" : "Point Salines Transfers", kinds: vc ? ["haulage"] : ["taxi", "airport", "group"] };
 }
@@ -69,13 +69,13 @@ export default async function TripsPreview({ params }: { params: Promise<{ count
   if (screen === "trip" || screen === "trip-booked") {
     const booked = screen === "trip-booked";
     const trip = { ...s.trip, status: booked ? "booked" : "open" };
-    const quotes = booked ? s.quotes.map((q, i) => ({ ...q, status: i === 0 ? "accepted" : "declined" })) : s.quotes;
+    const quotes = booked ? s.quotes.map((q, i) => ({ ...q, status: i === 0 ? "accepted" : "declined" })) : s.trip.fixed_fare_xcd ? [] : s.quotes;
     return (
       <Container className="max-w-3xl py-8 sm:py-12">
         {banner}
         <TripDetail
-          country={country} t={trip} quotes={quotes} now={Date.now()} backHref={`${base}/trips`}
-          notice={booked ? ok("Booked. The operator has been told and will be in touch to confirm the details.") : null}
+          country={country} t={trip} quotes={quotes} now={Date.now()} backHref={`${base}/trips`} chatHref={`${base}/chat`}
+          notice={booked ? ok(s.trip.fixed_fare_xcd ? "Point Salines Transfers accepted your trip at the official fare." : "Booked. The operator has been told and will be in touch to confirm the details.") : null}
           accept={() => <Link href={`${base}/trip-booked`} className={`${btn} w-full`}>Accept this quote</Link>}
           cancel={<span className="text-sm font-semibold text-danger underline">Cancel this request</span>}
         />
@@ -86,6 +86,7 @@ export default async function TripsPreview({ params }: { params: Promise<{ count
 
   if (screen.startsWith("operator")) {
     const sent = screen === "operator-sent";
+    const acceptedNow = screen === "operator-accepted";
     const completed = screen === "operator-completed";
     const input = "h-11 rounded-xl border border-line bg-raised px-3 text-ink";
     const other = country === "vc"
@@ -103,9 +104,11 @@ export default async function TripsPreview({ params }: { params: Promise<{ count
         <div className="mt-8">
           <OperatorTrips
             kinds={s.kinds} businessId="me"
-            notice={sent ? ok("Quote sent. The customer has been emailed.") : completed ? ok("Trip marked as completed.") : null}
-            open={[{ ...s.trip, trip_quotes: sent ? [{ business_id: "me", amount_xcd: s.quotes[0].amount_xcd, status: "offered" }] : [] }]}
-            mine={completed ? [] : [{ id: "m1", amount_xcd: country === "vc" ? 380 : 45, status: "accepted", includes: null, trip_requests: { ...other, trip_contacts: { phone_e164: country === "vc" ? "+17844551234" : "+14734441234" } } }]}
+            notice={sent ? ok("Quote sent. The customer has been emailed.") : acceptedNow ? ok("Trip accepted. The customer has been told; message them below to confirm the pickup.") : completed ? ok("Trip marked as completed.") : null}
+            open={acceptedNow ? [] : [{ ...s.trip, trip_quotes: sent ? [{ business_id: "me", amount_xcd: s.quotes[0].amount_xcd, status: "offered" }] : [] }]}
+            chatHref={() => `${base}/chat`}
+            acceptFixed={() => <Link href={`${base}/operator-accepted`} className={btn}>Accept trip</Link>}
+            mine={completed ? [] : [...(acceptedNow ? [{ id: "m0", amount_xcd: 40, status: "accepted", includes: "Official fare", trip_requests: { ...s.trip, status: "booked", trip_contacts: { phone_e164: "+447835028032" } } }] : []), { id: "m1", amount_xcd: country === "vc" ? 380 : 45, status: "accepted", includes: null, trip_requests: { ...other, trip_contacts: { phone_e164: country === "vc" ? "+17844551234" : "+14734441234" } } }]}
             totals={completed ? { n: 7, fares: country === "vc" ? 3840 : 520, commission: 0 } : { n: 6, fares: country === "vc" ? 3460 : 475, commission: 0 }}
             quoteForm={(r, my) => (
               <div className="mt-3 flex flex-wrap items-end gap-2">
@@ -121,6 +124,32 @@ export default async function TripsPreview({ params }: { params: Promise<{ count
             complete={() => <Link href={`${base}/operator-completed`} className="mt-3 inline-flex h-10 items-center rounded-full border border-line px-4 text-sm font-semibold text-ink">Mark as completed</Link>}
           />
         </div>
+      </Container>
+    );
+  }
+
+  if (screen === "chat") {
+    const t0 = new Date(); t0.setMinutes(t0.getMinutes() - 20);
+    const at = (m: number) => new Date(t0.getTime() + m * 60000).toISOString();
+    return (
+      <Container className="max-w-2xl py-8 sm:py-12">
+        {banner}
+        <TripChat
+          title={`Messages with ${s.quotes[0].businesses?.name}`}
+          subtitle={`${s.trip.pickup} to ${s.trip.dropoff}. Only you and the operator can see these messages.`}
+          back={<Link href={`${base}/trip-booked`} className="text-sm font-semibold text-link hover:underline">Your trip</Link>}
+          messages={[
+            { id: 1, mine: false, body: "Good afternoon, this is Marcus from Point Salines Transfers. I’ll be at arrivals with a sign for your 2:40 flight.", at: at(0) },
+            { id: 2, mine: true, body: "Great, thank you. We’re three people with two big suitcases.", at: at(4) },
+            { id: 3, mine: false, body: "No problem, the car has plenty of room. See you soon.", at: at(6) },
+          ]}
+          form={
+            <div className="flex items-end gap-2 rounded-2xl bg-raised p-2 shadow-card ring-1 ring-line/60">
+              <textarea rows={2} placeholder="Write a message" className="min-h-12 flex-1 resize-none rounded-xl border-0 bg-transparent px-3 py-2 text-ink focus:outline-none" />
+              <span className="inline-flex h-11 items-center rounded-full bg-primary px-5 font-semibold text-primary-ink">Send</span>
+            </div>
+          }
+        />
       </Container>
     );
   }

@@ -152,3 +152,9 @@ export async function assignOwnerAction(form: FormData) {
   revalidateTag("listings");
   redirect(`/admin/listings/${id}?${error ? `error=${encodeURIComponent(error.message)}` : "done=owner"}#owner`);
 }
+
+/* One action per button, so the decision never depends on which button the browser reports. */
+export async function approveBusinessAction(form: FormData) { form.set("decision", "approve"); return reviewBusinessAction(form); }
+export async function rejectBusinessAction(form: FormData) { form.set("decision", "reject"); return reviewBusinessAction(form); }
+export async function approveClaimAction(form: FormData) { form.set("decision", "approve"); return reviewClaimAction(form); }
+export async function rejectClaimAction(form: FormData) { form.set("decision", "reject"); return reviewClaimAction(form); }

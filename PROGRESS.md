@@ -1,5 +1,15 @@
 # Progress
 
+## Increment 16 (21 October 2026): trip chat, instant booking, international numbers, admin tools
+
+- **Instant booking at the official fare:** taxi and airport requests matching a published fare carry that fare (worked out on the server from `src/data/fares.ts`, never from the browser; extra passengers and per-passenger SVG rates included). Approved drivers see “Official fare EC$X” and **Accept trip**; the first to accept gets it (`accept_fixed_fare`, row-locked so only one can win). Quotes remain for groups, boats, trucking and routes without a published fare.
+- **Trip chat:** `/[country]/trips/[id]/chat` for the customer and the booked operator only (`trip_messages`, `send_trip_message`), refreshing every few seconds, with email and phone notifications. Linked from the customer's trip page (“Message in the app”) and the operator's bookings (“Message the customer”).
+- **International phone numbers** for trip requests: country code picker, UK and other national formats converted automatically.
+- **Admin:** one-step operator approval, assign a listing's owner by email, badges for waiting items, search on the review queue, approve/reject buttons fixed for iPhone, bottom tabs on admin and information pages, logo returns to the main page.
+- **Faster pages:** server-side caching of public data (cleared on every edit); single count query for home-page category tiles.
+- Freight merged into trucking and haulage (within each country, between its islands).
+- Migrations `20261021000010` to `20261021000012`. Tests: 83 passing.
+
 ## Increment 15 (20 October 2026): road routes, official fares, self-employed listings, favourite country
 
 - **Road-following map routes:** `scripts/build-road-routes.mts` precomputes the road route between every pair of ride points on the same island from OpenStreetMap (OSRM), stored in `src/data/road-routes.json` (124 routes). The ride map draws the route along the roads and the trip summary shows distance and approximate driving time. Re-run the script when points change.

@@ -1,7 +1,7 @@
 "use client";
 
 import { InAppRequest, type RequestInApp } from "./in-app-request";
-import { officialFare } from "@/data/fares";
+import { fareAmount, officialFare } from "@/data/fares";
 import { ArrowDownUp, ArrowLeft, BadgeCheck, CarFront, Clock, FlaskConical, Info, MessageCircle, Minus, Phone, Plus, Users, Bus } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -282,13 +282,16 @@ export function RideBooker({
             {requestInApp && (
               <InAppRequest
                 action={requestInApp}
-                note="Approved drivers get your request and reply with a fare. You choose one in the app; nothing is booked until you accept."
+                note={fare && vehicle !== "van"
+                  ? `This route has an official fare of EC$${fareAmount(fare, passengers)}. The first approved driver to accept takes your trip at that fare; you’ll be told straight away.`
+                  : "Approved drivers get your request and reply with a fare. You choose one in the app; nothing is booked until you accept."}
                 payload={{
                   country: countryCode,
                   kind: vehicle === "van" ? "group" : pickup.kind === "airport" || destination.kind === "airport" ? "airport" : "taxi",
                   from: islandName, to: islandName, pickup: pickup.name, dropoff: destination.name,
                   travel_at: when === "later" && at ? new Date(at).toISOString() : null,
                   passengers, details: notes || null,
+                  pickup_id: pickup.id, dropoff_id: destination.id,
                 }}
               />
             )}

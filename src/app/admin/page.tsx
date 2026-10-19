@@ -1,15 +1,15 @@
 import Link from "next/link";
-import { reviewBusinessAction, reviewClaimAction } from "./actions";
+import { approveBusinessAction, approveClaimAction, rejectBusinessAction, rejectClaimAction } from "./actions";
 import { supabaseForRequest } from "@/lib/supabase/server";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-function ReviewButtons({ id, action }: { id: string; action: (f: FormData) => Promise<void> }) {
+function ReviewButtons({ id, approve, reject }: { id: string; approve: (f: FormData) => Promise<void>; reject: (f: FormData) => Promise<void> }) {
   return (
-    <form action={action} className="mt-4 flex flex-wrap items-center gap-2">
+    <form action={approve} className="mt-4 flex flex-wrap items-center gap-2">
       <input type="hidden" name="id" value={id} />
       <input name="note" placeholder="Note to the applicant (optional)" className="h-10 min-w-0 flex-1 rounded-lg border border-line bg-raised px-3 text-sm text-ink" />
-      <button name="decision" value="approve" className="h-10 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-ink">Approve</button>
-      <button name="decision" value="reject" className="h-10 rounded-lg border border-line px-4 text-sm font-semibold text-ink">Reject</button>
+      <button formAction={approve} className="h-10 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-ink">Approve</button>
+      <button formAction={reject} className="h-10 rounded-lg border border-line px-4 text-sm font-semibold text-ink">Reject</button>
     </form>
   );
 }
@@ -71,7 +71,7 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
                     </p>
                   )}
                   <p className="mt-1 text-xs">Submitted {new Date(b.created_at).toLocaleString("en-GB")}. Check the business exists (call or message it) before approving.</p>
-                  <ReviewButtons id={b.id} action={reviewBusinessAction} />
+                  <ReviewButtons id={b.id} approve={approveBusinessAction} reject={rejectBusinessAction} />
                 </li>
               );
             })}
@@ -95,7 +95,7 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
                   <p className="mt-1 text-sm">Claimant phone: {c.phone ?? "not given"}. Listed business contact: {b?.whatsapp_e164 ?? b?.phone_e164 ?? "none"}.</p>
                   <p className="mt-2 whitespace-pre-line rounded-xl bg-sunken p-3 text-sm text-ink">{c.evidence}</p>
                   <p className="mt-1 text-xs">Best check: contact the business on its listed number, not the claimant’s, and confirm the person.</p>
-                  <ReviewButtons id={c.id} action={reviewClaimAction} />
+                  <ReviewButtons id={c.id} approve={approveClaimAction} reject={rejectClaimAction} />
                 </li>
               );
             })}

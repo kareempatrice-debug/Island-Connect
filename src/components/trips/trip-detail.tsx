@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { MessageCircle, Phone } from "lucide-react";
+import { MessageCircle, MessagesSquare, Phone } from "lucide-react";
 import type { ReactNode } from "react";
 import { TRIP_KIND_LABEL, TRIP_STATUS_LABEL, fmtWhen, fmtXcd } from "@/lib/trips";
 
 export interface TripView {
   id: string; kind: string; status: string; pickup: string; dropoff: string; from_place: string; to_place: string;
   travel_at: string | null; passengers: number | null; details: string | null; cross_border: boolean;
+  fixed_fare_xcd?: number | string | null;
 }
 export interface QuoteView {
   id: string; amount_xcd: number | string; includes: string | null; valid_until: string; status: string;
@@ -13,8 +14,8 @@ export interface QuoteView {
 }
 
 /* The customer's view of one trip request: details, quotes to compare, and the booking. */
-export function TripDetail({ country, t, quotes, notice, accept, cancel, now, backHref }: {
-  country: string; backHref?: string; t: TripView; quotes: QuoteView[]; notice?: ReactNode; accept: (q: QuoteView) => ReactNode; cancel: ReactNode; now: number;
+export function TripDetail({ country, t, quotes, notice, accept, cancel, now, backHref, chatHref }: {
+  country: string; backHref?: string; chatHref?: string; t: TripView; quotes: QuoteView[]; notice?: ReactNode; accept: (q: QuoteView) => ReactNode; cancel: ReactNode; now: number;
 }) {
   const sorted = [...quotes].sort((a, b) => Number(a.amount_xcd) - Number(b.amount_xcd));
   const accepted = sorted.find((q) => q.status === "accepted");
@@ -38,13 +39,19 @@ export function TripDetail({ country, t, quotes, notice, accept, cancel, now, ba
           <h2 id="booked-h" className="text-lg font-semibold">Booked with {accepted.businesses?.name}</h2>
           <p className="mt-1">Agreed price {fmtXcd(accepted.amount_xcd)}{accepted.includes ? `, ${accepted.includes}` : ""}. Pay the operator directly.</p>
           <div className="mt-3 flex flex-wrap gap-2">
+            {chatHref && <Link href={chatHref} className="inline-flex h-11 items-center gap-2 rounded-full bg-deep px-5 font-semibold text-white"><MessagesSquare className="h-5 w-5" aria-hidden="true" />Message in the app</Link>}
             {accepted.businesses?.whatsapp_e164 && <a href={`https://wa.me/${accepted.businesses.whatsapp_e164.replace(/^\+/, "")}`} target="_blank" rel="noopener noreferrer" className="inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 font-semibold text-primary-ink"><MessageCircle className="h-5 w-5" aria-hidden="true" />WhatsApp</a>}
             {accepted.businesses?.phone_e164 && <a href={`tel:${accepted.businesses.phone_e164}`} className="inline-flex h-11 items-center gap-2 rounded-full px-5 font-semibold text-ink ring-1 ring-line"><Phone className="h-5 w-5" aria-hidden="true" />Call</a>}
           </div>
         </section>
       )}
 
-      {t.status === "open" && (
+      {t.status === "open" && t.fixed_fare_xcd ? (
+        <section className="mt-6 rounded-2xl bg-raised p-5 ring-1 ring-line/60" aria-labelledby="wait-h">
+          <h2 id="wait-h" className="text-xl font-semibold">Waiting for a driver</h2>
+          <p className="mt-1">Your trip has gone to approved drivers at the official fare of <strong className="text-ink">{fmtXcd(t.fixed_fare_xcd)}</strong>. The first to accept takes it, and we’ll tell you straight away.</p>
+        </section>
+      ) : t.status === "open" && (
         <section className="mt-6" aria-labelledby="quotes-h">
           <h2 id="quotes-h" className="text-xl font-semibold">Quotes</h2>
           {!sorted.length ? (

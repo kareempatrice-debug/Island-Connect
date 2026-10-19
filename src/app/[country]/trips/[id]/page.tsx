@@ -29,6 +29,7 @@ export default async function Trip({ params, searchParams }: { params: Promise<{
       {t.status === "open" && <div className="mb-6"><PushSetup what="new quotes" /></div>}
       <TripDetail
         country={country}
+        chatHref={`/${country}/trips/${t.id}/chat`}
         t={t as TripView}
         quotes={(t["trip_quotes"] ?? []) as QuoteView[]}
         now={now}
