@@ -57,10 +57,13 @@ export default async function RideHub({ params }: { params: Promise<{ country: s
         <p className="mt-6">
           <Link href={`/${code}/ride/fares`} className="font-semibold text-link hover:underline">See the official taxi fares</Link>
         </p>
-        <p className="mt-3 text-sm">
-          Drive a taxi, run a boat or operate trucks?{" "}
-          <Link href={`/${code}/ride/operate`} className="font-semibold text-link hover:underline">Work with Island Connect</Link>
-        </p>
+        <Link href={`/${code}/ride/operate/apply`} className="mt-6 flex items-center justify-between gap-4 rounded-card bg-deep p-5 text-white">
+          <span>
+            <span className="block font-display text-lg font-bold">Drive with Island Connect</span>
+            <span className="mt-1 block text-sm text-white/85">Have a car, van, boat or truck? Apply in a few minutes and start getting trips.</span>
+          </span>
+          <span className="shrink-0 rounded-full bg-gold px-4 py-2 text-sm font-semibold text-[#172B32]">Apply</span>
+        </Link>
       </Container>
     </main>
   );

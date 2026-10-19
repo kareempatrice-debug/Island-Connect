@@ -113,10 +113,10 @@ export function DriverSignup({ country, islands, defaultName }: { country: strin
             </label>
           ))}
         </div>
-        <label className="mt-4 block"><span className={label}>Licence or permit numbers</span>
-          <input name="licence" required minLength={3} maxLength={500} placeholder="e.g. Driving licence D12345, taxi permit T678" className={field} /></label>
-        <label className="mt-4 block"><span className={label}>Vehicle or boat</span>
-          <input name="vehicles" required minLength={3} maxLength={500} placeholder="e.g. Toyota Noah, 7 seats, registration H1234" className={field} /></label>
+        <label className="mt-4 block"><span className={label}>Licence or permit numbers (optional)</span>
+          <input name="licence" maxLength={500} placeholder="If you don’t have them to hand, the photo is enough" className={field} /></label>
+        <label className="mt-4 block"><span className={label}>Your vehicle or boat</span>
+          <input name="vehicles" required minLength={3} maxLength={500} placeholder="e.g. Toyota Noah, 7 seats" className={field} /></label>
         <label className="mt-4 block"><span className={label}>Insurance (optional)</span>
           <input name="insurance" maxLength={500} placeholder="Insurer and type of cover" className={field} /></label>
       </fieldset>

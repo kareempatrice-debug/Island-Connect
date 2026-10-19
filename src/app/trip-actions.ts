@@ -227,7 +227,7 @@ export async function applyAsDriverAction(_: FormState, form: FormData): Promise
     country: z.string().regex(/^[a-z]{2}$/), providerType: z.enum(["individual", "business"]),
     name: z.string().trim().min(2, "Enter your name").max(120), island: z.string().regex(/^[a-z0-9-]{2,40}$/), area: z.string().trim().max(120).optional(),
     phone: z.string().max(30), whatsapp: z.string().max(30).optional(), whatsappSame: z.string().optional(),
-    licence: z.string().trim().min(3, "Add your licence or permit numbers").max(500), vehicles: z.string().trim().min(3, "Describe your vehicle or boat").max(500),
+    licence: z.string().trim().max(500).optional(), vehicles: z.string().trim().min(3, "Say what you drive or sail, e.g. Toyota Noah, 7 seats").max(500),
     insurance: z.string().trim().max(500).optional(),
   }).safeParse(Object.fromEntries(form));
   if (!d.success) return { error: d.error.issues[0].message };
@@ -248,9 +248,44 @@ export async function applyAsDriverAction(_: FormState, form: FormData): Promise
   const { data, error } = await supabase.rpc("apply_as_driver", { p: {
     country: d.data.country, island: d.data.island, area: d.data.area ?? "", name: d.data.name, provider_type: d.data.providerType,
     tagline: `${label}${d.data.area ? ` from ${d.data.area}` : ""}`.slice(0, 160), phone, whatsapp, kinds,
-    licence: d.data.licence, vehicles: d.data.vehicles, insurance: d.data.insurance ?? "", documents,
+    licence: d.data.licence && d.data.licence.length >= 3 ? d.data.licence : "See licence photo", vehicles: d.data.vehicles, insurance: d.data.insurance ?? "", documents,
   } });
   if (error) return { error: error.message };
   revalidatePath("/admin/operators");
   redirect(`/${d.data.country}/dashboard/${(data as { slug: string }).slug}?tab=trips&applied=1`);
+}
+
+/* ---------- Driver account in one step (no waiting for a confirmation email) ---------- */
+export async function createDriverAccountAction(_: FormState, form: FormData): Promise<FormState> {
+  const d = z.object({
+    country: z.string().regex(/^[a-z]{2}$/),
+    name: z.string().trim().min(2, "Enter your name").max(80),
+    email: z.string().trim().toLowerCase().email("Enter a valid email address"),
+    password: z.string().min(8, "Choose a password of at least 8 characters").max(72),
+  }).safeParse(Object.fromEntries(form));
+  if (!d.success) return { error: d.error.issues[0].message };
+  const { country, name, email, password } = d.data;
+  const next = `/${country}/ride/operate/apply`;
+  const supabase = await supabaseForRequest();
+  const secret = process.env.SUPABASE_SECRET_KEY;
+  if (secret) {
+    // Drivers are checked by hand (licence photos) before they can take trips, so we skip the
+    // email round-trip and sign them straight in. Their address is still used for alerts.
+    const { createClient } = await import("@supabase/supabase-js");
+    const { SUPABASE_URL } = await import("@/lib/supabase/env");
+    const admin = createClient(SUPABASE_URL, secret, { auth: { persistSession: false, autoRefreshToken: false } });
+    const { error } = await admin.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { full_name: name, joined_as: "operator" } });
+    if (error) {
+      if (/already|registered|exists/i.test(error.message)) return { error: "There’s already an account with that email. Tap “I already have an account” to sign in." };
+      return { error: "Your account couldn’t be created. Please try again." };
+    }
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    if (signInError) return { error: "Your account was created. Please sign in to continue." };
+    redirect(next);
+  }
+  // Without the server key, fall back to the normal sign-up with a confirmation email.
+  const site = (process.env.NEXT_PUBLIC_SITE_URL ?? "").replace(/\/$/, "");
+  const { error } = await supabase.auth.signUp({ email, password, options: { data: { full_name: name, joined_as: "operator" }, emailRedirectTo: `${site}/auth/callback?next=${encodeURIComponent(next)}` } });
+  if (error) return { error: error.message };
+  return { message: "Check your email and tap the link to continue your application." };
 }
