@@ -514,3 +514,14 @@ describe("Stage 3: operators, trip requests, quotes and the ledger", () => {
     await as("authenticated", ADMIN, () => db.query(`update public.businesses set founder_owned = true where id = $1`, [biz]));
   });
 });
+
+describe("phone notification devices", () => {
+  it("lets people register and see only their own devices", async () => {
+    await as("authenticated", OWNER, () => db.query(`insert into public.push_subscriptions (user_id, endpoint, p256dh, auth) values ($1, 'https://push.example/owner', 'k', 'a')`, [OWNER]));
+    await expect(as("authenticated", OWNER, () => db.query(`insert into public.push_subscriptions (user_id, endpoint, p256dh, auth) values ($1, 'https://push.example/x', 'k', 'a')`, [STRANGER]))).rejects.toThrow();
+    const theirs = await as("authenticated", STRANGER, () => db.query(`select 1 from public.push_subscriptions`));
+    expect(theirs.rows).toHaveLength(0);
+    const mine = await as("authenticated", OWNER, () => db.query(`select 1 from public.push_subscriptions`));
+    expect(mine.rows).toHaveLength(1);
+  });
+});

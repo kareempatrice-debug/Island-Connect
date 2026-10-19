@@ -37,5 +37,7 @@ export async function GET() {
     : !secret ? "missing SUPABASE_SECRET_KEY"
     : !secret.startsWith("sb_secret_") ? "SUPABASE_SECRET_KEY looks wrong (should start sb_secret_)"
     : "on";
+  report.phoneNotifications =
+    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY ? (secret ? "on" : "missing SUPABASE_SECRET_KEY") : "off (add the two VAPID keys to switch on)";
   return NextResponse.json(report, { headers: { "cache-control": "no-store" } });
 }

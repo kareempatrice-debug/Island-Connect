@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { deleteServiceAction } from "./actions";
 import { NeedsDatabase } from "@/components/demo-notice";
 import { AddServiceForm, HoursForm, ProfileForm } from "@/components/forms/dashboard-forms";
+import { PushSetup } from "@/components/push-setup";
 import { PhotosManager } from "@/components/forms/photos-manager";
 import { TripsTab } from "./trips-tab";
 import { Container } from "@/components/ui";
@@ -69,6 +70,7 @@ export default async function Dashboard({
       </nav>
 
       <div className="mt-8">
+        {tab === "enquiries" && <div className="mb-6"><PushSetup what="new enquiries" /></div>}
         {tab === "trips" && (
           <TripsTab ids={{ businessId: b.id as string, country, slug }} sp={sp}
             isOwner={(b as { business_members: { role: string }[] }).business_members.some((m) => m.role === "owner")} />

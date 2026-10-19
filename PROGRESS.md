@@ -1,5 +1,14 @@
 # Progress
 
+## Increment 14 (20 October 2026): phone notifications for the installed app
+
+- Island Connect installs to a phone's home screen (web app manifest) and can now show **notifications**: new trip requests (operators), new quotes (customers), bookings (operators) and enquiry messages (both sides), alongside the emails.
+- `public/sw.js` (service worker: notifications only, no offline caching), `src/components/push-setup.tsx` (“Turn on notifications” in the operator Trips tab, the customer's trip page and the dashboard Enquiries tab, with iPhone Add-to-Home-Screen guidance), `src/lib/push.ts` (sending via `web-push`; dead devices removed automatically).
+- New table `push_subscriptions` (migration `20261020000008_push.sql`): each person sees only their own devices.
+- Settings: `NEXT_PUBLIC_VAPID_PUBLIC_KEY` (public), `VAPID_PRIVATE_KEY` (secret), plus the existing `SUPABASE_SECRET_KEY`. `/api/health` reports `phoneNotifications`.
+- iPhones need iOS 16.4 or later and the app added to the Home Screen; Android works in Chrome directly.
+- Tests: 73 passing.
+
 ## Increment 13 (19 October 2026): Stage 3, in-app trips
 
 - **Operators:** transport businesses apply from their dashboard's **Trips** tab (kinds of trip, licence, vehicles, insurance); admins approve at `/admin/operators`.

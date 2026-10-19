@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { PushSetup } from "@/components/push-setup";
 import { TRIP_KIND_LABEL, TRIP_STATUS_LABEL, fmtWhen, fmtXcd } from "@/lib/trips";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -11,6 +12,7 @@ export function OperatorTrips({ kinds, open, mine, totals, businessId, notice, q
   return (
     <div className="space-y-8">
       {notice}
+      <PushSetup what="new trip requests" />
       <section aria-labelledby="open-h">
         <h2 id="open-h" className="text-xl font-semibold">Requests waiting for a price</h2>
         <p className="mt-1 text-sm">Approved for: {kinds.map((k) => TRIP_KIND_LABEL[k]).join(", ")}.</p>

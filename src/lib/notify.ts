@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { buildAlert, buildNotice, type AlertKind } from "./email";
 import { SUPABASE_URL } from "./supabase/env";
+import { pushConfigured, pushToUsers } from "./push";
 
 /*
  * Enquiry alerts by email, sent through Resend.
@@ -20,6 +21,7 @@ export function alertsConfigured() {
 }
 
 function admin() {
+  // Requires SUPABASE_SECRET_KEY (checked by alertsConfigured / pushConfigured).
   return createClient(SUPABASE_URL, process.env.SUPABASE_SECRET_KEY!, { auth: { persistSession: false, autoRefreshToken: false } });
 }
 
@@ -29,7 +31,7 @@ async function emailOf(db: ReturnType<typeof admin>, userId: string) {
 }
 
 async function send(to: string[], kind: AlertKind, businessName: string, subject: string, preview: string, link: string) {
-  if (!to.length) return;
+  if (!to.length || !process.env.RESEND_API_KEY) return;
   const mail = buildAlert({ kind, businessName, subject, preview, link });
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -42,7 +44,7 @@ async function send(to: string[], kind: AlertKind, businessName: string, subject
 
 /** Email the right people after a message is posted in an enquiry. */
 export async function notifyEnquiryMessage(enquiryId: string, senderId: string, body: string, isNew: boolean) {
-  if (!alertsConfigured()) return;
+  if (!alertsConfigured() && !pushConfigured()) return;
   try {
     const db = admin();
     const { data: e } = await db
@@ -62,10 +64,12 @@ export async function notifyEnquiryMessage(enquiryId: string, senderId: string, 
       const { data: members } = await db.from("business_members").select("user_id").eq("business_id", e.business_id);
       const to = (await Promise.all((members ?? []).map((m) => emailOf(db, m.user_id)))).filter((x): x is string => Boolean(x));
       await send(to, isNew ? "new_enquiry" : "reply_to_business", biz?.name ?? "your business", e.subject, body, link);
+      await pushToUsers((members ?? []).map((m) => m.user_id), { title: isNew ? `New enquiry: ${e.subject}` : `New message: ${e.subject}`, body: body.slice(0, 140), url: link, tag: `enquiry-${e.id}` });
     } else {
       // Business wrote: tell the customer.
       const to = await emailOf(db, e.customer_id);
       if (to) await send([to], "reply_to_customer", biz?.name ?? "The business", e.subject, body, link);
+      await pushToUsers([e.customer_id], { title: `${biz?.name ?? "The business"} replied`, body: body.slice(0, 140), url: link, tag: `enquiry-${e.id}` });
     }
   } catch (err) {
     console.error("Enquiry alert error:", err);
@@ -79,7 +83,7 @@ export const TRIP_LABEL: Record<string, string> = {
 };
 
 async function mail(to: string[], n: Parameters<typeof buildNotice>[0]) {
-  if (!to.length) return;
+  if (!to.length || !process.env.RESEND_API_KEY) return;
   const m = buildNotice(n);
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -95,7 +99,7 @@ const when = (t: string | null) => (t ? new Date(t).toLocaleString("en-GB", { we
 
 /** A new request: tell approved operators who can take it (their emails are bcc'd, never shown to each other). */
 export async function notifyOperatorsOfRequest(requestId: string) {
-  if (!alertsConfigured()) return;
+  if (!alertsConfigured() && !pushConfigured()) return;
   try {
     const db = admin();
     const { data: r } = await db.from("trip_requests").select("*").eq("id", requestId).maybeSingle();
@@ -111,6 +115,10 @@ export async function notifyOperatorsOfRequest(requestId: string) {
     const to = (await Promise.all((members ?? []).filter((m) => m.user_id !== r.customer_id).map((m) => emailOf(db, m.user_id)))).filter((x): x is string => Boolean(x));
     /* eslint-disable @typescript-eslint/no-explicit-any */
     const slug = (members?.[0] as any)?.businesses?.slug;
+    const tripsLink = slug ? `${site()}/${r.country_code}/dashboard/${slug}?tab=trips` : `${site()}/${r.country_code}/account`;
+    await pushToUsers((members ?? []).filter((m) => m.user_id !== r.customer_id).map((m) => m.user_id), {
+      title: `New ${TRIP_LABEL[r.kind].toLowerCase()} request`, body: `${r.pickup} to ${r.dropoff} · ${when(r.travel_at)}`, url: tripsLink, tag: `trip-${r.id}`,
+    });
     await mail([...new Set(to)], {
       subject: `New ${TRIP_LABEL[r.kind].toLowerCase()} request: ${r.pickup} to ${r.dropoff}`,
       heading: `New ${TRIP_LABEL[r.kind].toLowerCase()} request`,
@@ -126,15 +134,16 @@ export async function notifyOperatorsOfRequest(requestId: string) {
 
 /** A quote arrived: tell the customer. */
 export async function notifyCustomerOfQuote(quoteId: string) {
-  if (!alertsConfigured()) return;
+  if (!alertsConfigured() && !pushConfigured()) return;
   try {
     const db = admin();
     const { data: q } = await db.from("trip_quotes").select("amount_xcd, includes, trip_requests!trip_quotes_request_id_fkey ( id, customer_id, country_code, kind, pickup, dropoff ), businesses ( name )").eq("id", quoteId).maybeSingle();
     const r = q?.trip_requests as any;
     if (!q || !r) return;
+    const biz = (q.businesses as any)?.name ?? "An operator";
+    await pushToUsers([r.customer_id], { title: `New quote: EC$${Number(q.amount_xcd).toFixed(2)}`, body: `${biz} for ${r.pickup} to ${r.dropoff}`, url: `${site()}/${r.country_code}/trips/${r.id}`, tag: `trip-${r.id}` });
     const to = await emailOf(db, r.customer_id);
     if (!to) return;
-    const biz = (q.businesses as any)?.name ?? "An operator";
     await mail([to], {
       subject: `${biz} quoted EC$${Number(q.amount_xcd).toFixed(2)} for your ${TRIP_LABEL[r.kind].toLowerCase()}`,
       heading: `You have a quote from ${biz}`,
@@ -150,7 +159,7 @@ export async function notifyCustomerOfQuote(quoteId: string) {
 
 /** The customer accepted: tell the operator's team. */
 export async function notifyOperatorOfBooking(quoteId: string) {
-  if (!alertsConfigured()) return;
+  if (!alertsConfigured() && !pushConfigured()) return;
   try {
     const db = admin();
     const { data: q } = await db.from("trip_quotes").select("business_id, amount_xcd, businesses ( slug ), trip_requests!trip_quotes_request_id_fkey ( id, country_code, kind, pickup, dropoff, from_place, to_place, travel_at, passengers )").eq("id", quoteId).maybeSingle();
@@ -158,6 +167,7 @@ export async function notifyOperatorOfBooking(quoteId: string) {
     if (!q || !r) return;
     const { data: members } = await db.from("business_members").select("user_id").eq("business_id", q.business_id);
     const to = (await Promise.all((members ?? []).map((m) => emailOf(db, m.user_id)))).filter((x): x is string => Boolean(x));
+    await pushToUsers((members ?? []).map((m) => m.user_id), { title: "Your quote was accepted", body: `${r.pickup} to ${r.dropoff} · ${when(r.travel_at)}`, url: `${site()}/${r.country_code}/dashboard/${(q.businesses as any)?.slug}?tab=trips`, tag: `trip-${r.id}` });
     await mail(to, {
       subject: `Booked: ${r.pickup} to ${r.dropoff}`,
       heading: "Your quote was accepted",

@@ -6,6 +6,7 @@ import { Container } from "@/components/ui";
 import { requireViewer } from "@/lib/auth";
 import { isSupabaseConfigured } from "@/lib/data";
 import { supabaseForRequest } from "@/lib/supabase/server";
+import { PushSetup } from "@/components/push-setup";
 import { TripDetail, type QuoteView, type TripView } from "@/components/trips/trip-detail";
 
 export const metadata: Metadata = { title: "Your trip", robots: { index: false } };
@@ -25,6 +26,7 @@ export default async function Trip({ params, searchParams }: { params: Promise<{
   const now = Date.now();
   return (
     <Container className="max-w-3xl py-8 sm:py-12">
+      {t.status === "open" && <div className="mb-6"><PushSetup what="new quotes" /></div>}
       <TripDetail
         country={country}
         t={t as TripView}
