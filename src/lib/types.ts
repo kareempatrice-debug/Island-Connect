@@ -83,6 +83,8 @@ export interface Business {
   verificationStatus: VerificationStatus;
   isDemo: boolean;
   isFeatured: boolean;
+  /** Owned by Island Connect's founder: always disclosed. */
+  founderOwned?: boolean;
   /** Unclaimed listings were added from research and can be claimed by their owner. */
   claimStatus: "claimed" | "unclaimed";
   /** How the business wants customers to get in touch. */

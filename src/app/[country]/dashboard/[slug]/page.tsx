@@ -5,6 +5,7 @@ import { deleteServiceAction } from "./actions";
 import { NeedsDatabase } from "@/components/demo-notice";
 import { AddServiceForm, HoursForm, ProfileForm } from "@/components/forms/dashboard-forms";
 import { PhotosManager } from "@/components/forms/photos-manager";
+import { TripsTab } from "./trips-tab";
 import { Container } from "@/components/ui";
 import { requireViewer } from "@/lib/auth";
 import { isSupabaseConfigured } from "@/lib/data";
@@ -13,7 +14,7 @@ import { supabaseForRequest } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Business dashboard", robots: { index: false } };
 
-const TABS = [["overview", "Overview"], ["enquiries", "Enquiries"], ["profile", "Profile"], ["photos", "Photos"], ["services", "Services"], ["hours", "Hours"]] as const;
+const TABS = [["overview", "Overview"], ["enquiries", "Enquiries"], ["profile", "Profile"], ["photos", "Photos"], ["trips", "Trips"], ["services", "Services"], ["hours", "Hours"]] as const;
 const CHANNELS: Record<string, string> = { whatsapp: "WhatsApp", phone: "Calls", email: "Emails", website: "Website visits", booking: "Booking page", maps: "Directions" };
 
 export default async function Dashboard({
@@ -21,7 +22,7 @@ export default async function Dashboard({
   searchParams,
 }: {
   params: Promise<{ country: string; slug: string }>;
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<Record<string, string | undefined>>;
 }) {
   const [{ country, slug }, sp] = await Promise.all([params, searchParams]);
   if (!isSupabaseConfigured) return <Container className="max-w-xl py-12"><NeedsDatabase feature="The business dashboard" /></Container>;
@@ -68,6 +69,10 @@ export default async function Dashboard({
       </nav>
 
       <div className="mt-8">
+        {tab === "trips" && (
+          <TripsTab ids={{ businessId: b.id as string, country, slug }} sp={sp}
+            isOwner={(b as { business_members: { role: string }[] }).business_members.some((m) => m.role === "owner")} />
+        )}
         {tab === "photos" && (
           (b as { business_members: { role: string }[] }).business_members.some((m) => m.role === "owner") ? (
             <PhotosManager country={country} slug={slug} businessId={b.id as string} logoPath={(b.logo_path as string) ?? null}

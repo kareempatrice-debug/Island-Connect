@@ -21,7 +21,7 @@ function db(): SupabaseClient {
 }
 
 const BUSINESS_SELECT = `
-  id, slug, name, tagline, description, verification_status, is_demo, claim_status, contact_preference, external_booking_url, is_featured, rating_avg, rating_count,
+  id, slug, name, tagline, description, verification_status, is_demo, claim_status, contact_preference, external_booking_url, is_featured, founder_owned, rating_avg, rating_count,
   phone_e164, whatsapp_e164, email, website, logo_path, cover_path, gallery_paths, payment_methods, cancellation_policy, created_at,
   business_categories ( is_primary, categories ( slug, name ) ),
   business_locations ( is_primary, landmark, lat, lng, country_code, islands ( slug, name ), districts ( slug, name ) ),
@@ -45,6 +45,7 @@ function toBusiness(r: any): Business {
     contactPreference: r.contact_preference ?? "platform",
     externalBookingUrl: r.external_booking_url ?? null,
     isFeatured: r.is_featured,
+    founderOwned: Boolean(r.founder_owned),
     ratingAvg: r.rating_avg == null ? null : Number(r.rating_avg),
     ratingCount: r.rating_count,
     phone: r.phone_e164,

@@ -448,3 +448,69 @@ describe("business photos", () => {
     expect(junk.rows[0].ok).toBe(false);
   });
 });
+
+describe("Stage 3: operators, trip requests, quotes and the ledger", () => {
+  const RIDER = "00000000-0000-0000-0000-000000000010";
+  const OTHER = "00000000-0000-0000-0000-000000000011";
+  let biz: string;
+
+  beforeAll(async () => {
+    await db.exec(`insert into auth.users (id, email) values ('${RIDER}', 'rider@example.com'), ('${OTHER}', 'other@example.com') on conflict do nothing`);
+    biz = (await db.query<{ id: string }>(`
+      select b.id from public.businesses b join public.business_locations l on l.business_id = b.id
+      where b.listing_status = 'published' and not b.is_demo and l.country_code = 'gd' order by b.name limit 1`)).rows[0].id;
+    await db.query(`insert into public.business_members (business_id, user_id, role) values ($1, $2, 'owner') on conflict do nothing`, [biz, OWNER]);
+  });
+
+  const request = () =>
+    as("authenticated", RIDER, () =>
+      db.query<{ id: string }>(`select public.create_trip_request($1::jsonb) as id`, [
+        JSON.stringify({ country: "gd", kind: "taxi", from: "Grenada", to: "Grenada", pickup: "Airport arrivals", dropoff: "Grand Anse", passengers: 2, contact_phone: "+14734441234" }),
+      ]),
+    ).then((r) => r.rows[0].id);
+
+  it("only approved operators can quote, and only owners can apply", async () => {
+    await expect(as("authenticated", OTHER, () => db.query(`select public.apply_operator($1, '{"kinds":["taxi"],"licence":"T-123","vehicles":"Toyota Noah"}'::jsonb)`, [biz]))).rejects.toThrow(/owner/);
+    await as("authenticated", OWNER, () => db.query(`select public.apply_operator($1, '{"kinds":["taxi","airport"],"licence":"Taxi licence T-123","vehicles":"Toyota Noah, 7 seats"}'::jsonb)`, [biz]));
+    const id = await request();
+    await expect(as("authenticated", OWNER, () => db.query(`select public.send_trip_quote($1, $2, 75, 'Door to door', 24)`, [id, biz]))).rejects.toThrow(/approved/);
+    const hidden = await as("authenticated", OWNER, () => db.query(`select 1 from public.trip_requests where id = $1`, [id]));
+    expect(hidden.rows).toHaveLength(0);
+    await expect(as("authenticated", OWNER, () => db.query(`select public.admin_review_operator($1, true)`, [biz]))).rejects.toThrow(/administrators/);
+    await as("authenticated", ADMIN, () => db.query(`select public.admin_review_operator($1, true, 'Licence checked')`, [biz]));
+  });
+
+  it("runs a trip from request to quote to booking to completion, with a 0% ledger entry", async () => {
+    const id = await request();
+    const seen = await as("authenticated", OWNER, () => db.query(`select 1 from public.trip_requests where id = $1`, [id]));
+    expect(seen.rows).toHaveLength(1);
+    const notSeen = await as("authenticated", OTHER, () => db.query(`select 1 from public.trip_requests where id = $1`, [id]));
+    expect(notSeen.rows).toHaveLength(0);
+
+    const phoneBefore = await as("authenticated", OWNER, () => db.query(`select 1 from public.trip_contacts where request_id = $1`, [id]));
+    expect(phoneBefore.rows).toHaveLength(0); // the operator can't see the customer's number before being chosen
+    const q = await as("authenticated", OWNER, () => db.query<{ id: string }>(`select public.send_trip_quote($1, $2, 75, 'Door to door, 2 bags', 24) as id`, [id, biz]));
+    await expect(as("authenticated", OTHER, () => db.query(`select public.accept_trip_quote($1)`, [q.rows[0].id]))).rejects.toThrow(/Only the person/);
+    await as("authenticated", RIDER, () => db.query(`select public.accept_trip_quote($1)`, [q.rows[0].id]));
+    const st = await db.query<{ status: string }>(`select status from public.trip_requests where id = $1`, [id]);
+    expect(st.rows[0].status).toBe("booked");
+    const phoneAfter = await as("authenticated", OWNER, () => db.query<{ phone_e164: string }>(`select phone_e164 from public.trip_contacts where request_id = $1`, [id]));
+    expect(phoneAfter.rows[0].phone_e164).toBe("+14734441234");
+
+    await expect(as("authenticated", RIDER, () => db.query(`select public.complete_trip($1)`, [id]))).rejects.toThrow(/operator/);
+    await as("authenticated", OWNER, () => db.query(`select public.complete_trip($1)`, [id]));
+    const led = await db.query<{ fare_xcd: string; rate: string; commission_xcd: string }>(`select fare_xcd, rate, commission_xcd from public.commission_ledger where request_id = $1`, [id]);
+    expect(led.rows[0]).toEqual({ fare_xcd: "75.00", rate: "0.0000", commission_xcd: "0.00" });
+  });
+
+  it("lets the customer cancel, and refuses quotes on cancelled requests", async () => {
+    const id = await request();
+    await as("authenticated", RIDER, () => db.query(`select public.cancel_trip_request($1)`, [id]));
+    await expect(as("authenticated", OWNER, () => db.query(`select public.send_trip_quote($1, $2, 50, null, 24)`, [id, biz]))).rejects.toThrow(/no longer open/);
+  });
+
+  it("only admins can set the founder label", async () => {
+    await expect(as("authenticated", OWNER, () => db.query(`update public.businesses set founder_owned = true where id = $1`, [biz]))).rejects.toThrow(/founder/);
+    await as("authenticated", ADMIN, () => db.query(`update public.businesses set founder_owned = true where id = $1`, [biz]));
+  });
+});

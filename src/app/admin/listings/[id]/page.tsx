@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { setListingStatusAction } from "../../actions";
+import { setFounderAction } from "@/app/trip-actions";
 import { AdminListingEdit } from "@/components/forms/admin-listing-edit";
 import { supabaseForRequest } from "@/lib/supabase/server";
 
@@ -11,7 +12,7 @@ export default async function EditListing({ params, searchParams }: { params: Pr
   const supabase = await supabaseForRequest();
   const { data: b } = await supabase
     .from("businesses")
-    .select("id, slug, name, tagline, description, phone_e164, whatsapp_e164, email, website, listing_status, claim_status, source_url, source_checked_at, business_locations ( country_code, landmark, is_primary )")
+    .select("id, slug, name, founder_owned, tagline, description, phone_e164, whatsapp_e164, email, website, listing_status, claim_status, source_url, source_checked_at, business_locations ( country_code, landmark, is_primary )")
     .eq("id", id).maybeSingle();
   if (!b) notFound();
   const loc = (b as any).business_locations?.find((l: any) => l.is_primary) ?? (b as any).business_locations?.[0];
@@ -34,6 +35,14 @@ export default async function EditListing({ params, searchParams }: { params: Pr
         <input type="hidden" name="id" value={b.id} /><input type="hidden" name="back" value={here} />
         <button name="status" value={live ? "suspended" : "published"} className={`h-10 rounded-lg px-4 text-sm font-semibold ${live ? "border border-line text-ink" : "bg-primary text-primary-ink"}`}>
           {live ? "Hide from the site" : "Make live"}
+        </button>
+      </form>
+
+      <form action={setFounderAction} className="mt-3 flex flex-wrap items-center gap-3 rounded-xl bg-sunken px-4 py-3 text-sm">
+        <input type="hidden" name="id" value={b.id} />
+        <span className="flex-1 text-ink">{(b as any).founder_owned ? "Shows the label “Operated by the Island Connect founder”." : "No founder label."}</span>
+        <button name="value" value={(b as any).founder_owned ? "off" : "on"} className="h-9 rounded-lg border border-line bg-raised px-3 font-semibold text-ink">
+          {(b as any).founder_owned ? "Remove founder label" : "Add founder label"}
         </button>
       </form>
 

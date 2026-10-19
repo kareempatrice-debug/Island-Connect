@@ -4,6 +4,7 @@ import { ArrowLeft, BadgeCheck, FlaskConical, Info, MessageCircle, Minus, Phone,
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { QUOTE_TITLES as TITLES } from "@/lib/transport";
+import { InAppRequest, type RequestInApp } from "./in-app-request";
 
 /*
  * Custom-quote requests for boats, haulage and freight. The customer describes
@@ -49,6 +50,7 @@ export function QuoteRequest({
   operators,
   defaultFrom,
   defaultTo,
+  requestInApp,
 }: {
   kind: Kind;
   countryCode: string;
@@ -56,6 +58,7 @@ export function QuoteRequest({
   operators: QuoteOperator[];
   defaultFrom: string;
   defaultTo: string;
+  requestInApp?: RequestInApp;
 }) {
   const sameIsland = kind === "haulage";
   const [from, setFrom] = useState(defaultFrom);
@@ -146,6 +149,23 @@ export function QuoteRequest({
             <span>Goods and passengers crossing between the two countries clear customs and immigration on arrival. Ask operators to include the paperwork and any duties in their reply.</span>
           </p>
         )}
+        {requestInApp && fromPlace && toPlace && (
+          <InAppRequest
+            action={requestInApp}
+            note="Approved operators get your request and reply with their price. You compare and accept one in the app; nothing is booked until you do."
+            payload={{
+              country: countryCode, kind,
+              from: fromPlace.name + (fromPlace.countryCode !== countryCode ? ` (${fromPlace.countryName})` : ""),
+              to: toPlace.name + (toPlace.countryCode !== countryCode ? ` (${toPlace.countryName})` : ""),
+              pickup, dropoff,
+              travel_at: date ? new Date(`${date}T12:00:00`).toISOString() : null,
+              passengers: kind === "boat" ? passengers : null,
+              details: kind === "boat" ? (flexible ? "Dates flexible" : null) : `${cargo}. ${load}${loadingHelp ? " Needs help loading and unloading." : ""}${flexible ? " Dates flexible." : ""}`,
+              cross_border: Boolean(crossBorder),
+            }}
+          />
+        )}
+        {requestInApp && matching.length > 0 && <p className="font-semibold text-ink">Or contact an operator directly</p>}
         {matching.length ? (
           <ul className="space-y-3">
             {matching.map((o) => (

@@ -28,6 +28,11 @@ export function ListingBadges({
           Demo listing
         </span>
       )}
+      {business.founderOwned && (
+        <span className={`${pill} ${s} ${neutral}`} title="This business is owned by the founder of Island Connect">
+          Founder’s business
+        </span>
+      )}
       {!business.isDemo && business.claimStatus === "unclaimed" && (
         <span className={`${pill} ${s} ${neutral}`} title="Listed from a public directory; not yet confirmed by the business">
           Unclaimed

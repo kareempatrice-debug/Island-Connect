@@ -1,3 +1,5 @@
+import { createTripRequestAction } from "@/app/trip-actions";
+import { isSupabaseConfigured } from "@/lib/data";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -73,7 +75,7 @@ export default async function QuotePage({
         </Container>
       </section>
       <Container className="max-w-2xl pt-6">
-        <QuoteRequest kind={kind} countryCode={code} places={places} operators={operators} defaultFrom={from} defaultTo={to} />
+        <QuoteRequest kind={kind} countryCode={code} places={places} operators={operators} defaultFrom={from} defaultTo={to} requestInApp={isSupabaseConfigured ? createTripRequestAction : undefined} />
       </Container>
     </main>
   );

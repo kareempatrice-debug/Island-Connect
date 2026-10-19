@@ -56,7 +56,10 @@ export default async function Account({
       {sp.registered && <p role="status" className="mt-6 rounded-xl bg-success/10 px-4 py-3 font-medium text-success">Thanks. Your business has been sent for review; we’ll email you when it’s live.</p>}
       {sp.claimed && <p role="status" className="mt-6 rounded-xl bg-success/10 px-4 py-3 font-medium text-success">Thanks. We’ll contact you to confirm your claim.</p>}
 
-      <Link href={`/${country}/messages`} className="mt-8 flex items-center justify-between rounded-2xl bg-raised p-4 font-semibold text-ink ring-1 ring-line/60 hover:ring-primary/40">
+      <Link href={`/${country}/trips`} className="mt-8 flex items-center justify-between rounded-2xl bg-raised p-4 font-semibold text-ink ring-1 ring-line/60 hover:ring-primary/40">
+        Your trips and quotes <span aria-hidden="true">→</span>
+      </Link>
+      <Link href={`/${country}/messages`} className="mt-3 flex items-center justify-between rounded-2xl bg-raised p-4 font-semibold text-ink ring-1 ring-line/60 hover:ring-primary/40">
         Your messages to businesses <span aria-hidden="true">→</span>
       </Link>
       {viewer.role === "admin" && (

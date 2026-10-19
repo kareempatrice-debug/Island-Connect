@@ -1,3 +1,5 @@
+import { createTripRequestAction } from "@/app/trip-actions";
+import { isSupabaseConfigured } from "@/lib/data";
 import type { Metadata } from "next";
 import { RideBooker, type RideOperator } from "@/components/ride/ride-booker";
 import { coastlines } from "@/data/coastlines";
@@ -56,6 +58,7 @@ export default async function RidePage({
         operators={operators}
         initialVehicle={sp.vehicle === "van" ? "van" : "car"}
         startAtAirport={sp.from === "airport"}
+        requestInApp={isSupabaseConfigured ? createTripRequestAction : undefined}
       />
     </main>
   );

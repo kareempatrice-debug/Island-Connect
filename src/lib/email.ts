@@ -45,3 +45,20 @@ export function buildAlert({ kind, businessName, subject, preview, link }: Alert
 </table></td></tr></table></body></html>`;
   return { subject: emailSubject, html, text };
 }
+
+/* General notice used by trip alerts: heading, a sentence, a few detail lines and a button. */
+export function buildNotice({ heading, lead, lines, link, cta, subject }: { heading: string; lead: string; lines: [string, string][]; link: string; cta: string; subject: string }) {
+  const text = `${heading}\n\n${lead}\n\n${lines.map(([k, v]) => `${k}: ${v}`).join("\n")}\n\n${cta}: ${link}\n\nIsland Connect · islandconnect.cc`;
+  const rows = lines.map(([k, v]) => `<tr><td style="padding:4px 12px 4px 0;color:#56666B;font-size:14px;vertical-align:top">${esc(k)}</td><td style="padding:4px 0;font-size:14px;font-weight:bold">${esc(v)}</td></tr>`).join("");
+  const html = `<!doctype html><html><body style="margin:0;background:#F8F8F5;font-family:Arial,Helvetica,sans-serif;color:#172B32">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:24px 12px">
+<table role="presentation" width="100%" style="max-width:560px;background:#ffffff;border-radius:16px;border:1px solid #E6EBE8" cellpadding="0" cellspacing="0">
+<tr><td style="background:#063E44;border-radius:16px 16px 0 0;padding:18px 24px;color:#ffffff;font-weight:bold;font-size:18px">Island Connect</td></tr>
+<tr><td style="padding:24px">
+<h1 style="margin:0 0 12px;font-size:20px;line-height:1.3">${esc(heading)}</h1>
+<p style="margin:0 0 16px;font-size:15px;line-height:1.5;color:#56666B">${esc(lead)}</p>
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 20px">${rows}</table>
+<a href="${esc(link)}" style="display:inline-block;background:#07565A;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 22px;border-radius:999px">${esc(cta)}</a>
+</td></tr></table></td></tr></table></body></html>`;
+  return { subject, html, text };
+}

@@ -1,5 +1,6 @@
 "use client";
 
+import { InAppRequest, type RequestInApp } from "./in-app-request";
 import { ArrowDownUp, ArrowLeft, BadgeCheck, CarFront, Clock, FlaskConical, Info, MessageCircle, Minus, Phone, Plus, Users, Bus } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -37,6 +38,7 @@ export function RideBooker({
   operators,
   initialVehicle = "car",
   startAtAirport = false,
+  requestInApp,
 }: {
   countryCode: string;
   countryName: string;
@@ -46,6 +48,7 @@ export function RideBooker({
   operators: RideOperator[];
   initialVehicle?: Vehicle;
   startAtAirport?: boolean;
+  requestInApp?: RequestInApp;
 }) {
   const [island, setIsland] = useState(islands[0]?.slug ?? "");
   const [pickupId, setPickupId] = useState(
@@ -259,6 +262,20 @@ export function RideBooker({
               <dt className="text-muted">Ride</dt><dd className="font-semibold text-ink">{VEHICLES.find((v) => v.id === vehicle)?.name}, {passengers} passenger{passengers > 1 ? "s" : ""}</dd>
             </dl>
 
+            {requestInApp && (
+              <InAppRequest
+                action={requestInApp}
+                note="Approved drivers get your request and reply with a fare. You choose one in the app; nothing is booked until you accept."
+                payload={{
+                  country: countryCode,
+                  kind: vehicle === "van" ? "group" : pickup.kind === "airport" || destination.kind === "airport" ? "airport" : "taxi",
+                  from: islandName, to: islandName, pickup: pickup.name, dropoff: destination.name,
+                  travel_at: when === "later" && at ? new Date(at).toISOString() : null,
+                  passengers, details: notes || null,
+                }}
+              />
+            )}
+            {requestInApp && available.length > 0 && <p className="mt-5 text-sm font-semibold text-ink">Or contact an operator directly</p>}
             {available.length ? (
               <ul className="mt-5 grid gap-3">
                 {available.map((o) => (

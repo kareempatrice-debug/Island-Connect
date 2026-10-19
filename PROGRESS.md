@@ -1,5 +1,16 @@
 # Progress
 
+## Increment 13 (19 October 2026): Stage 3, in-app trips
+
+- **Operators:** transport businesses apply from their dashboard's **Trips** tab (kinds of trip, licence, vehicles, insurance); admins approve at `/admin/operators`.
+- **Requests:** the taxi flow and the boat, haulage and freight quote flows now offer **Send request through Island Connect** (when signed in). The customer's phone number is stored separately and revealed only to the operator whose quote they accept. Limit 8 requests a day.
+- **Quotes and booking:** approved operators covering that country and kind of trip see open requests (they can't see other operators' prices), send a price with what's included and how long it's valid. The customer compares on `/[country]/trips/[id]` and accepts one; the others are declined. Customers can cancel.
+- **Completion and ledger:** the operator marks the trip completed, which writes a `commission_ledger` row at the rate in `platform_settings.commission_rate` (0 at launch). Admin sees monthly totals. No payments go through the platform.
+- **Email alerts:** new request → eligible operators (bcc), new quote → customer, booking → operator.
+- **Founder label:** admin-only `founder_owned` flag, shown as “Founder’s business” on listings and quotes.
+- Migration `20261019000007_trips.sql`. Tests: 72 passing (the full trip flow, visibility rules and phone privacy are covered).
+- Not yet: live driver location, on-demand dispatch to a single nearest driver, in-app payments.
+
 ## Increment 12 (19 October 2026): business photos
 
 - Owners of claimed listings get a **Photos** tab in their dashboard: cover photo, logo and a gallery of up to 10. Photos are resized in the browser before upload (cover 1920 px, gallery 1600 px, logo 512 px; WebP, JPEG fallback), so phone photos upload quickly on mobile data.
