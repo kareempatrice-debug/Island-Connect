@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { z } from "zod";
 import type { FormState } from "@/app/auth-actions";
 import { getCountry } from "@/lib/data";
@@ -11,7 +11,11 @@ import { supabaseForRequest } from "@/lib/supabase/server";
 /* All writes run as the signed-in user; Row Level Security decides what they may change. */
 
 const base = z.object({ country: z.string().regex(/^[a-z]{2}$/), businessId: z.string().uuid(), slug: z.string() });
-const done = (country: string, slug: string) => revalidatePath(`/${country}/dashboard/${slug}`);
+const done = (country: string, slug: string) => {
+  revalidatePath(`/${country}/dashboard/${slug}`);
+  revalidatePath(`/${country}/business/${slug}`);
+  revalidateTag("listings"); // owner edits show on the public site straight away
+};
 
 const profile = base.extend({
   tagline: z.string().trim().max(160),
@@ -154,7 +158,9 @@ export async function savePhotoAction(input: PhotoInput): Promise<{ error?: stri
   }
   if (replaced && pathBelongsTo(businessId, replaced)) await supabase.storage.from(MEDIA_BUCKET).remove([replaced]);
   revalidatePath(`/${country}/business/${slug}`);
+  revalidateTag("listings");
   revalidatePath(`/${country}/dashboard/${slug}`);
+  revalidateTag("listings");
   return {};
 }
 
@@ -171,6 +177,8 @@ export async function removePhotoAction(input: PhotoInput): Promise<{ error?: st
   if (error || !saved?.length) return { error: "That photo couldn’t be removed." };
   await supabase.storage.from(MEDIA_BUCKET).remove([path]);
   revalidatePath(`/${country}/business/${slug}`);
+  revalidateTag("listings");
   revalidatePath(`/${country}/dashboard/${slug}`);
+  revalidateTag("listings");
   return {};
 }

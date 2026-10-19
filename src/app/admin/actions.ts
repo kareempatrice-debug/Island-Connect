@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import type { FormState } from "@/app/auth-actions";
@@ -9,24 +9,36 @@ import { getCountry } from "@/lib/data";
 import { toE164 } from "@/lib/phone";
 import { supabaseForRequest } from "@/lib/supabase/server";
 
-const review = z.object({ id: z.string().uuid(), decision: z.enum(["approve", "reject"]), note: z.string().trim().max(1000) });
+const review = z.object({ id: z.string().uuid(), decision: z.enum(["approve", "reject"]), note: z.string().trim().max(1000).optional().default("") });
 
 export async function reviewBusinessAction(form: FormData) {
   await requireAdmin();
-  const d = review.parse(Object.fromEntries(form));
+  const parsed = review.safeParse(Object.fromEntries(form));
+  if (!parsed.success) redirect(`/admin?error=${encodeURIComponent(parsed.error.issues[0].message)}`);
+  const d = parsed.data;
   const supabase = await supabaseForRequest();
   const { error } = await supabase.rpc("admin_review_business", { p_business: d.id, p_approve: d.decision === "approve", p_note: d.note || null });
-  if (error) throw new Error(error.message);
   revalidatePath("/admin");
+  revalidateTag("listings");
+  revalidatePath("/", "layout");
+  revalidateTag("listings");
+  // Never crash the page: show what happened instead.
+  redirect(`/admin?${error ? `error=${encodeURIComponent(error.message)}` : `done=${d.decision === "approve" ? "approved" : "declined"}`}`);
 }
 
 export async function reviewClaimAction(form: FormData) {
   await requireAdmin();
-  const d = review.parse(Object.fromEntries(form));
+  const parsed = review.safeParse(Object.fromEntries(form));
+  if (!parsed.success) redirect(`/admin?error=${encodeURIComponent(parsed.error.issues[0].message)}`);
+  const d = parsed.data;
   const supabase = await supabaseForRequest();
   const { error } = await supabase.rpc("admin_review_claim", { p_claim: d.id, p_approve: d.decision === "approve", p_note: d.note || null });
-  if (error) throw new Error(error.message);
   revalidatePath("/admin");
+  revalidateTag("listings");
+  revalidatePath("/", "layout");
+  revalidateTag("listings");
+  // Never crash the page: show what happened instead.
+  redirect(`/admin?${error ? `error=${encodeURIComponent(error.message)}` : `done=${d.decision === "approve" ? "approved" : "declined"}`}`);
 }
 
 const slug = z.string().regex(/^[a-z0-9-]{1,60}$/);
@@ -98,6 +110,7 @@ export async function editListingAction(_: FormState, form: FormData): Promise<F
   const { error } = await supabase.rpc("admin_edit_business", { p_business: id, p: { ...d, phone: phone ?? "", whatsapp: whatsapp ?? "" } });
   if (error) return { error: error.message };
   revalidatePath("/", "layout");
+  revalidateTag("listings");
   return { message: "Saved. The listing is updated on the site." };
 }
 
@@ -109,6 +122,7 @@ export async function setListingStatusAction(form: FormData) {
   const supabase = await supabaseForRequest();
   const { error } = await supabase.rpc("admin_set_listing_status", { p_business: d.id, p_status: d.status, p_note: null });
   revalidatePath("/", "layout");
+  revalidateTag("listings");
   const sep = d.back.includes("?") ? "&" : "?";
   redirect(`${d.back}${sep}${error ? `error=${encodeURIComponent(error.message)}` : `done=${d.status}`}`);
 }
@@ -123,5 +137,18 @@ export async function deleteListingAction(_: FormState, form: FormData): Promise
   const { error } = await supabase.rpc("admin_delete_business", { p_business: parsed.data.id, p_reason: parsed.data.reason || null });
   if (error) return { error: error.message };
   revalidatePath("/", "layout");
+  revalidateTag("listings");
   redirect("/admin/listings?done=deleted");
+}
+
+/* ---------- Hand a listing to its owner's account ---------- */
+export async function assignOwnerAction(form: FormData) {
+  await requireAdmin();
+  const d = z.object({ id: z.string().uuid(), email: z.string().trim().email("Enter the owner’s email address") }).safeParse(Object.fromEntries(form));
+  const id = String(form.get("id"));
+  if (!d.success) redirect(`/admin/listings/${id}?error=${encodeURIComponent(d.error.issues[0].message)}#owner`);
+  const supabase = await supabaseForRequest();
+  const { error } = await supabase.rpc("admin_assign_owner", { p_business: d.data.id, p_email: d.data.email });
+  revalidateTag("listings");
+  redirect(`/admin/listings/${id}?${error ? `error=${encodeURIComponent(error.message)}` : "done=owner"}#owner`);
 }

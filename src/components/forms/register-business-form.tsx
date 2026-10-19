@@ -36,6 +36,8 @@ const label = "mb-1.5 block text-sm font-semibold text-ink";
 
 export function RegisterBusinessForm({ country, groups, islands, districts }: Props) {
   const [state, action, pending] = useActionState(registerBusinessAction, {});
+  const [kind, setKind] = useState<"business" | "individual">("business");
+  const individual = kind === "individual";
   const [chosen, setChosen] = useState<string[]>([]);
   const [island, setIsland] = useState(islands[0]?.slug ?? "");
   const toggle = (slug: string) =>
@@ -45,9 +47,25 @@ export function RegisterBusinessForm({ country, groups, islands, districts }: Pr
   return (
     <form action={action} className="space-y-5">
       <input type="hidden" name="country" value={country.code} />
+      <input type="hidden" name="providerType" value={kind} />
+      <fieldset>
+        <legend className={label}>Who are you listing?</legend>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {([
+            ["business", "A business", "A shop, company, hotel, restaurant or other business."],
+            ["individual", "Myself", "A self-employed tradesperson or professional, such as a carpenter, plumber, hairdresser or tutor."],
+          ] as const).map(([k, title, text]) => (
+            <button key={k} type="button" aria-pressed={kind === k} onClick={() => setKind(k)}
+              className={`rounded-2xl p-4 text-left transition ${kind === k ? "border-2 border-primary bg-primary/10" : "border border-line bg-raised"}`}>
+              <span className="block font-semibold text-ink">{title}</span>
+              <span className="mt-1 block text-sm">{text}</span>
+            </button>
+          ))}
+        </div>
+      </fieldset>
 
       <Step n={1} title="Your business">
-        <label className="block"><span className={label}>Business name</span>
+        <label className="block"><span className={label}>{individual ? "Your name, or the name you trade under" : "Business name"}</span>
           <input name="name" required maxLength={120} className={input} /></label>
         <div>
           <p className={label}>What do you do? <span className="font-normal text-muted">Choose up to three ({chosen.length}/3)</span></p>
@@ -84,8 +102,8 @@ export function RegisterBusinessForm({ country, groups, islands, districts }: Pr
               {islandDistricts.map((d) => <option key={d.slug} value={d.slug}>{d.name}</option>)}
             </select></label>
         </div>
-        <label className="block"><span className={label}>How do customers find you?</span>
-          <input name="landmark" maxLength={160} placeholder="e.g. Opposite the fish market, blue building" className={input} /></label>
+        <label className="block"><span className={label}>{individual ? "Where are you based? (optional)" : "How do customers find you?"}</span>
+          <input name="landmark" maxLength={160} placeholder={individual ? "e.g. Gouyave, works all over St. John and St. Mark" : "e.g. Opposite the fish market, blue building"} className={input} /></label>
       </Step>
 
       <Step n={3} title="How customers reach you">
@@ -102,7 +120,7 @@ export function RegisterBusinessForm({ country, groups, islands, districts }: Pr
         <label className="block"><span className={label}>One-line summary</span>
           <input name="tagline" maxLength={160} placeholder="e.g. Domestic and commercial wiring and repairs" className={input} /></label>
         <label className="block"><span className={label}>Description</span>
-          <textarea name="description" maxLength={4000} rows={5} className={`${input} h-auto py-3`} placeholder="What you offer, your experience, areas you cover." /></label>
+          <textarea name="description" maxLength={4000} rows={5} className={`${input} h-auto py-3`} placeholder={individual ? "Your trade, your experience, the kind of jobs you take on and the areas you cover." : "What you offer, your experience, areas you cover."} /></label>
         <div>
           <p className={label}>Payments you accept</p>
           <div className="flex flex-wrap gap-2">

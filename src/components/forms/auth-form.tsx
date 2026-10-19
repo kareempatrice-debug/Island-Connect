@@ -20,7 +20,7 @@ const demoAction: Action = async () => ({
 
 const ROLES = [
   { id: "customer", label: "Find services", cta: "Create account", note: "Free. Save places, message businesses and request rides." },
-  { id: "business", label: "List a business", cta: "Create account and add my business", note: "Free listing. We review each business before it goes live." },
+  { id: "business", label: "List my business or services", cta: "Create account and add my listing", note: "Free for businesses and self-employed people. We review each listing before it goes live." },
   { id: "operator", label: "Drive or haul", cta: "Create account and apply to operate", note: "Taxi, boat and freight operators send licence and vehicle details for approval." },
 ] as const;
 

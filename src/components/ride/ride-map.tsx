@@ -31,7 +31,9 @@ export function RideMap({
   pickup,
   destination,
   onPick,
+  road,
 }: {
+  road?: [number, number][] | null;
   coastline: [number, number][];
   landmarks: Landmark[];
   pickup: Landmark | null;
@@ -53,11 +55,14 @@ export function RideMap({
   // Frame the whole island, or zoom to the trip once both ends are chosen (as ride apps do).
   let box = { x0: 0, y0: 0, x1: W + pad * 2, y1: H + pad * 2 };
   if (pickup && destination && pickup.id !== destination.id) {
-    const xs = [x(pickup.lng), x(destination.lng)];
-    const ys = [y(pickup.lat), y(destination.lat)];
-    const cx = (xs[0] + xs[1]) / 2;
-    const cy = (ys[0] + ys[1]) / 2;
-    const span = Math.max(Math.abs(xs[1] - xs[0]), Math.abs(ys[1] - ys[0])) * 1.5 + 260;
+    // Fit the whole road route, not just the two ends.
+    const pts = road?.length ? road : [[pickup.lng, pickup.lat], [destination.lng, destination.lat]];
+    const xs = pts.map(([lng]) => x(lng));
+    const ys = pts.map(([, lat]) => y(lat));
+    const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+    const cx = (x0 + x1) / 2;
+    const cy = (y0 + y1) / 2;
+    const span = Math.max(x1 - x0, y1 - y0) * 1.25 + 220;
     box = { x0: cx - span / 2, y0: cy - span / 2, x1: cx + span / 2, y1: cy + span / 2 };
   }
   const vbW = box.x1 - box.x0;
@@ -65,7 +70,11 @@ export function RideMap({
   const u = Math.max(vbW, box.y1 - box.y0) / 100; // one hundredth of the view, so markers keep their size when zoomed
 
   let route: string | null = null;
-  if (pickup && destination && pickup.id !== destination.id) {
+  if (pickup && destination && pickup.id !== destination.id && road?.length) {
+    // Follow the roads (OpenStreetMap route), from the exact pickup point to the exact destination.
+    const pts: [number, number][] = [[pickup.lng, pickup.lat], ...road, [destination.lng, destination.lat]];
+    route = pts.map(([lng, lat], i) => `${i ? "L" : "M"}${x(lng).toFixed(1)},${y(lat).toFixed(1)}`).join(" ");
+  } else if (pickup && destination && pickup.id !== destination.id) {
     const [x1, y1, x2, y2] = [x(pickup.lng), y(pickup.lat), x(destination.lng), y(destination.lat)];
     const [mx, my] = [(x1 + x2) / 2, (y1 + y2) / 2];
     const [dx, dy] = [x2 - x1, y2 - y1];
@@ -82,7 +91,14 @@ export function RideMap({
       </defs>
       <rect x={-20000} y={-20000} width={40000} height={40000} fill="url(#ride-water)" />
       <path d={land} className="fill-[#E4EDE6] stroke-[#C9D9CE] dark:fill-[#1D3A3B] dark:stroke-[#2A4F4F]" strokeWidth={u * 0.35} />
-      {route && <path d={route} fill="none" className="stroke-ink" strokeWidth={u * 0.9} strokeLinecap="round" strokeDasharray={`0.1 ${u * 2.2}`} />}
+      {route && road?.length ? (
+        <>
+          <path d={route} fill="none" className="stroke-white dark:stroke-[#0E2A2E]" strokeWidth={u * 1.8} strokeLinecap="round" strokeLinejoin="round" />
+          <path d={route} fill="none" className="stroke-primary" strokeWidth={u * 0.95} strokeLinecap="round" strokeLinejoin="round" />
+        </>
+      ) : route ? (
+        <path d={route} fill="none" className="stroke-ink" strokeWidth={u * 0.9} strokeLinecap="round" strokeDasharray={`0.1 ${u * 2.2}`} />
+      ) : null}
       {landmarks.map((l) => {
         const isPick = pickup?.id === l.id;
         const isDest = destination?.id === l.id;

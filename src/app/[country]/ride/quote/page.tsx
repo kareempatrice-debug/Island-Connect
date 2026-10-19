@@ -2,7 +2,7 @@ import { createTripRequestAction } from "@/app/trip-actions";
 import { isSupabaseConfigured } from "@/lib/data";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { QuoteRequest, type QuoteOperator, type QuotePlace } from "@/components/ride/quote-request";
 import { Container } from "@/components/ui";
 import { businessCountries, data, getCountries, getCountry } from "@/lib/data";
@@ -18,7 +18,9 @@ export default async function QuotePage({
   searchParams: Promise<{ type?: string }>;
 }) {
   const [{ country: code }, sp] = await Promise.all([params, searchParams]);
-  const kind = (["boat", "haulage", "freight"] as const).find((k) => k === sp.type);
+  // Freight is now part of trucking and haulage; keep old links working.
+  if (sp.type === "freight") redirect(`/${code}/ride/quote?type=haulage`);
+  const kind = (["boat", "haulage"] as const).find((k) => k === sp.type);
   if (!kind) notFound();
   const [country, countries] = await Promise.all([getCountry(code), getCountries()]);
 

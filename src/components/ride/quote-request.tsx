@@ -60,9 +60,9 @@ export function QuoteRequest({
   defaultTo: string;
   requestInApp?: RequestInApp;
 }) {
-  const sameIsland = kind === "haulage";
+  const domestic = kind === "haulage"; // trucking stays within the country, on one island or between its islands
   const [from, setFrom] = useState(defaultFrom);
-  const [to, setTo] = useState(sameIsland ? defaultFrom : defaultTo);
+  const [to, setTo] = useState(domestic ? defaultFrom : defaultTo);
   const [pickup, setPickup] = useState("");
   const [dropoff, setDropoff] = useState("");
   const [cargo, setCargo] = useState(CARGO[0]);
@@ -80,21 +80,21 @@ export function QuoteRequest({
 
   const place = (k: string) => places.find((p) => p.key === k);
   const fromPlace = place(from);
-  const toPlace = place(sameIsland ? from : to);
-  const crossBorder = !sameIsland && fromPlace && toPlace && fromPlace.countryCode !== toPlace.countryCode;
+  const toPlace = place(to);
+  const crossBorder = !domestic && fromPlace && toPlace && fromPlace.countryCode !== toPlace.countryCode;
   const homePlaces = places.filter((p) => p.countryCode === countryCode);
 
   const matching = useMemo(
     () =>
       operators
-        .filter((o) => o.areas.includes(from) || o.areas.includes(sameIsland ? from : to))
+        .filter((o) => o.areas.includes(from) || o.areas.includes(to))
         .sort((a, b) => Number(a.isDemo) - Number(b.isDemo) || Number(b.verified) - Number(a.verified)),
-    [operators, from, to, sameIsland],
+    [operators, from, to],
   );
 
   function validate() {
     const e: Record<string, string> = {};
-    if (!sameIsland && from === to) e.to = "Choose a different destination.";
+    if (!domestic && from === to) e.to = "Choose a different destination.";
     if (!pickup.trim()) e.pickup = kind === "boat" ? "Say where you’ll board." : "Say where to collect from.";
     if (!dropoff.trim()) e.dropoff = kind === "boat" ? "Say where you’re going." : "Say where to deliver to.";
     if (kind !== "boat" && load.trim().length < 5) e.load = "Describe the load so operators can price it.";
@@ -110,7 +110,7 @@ export function QuoteRequest({
 
   const message = [
     `Hello, I’d like a quote via Island Connect: ${TITLES[kind].title.toLowerCase()}.`,
-    sameIsland ? `Island: ${fromPlace?.name}` : `Route: ${fromPlace?.name} to ${toPlace?.name}`,
+    from === to ? `Island: ${fromPlace?.name}` : `Route: ${fromPlace?.name} to ${toPlace?.name}`,
     `${kind === "boat" ? "Boarding" : "Collect from"}: ${pickup}`,
     `${kind === "boat" ? "Going to" : "Deliver to"}: ${dropoff}`,
     kind === "boat" ? `Passengers: ${passengers}` : `Load: ${cargo}. ${load}`,
@@ -136,8 +136,8 @@ export function QuoteRequest({
           <p className="mt-1">Operators covering this route. Your request is written out for you; each operator replies with their own price.</p>
         </div>
         <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 rounded-card bg-sunken p-4 text-[0.95rem]">
-          <dt>{sameIsland ? "Island" : "Route"}</dt>
-          <dd className="font-semibold text-ink">{sameIsland ? fromPlace?.name : `${fromPlace?.name} to ${toPlace?.name}`}</dd>
+          <dt>{from === to ? "Island" : "Route"}</dt>
+          <dd className="font-semibold text-ink">{from === to ? fromPlace?.name : `${fromPlace?.name} to ${toPlace?.name}`}</dd>
           <dt>{kind === "boat" ? "Trip" : "Load"}</dt>
           <dd className="font-semibold text-ink">{kind === "boat" ? `${passengers} passenger${passengers > 1 ? "s" : ""}` : `${cargo}${loadingHelp ? ", with loading help" : ""}`}</dd>
           <dt>Date</dt>
@@ -223,18 +223,16 @@ export function QuoteRequest({
       className="space-y-4"
     >
       <section className={panel} aria-labelledby="route-heading">
-        <h2 id="route-heading" className="text-lg font-bold">{sameIsland ? "Where" : "Route"}</h2>
+        <h2 id="route-heading" className="text-lg font-bold">Route</h2>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          <label className="block"><span className={label}>{sameIsland ? "Island" : "From"}</span>
-            <select value={from} onChange={(e) => { setFrom(e.target.value); if (e.target.value === to) setTo(places.find((p) => p.key !== e.target.value)!.key); }} className={field}>
-              {(sameIsland ? homePlaces : places).map((p) => <option key={p.key} value={p.key}>{p.name}{p.countryCode !== countryCode ? ` (${p.countryName})` : ""}</option>)}
+          <label className="block"><span className={label}>From</span>
+            <select value={from} onChange={(e) => { setFrom(e.target.value); if (!domestic && e.target.value === to) setTo(places.find((p) => p.key !== e.target.value)!.key); }} className={field}>
+              {(domestic ? homePlaces : places).map((p) => <option key={p.key} value={p.key}>{p.name}{p.countryCode !== countryCode ? ` (${p.countryName})` : ""}</option>)}
             </select></label>
-          {!sameIsland && (
-            <label className="block"><span className={label}>To</span>
-              <select value={to} onChange={(e) => { setTo(e.target.value); setErrors((x) => ({ ...x, to: "" })); }} className={field} aria-invalid={Boolean(errors.to)}>
-                {places.filter((p) => p.key !== from).map((p) => <option key={p.key} value={p.key}>{p.name}{p.countryCode !== countryCode ? ` (${p.countryName})` : ""}</option>)}
-              </select>{err("to")}</label>
-          )}
+          <label className="block"><span className={label}>To</span>
+            <select value={to} onChange={(e) => { setTo(e.target.value); setErrors((x) => ({ ...x, to: "" })); }} className={field} aria-invalid={Boolean(errors.to)}>
+              {(domestic ? homePlaces : places.filter((p) => p.key !== from)).map((p) => <option key={p.key} value={p.key}>{p.name}{p.countryCode !== countryCode ? ` (${p.countryName})` : ""}{domestic && p.key === from ? " (same island)" : ""}</option>)}
+            </select>{err("to")}</label>
         </div>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <label className="block"><span className={label}>{kind === "boat" ? "Boarding point" : "Collect from"}</span>

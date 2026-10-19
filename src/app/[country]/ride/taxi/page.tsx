@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { RideBooker, type RideOperator } from "@/components/ride/ride-booker";
 import { coastlines } from "@/data/coastlines";
 import { landmarks } from "@/data/landmarks";
+import roadRoutes from "@/data/road-routes.json";
 import { data, getCountry } from "@/lib/data";
 
 export const metadata: Metadata = { title: "Book a taxi" };
@@ -55,6 +56,7 @@ export default async function RidePage({
         islands={rideIslands}
         landmarks={points}
         coastlines={Object.fromEntries(rideIslands.map((i) => [i.slug, coastlines[i.slug]]))}
+        routes={Object.fromEntries(Object.entries(roadRoutes as unknown as Record<string, { km: number; min: number; path: [number, number][] }>).filter(([k]) => points.some((p) => p.id === k.split("|")[0])))}
         operators={operators}
         initialVehicle={sp.vehicle === "van" ? "van" : "car"}
         startAtAirport={sp.from === "airport"}

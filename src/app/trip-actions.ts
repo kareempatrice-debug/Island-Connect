@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import type { FormState } from "@/app/auth-actions";
@@ -60,6 +60,7 @@ export async function acceptQuoteAction(form: FormData) {
   const { error } = await supabase.rpc("accept_trip_quote", { p_quote: d.id });
   if (!error) await notifyOperatorOfBooking(d.id);
   revalidatePath(`/${d.country}/trips/${d.trip}`);
+  revalidateTag("listings");
   redirect(`/${d.country}/trips/${d.trip}${error ? `?error=${encodeURIComponent(error.message)}` : "?booked=1"}`);
 }
 
@@ -68,6 +69,7 @@ export async function cancelTripAction(form: FormData) {
   const supabase = await supabaseForRequest();
   const { error } = await supabase.rpc("cancel_trip_request", { p_request: d.id });
   revalidatePath(`/${d.country}/trips`);
+  revalidateTag("listings");
   redirect(`/${d.country}/trips/${d.id}${error ? `?error=${encodeURIComponent(error.message)}` : ""}`);
 }
 
@@ -92,6 +94,7 @@ export async function applyOperatorAction(_: FormState, form: FormData): Promise
   const { error } = await supabase.rpc("apply_operator", { p_business: d.businessId, p: { kinds, licence: d.licence, vehicles: d.vehicles, insurance: d.insurance } });
   if (error) return { error: error.message };
   revalidatePath(`/${d.country}/dashboard/${d.slug}`);
+  revalidateTag("listings");
   return { message: "Application sent. We’ll check your details and email you when you’re approved." };
 }
 
@@ -109,6 +112,7 @@ export async function sendQuoteAction(form: FormData) {
   const { data, error } = await supabase.rpc("send_trip_quote", { p_request: d.request, p_business: d.businessId, p_amount: d.amount, p_includes: d.includes, p_valid_hours: d.hours });
   if (!error) await notifyCustomerOfQuote(String(data));
   revalidatePath(back);
+  revalidateTag("listings");
   redirect(`${back}&${error ? `error=${encodeURIComponent(error.message)}` : "quoted=1"}`);
 }
 
@@ -118,6 +122,7 @@ export async function completeTripAction(form: FormData) {
   const { error } = await supabase.rpc("complete_trip", { p_request: d.id });
   const back = `/${d.country}/dashboard/${d.slug}?tab=trips`;
   revalidatePath(back);
+  revalidateTag("listings");
   redirect(`${back}&${error ? `error=${encodeURIComponent(error.message)}` : "completed=1"}`);
 }
 
@@ -129,6 +134,7 @@ export async function reviewOperatorAction(form: FormData) {
   const supabase = await supabaseForRequest();
   const { error } = await supabase.rpc("admin_review_operator", { p_business: d.id, p_approve: d.approve === "yes", p_note: d.note || null });
   revalidatePath("/admin/operators");
+  revalidateTag("listings");
   redirect(`/admin/operators${error ? `?error=${encodeURIComponent(error.message)}` : "?done=1"}`);
 }
 
@@ -138,5 +144,31 @@ export async function setFounderAction(form: FormData) {
   const supabase = await supabaseForRequest();
   await supabase.from("businesses").update({ founder_owned: d.value === "on" }).eq("id", d.id);
   revalidatePath("/", "layout");
+  revalidateTag("listings");
   redirect(`/admin/listings/${d.id}?done=founder`);
+}
+
+const setOp = z.object({ id: z.string().uuid(), note: z.string().trim().max(300).optional() });
+
+/** Admin: make a listing a transport operator directly (or change its trip types). */
+export async function adminSetOperatorAction(form: FormData) {
+  await requireAdmin();
+  const d = setOp.parse(Object.fromEntries(form));
+  const kinds = form.getAll("kinds").map(String).filter((k) => (KINDS as readonly string[]).includes(k));
+  const back = `/admin/listings/${d.id}`;
+  if (!kinds.length) redirect(`${back}?error=${encodeURIComponent("Choose at least one kind of trip")}#operator`);
+  const supabase = await supabaseForRequest();
+  const { error } = await supabase.rpc("admin_set_operator", { p_business: d.id, p_kinds: kinds, p_note: d.note || null });
+  revalidatePath("/admin/operators");
+  redirect(`${back}?${error ? `error=${encodeURIComponent(error.message)}` : "done=operator"}#operator`);
+}
+
+/** Admin: stop a listing receiving trip requests. */
+export async function adminRemoveOperatorAction(form: FormData) {
+  await requireAdmin();
+  const d = setOp.parse(Object.fromEntries(form));
+  const supabase = await supabaseForRequest();
+  const { error } = await supabase.rpc("admin_review_operator", { p_business: d.id, p_approve: false, p_note: "Withdrawn by admin" });
+  revalidatePath("/admin/operators");
+  redirect(`/admin/listings/${d.id}?${error ? `error=${encodeURIComponent(error.message)}` : "done=operator-removed"}#operator`);
 }

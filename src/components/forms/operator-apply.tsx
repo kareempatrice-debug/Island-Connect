@@ -5,7 +5,7 @@ import { applyOperatorAction } from "@/app/trip-actions";
 
 const KINDS = [
   ["taxi", "Taxi"], ["airport", "Airport transfers"], ["group", "Minivan and groups"],
-  ["boat", "Boat and water taxi"], ["haulage", "Trucking and haulage"], ["freight", "Freight between islands"],
+  ["boat", "Boat and water taxi"], ["haulage", "Trucking and haulage (including between islands)"],
 ] as const;
 const field = "w-full rounded-xl border border-line bg-raised px-3.5 py-2.5 text-ink focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/15";
 

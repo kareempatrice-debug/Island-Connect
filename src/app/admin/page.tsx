@@ -14,9 +14,10 @@ function ReviewButtons({ id, action }: { id: string; action: (f: FormData) => Pr
   );
 }
 
-export default async function AdminHome() {
+export default async function AdminHome({ searchParams }: { searchParams: Promise<{ error?: string; done?: string }> }) {
+  const sp = await searchParams;
   const supabase = await supabaseForRequest();
-  const [{ data: pending }, { data: claims }, { count: live }, { count: unclaimed }] = await Promise.all([
+  const [{ data: pending }, { data: claims }, { count: live }, { count: unclaimed }, { count: opApps }] = await Promise.all([
     supabase.from("businesses")
       .select("id, slug, name, tagline, phone_e164, whatsapp_e164, email, website, created_at, claim_status, source_url, source_note, source_checked_at, business_locations ( country_code, landmark, islands ( name ), districts ( name ) ), business_categories ( categories ( name ) ), business_members ( user_id )")
       .eq("listing_status", "pending_review").order("created_at"),
@@ -25,11 +26,22 @@ export default async function AdminHome() {
       .eq("status", "pending").order("created_at"),
     supabase.from("businesses").select("id", { count: "exact", head: true }).eq("listing_status", "published").eq("is_demo", false),
     supabase.from("businesses").select("id", { count: "exact", head: true }).eq("claim_status", "unclaimed").eq("is_demo", false),
+    supabase.from("operator_profiles").select("business_id", { count: "exact", head: true }).eq("status", "pending"),
   ]);
 
   const stat = "rounded-2xl bg-raised p-5 ring-1 ring-line/60";
   return (
     <div className="mt-4 space-y-10">
+      <form action="/admin/listings" className="flex gap-2" role="search">
+        <label htmlFor="admin-q" className="sr-only">Find any business</label>
+        <input id="admin-q" name="q" placeholder="Find any business by name" className="h-11 min-w-0 flex-1 rounded-lg border border-line bg-raised px-3" />
+        <button className="h-11 rounded-lg bg-primary px-4 font-semibold text-primary-ink">Find</button>
+      </form>
+      {(opApps ?? 0) > 0 && (
+        <Link href="/admin/operators" className="block rounded-2xl bg-gold/20 p-4 font-semibold text-ink">
+          {opApps} transport operator application{opApps === 1 ? "" : "s"} waiting: review them on the Operators page →
+        </Link>
+      )}
       <div className="grid gap-3 sm:grid-cols-4">
         <div className={stat}><p className="text-sm">Live listings</p><p className="font-display text-3xl font-semibold text-ink">{live ?? 0}</p></div>
         <div className={stat}><p className="text-sm">Unclaimed (from research)</p><p className="font-display text-3xl font-semibold text-ink">{unclaimed ?? 0}</p></div>
@@ -37,6 +49,8 @@ export default async function AdminHome() {
         <div className={stat}><p className="text-sm">Claims to review</p><p className="font-display text-3xl font-semibold text-ink">{claims?.length ?? 0}</p></div>
       </div>
 
+      {sp.error && <p role="alert" className="mb-4 rounded-lg bg-danger/10 px-3 py-2 text-sm font-medium text-danger">That didn’t go through: {sp.error}</p>}
+      {sp.done && <p role="status" className="mb-4 rounded-lg bg-success/10 px-3 py-2 text-sm font-medium text-success">{sp.done === "approved" ? "Approved. It’s now live on the site." : "Declined."}</p>}
       <section aria-labelledby="reg-heading">
         <h1 id="reg-heading" className="text-2xl font-semibold">New registrations</h1>
         {pending?.length ? (

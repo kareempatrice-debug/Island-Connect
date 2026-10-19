@@ -32,6 +32,16 @@ export const photos: Record<string, Photo> = {
     license: "Supplied by Island Connect",
     focus: "50% 55%",
   },
+  "st-georges-sailboat": {
+    key: "st-georges-sailboat",
+    src: "/images/places/st-georges-sailboat.jpg",
+    alt: "A red-hulled sailing boat heading out of St. George’s harbour, with the town’s waterfront houses climbing the hill behind",
+    place: "St. George’s, Grenada",
+    countryCode: "gd",
+    author: "Island Connect",
+    license: "Supplied by Island Connect",
+    focus: "40% 55%",
+  },
   "grenada-beach-aerial": {
     key: "grenada-beach-aerial",
     src: "/images/places/grenada-beach-aerial.jpg",
@@ -212,7 +222,7 @@ export const photos: Record<string, Photo> = {
 /** Per-country imagery for each part of the site. */
 export const countryImagery: Record<string, { hero: string; guides: Record<string, string>; picker: string }> = {
   gd: {
-    hero: "st-georges-bay",
+    hero: "grenada-beach",
     picker: "grenada-beach-aerial",
     guides: { "returning-home": "mbia-arrivals", "property-investment": "grenada-villa", "start-a-business": "opening-soon-shop" },
   },

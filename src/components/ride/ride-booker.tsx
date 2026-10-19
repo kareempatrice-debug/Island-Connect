@@ -1,6 +1,7 @@
 "use client";
 
 import { InAppRequest, type RequestInApp } from "./in-app-request";
+import { officialFare } from "@/data/fares";
 import { ArrowDownUp, ArrowLeft, BadgeCheck, CarFront, Clock, FlaskConical, Info, MessageCircle, Minus, Phone, Plus, Users, Bus } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -39,7 +40,9 @@ export function RideBooker({
   initialVehicle = "car",
   startAtAirport = false,
   requestInApp,
+  routes = {},
 }: {
+  routes?: Record<string, { km: number; min: number; path: [number, number][] }>;
   countryCode: string;
   countryName: string;
   islands: { slug: string; name: string }[];
@@ -71,6 +74,10 @@ export function RideBooker({
   const pickup = here.find((l) => l.id === pickupId) ?? null;
   const destination = here.find((l) => l.id === destId) ?? null;
   const islandName = islands.find((i) => i.slug === island)?.name ?? "";
+  const road = pickup && destination && pickup.id !== destination.id ? routes[[pickup.id, destination.id].sort().join("|")] ?? null : null;
+  // Stored routes run from the alphabetically first point; reverse when travelling the other way.
+  const roadPath = road ? (pickup!.id < destination!.id ? road.path : [...road.path].reverse()) : null;
+  const fare = pickup && destination && pickup.id !== destination.id ? officialFare(pickup, destination) : null;
   const available = operators.filter((o) => o.islands.includes(island));
   const ready = pickup && destination && pickup.id !== destination.id && (when === "now" || at);
 
@@ -120,11 +127,11 @@ export function RideBooker({
         {/* Inset at the bottom on phones so no point sits under the overlapping sheet. */}
         <div className="absolute inset-x-0 bottom-8 top-2 lg:bottom-0 lg:top-0">
           {coastlines[island] ? (
-            <RideMap coastline={coastlines[island]} landmarks={here} pickup={pickup} destination={destination} onPick={pickFromMap} />
+            <RideMap coastline={coastlines[island]} landmarks={here} pickup={pickup} destination={destination} onPick={pickFromMap} road={roadPath} />
           ) : null}
         </div>
         <p className="pointer-events-none absolute left-3 top-3 rounded-full bg-raised/90 px-3 py-1 text-[0.72rem] text-muted shadow-sm lg:bottom-3 lg:top-auto">
-          Tap a point to choose it. Coastline © OpenStreetMap contributors
+          Tap a point to choose it. Map and routes © OpenStreetMap contributors
         </p>
       </div>
 
@@ -260,6 +267,16 @@ export function RideBooker({
               <dt className="text-muted">To</dt><dd className="font-semibold text-ink">{destination.name}</dd>
               <dt className="text-muted">When</dt><dd className="font-semibold text-ink">{whenText}</dd>
               <dt className="text-muted">Ride</dt><dd className="font-semibold text-ink">{VEHICLES.find((v) => v.id === vehicle)?.name}, {passengers} passenger{passengers > 1 ? "s" : ""}</dd>
+              {road && <><dt className="text-muted">Distance</dt><dd className="font-semibold text-ink">About {road.km} km by road, roughly {road.min} min</dd></>}
+              {fare && (
+                <>
+                  <dt className="text-muted">Official fare</dt>
+                  <dd className="text-ink">
+                    <span className="font-semibold">EC${fare.row.xcd}{fare.row.afterXcd ? ` (EC$${fare.row.afterXcd} after hours)` : ""}</span>
+                    <span className="block text-xs text-muted">{fare.table.basis}. Source: {fare.table.source}, {fare.table.sourceDate}.</span>
+                  </dd>
+                </>
+              )}
             </dl>
 
             {requestInApp && (

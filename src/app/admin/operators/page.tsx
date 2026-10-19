@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { reviewOperatorAction } from "@/app/trip-actions";
 import { supabaseForRequest } from "@/lib/supabase/server";
 import { TRIP_KIND_LABEL, fmtXcd } from "@/lib/trips";
@@ -6,6 +7,10 @@ import { TRIP_KIND_LABEL, fmtXcd } from "@/lib/trips";
 export default async function Operators({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const sp = await searchParams;
   const supabase = await supabaseForRequest();
+  const q = (sp.q ?? "").trim().slice(0, 80);
+  const { data: found } = q
+    ? await supabase.from("businesses").select("id, name, listing_status, business_locations ( country_code )").ilike("name", `%${q.replace(/[%_]/g, "")}%`).order("name").limit(10)
+    : { data: null };
   const [{ data: ops }, { data: ledger }, { count: openCount }] = await Promise.all([
     supabase.from("operator_profiles").select("*, businesses ( name, slug, phone_e164, business_locations ( country_code ) )").order("created_at", { ascending: false }),
     supabase.from("commission_ledger").select("fare_xcd, commission_xcd, created_at, businesses ( name )").order("created_at", { ascending: false }).limit(500),
@@ -30,6 +35,27 @@ export default async function Operators({ searchParams }: { searchParams: Promis
         <div className={card}><p className="text-sm">Completed this month</p><p className="text-2xl font-semibold text-ink">{thisMonth.length}</p>
           <p className="text-xs">Fares {fmtXcd(sum(thisMonth, "fare_xcd"))} · commission {fmtXcd(sum(thisMonth, "commission_xcd"))}</p></div>
       </div>
+
+      <section aria-labelledby="setup-h" className={card}>
+        <h2 id="setup-h" className="text-lg font-semibold">Set up an operator</h2>
+        <p className="mt-1 text-sm">Find any business, then approve it for the trips it can take. It doesn’t need to have applied first.</p>
+        <form className="mt-3 flex gap-2" role="search">
+          <label htmlFor="op-q" className="sr-only">Business name</label>
+          <input id="op-q" name="q" defaultValue={q} placeholder="Business name, e.g. Trans Island" className="h-11 min-w-0 flex-1 rounded-lg border border-line bg-raised px-3" />
+          <button className="h-11 rounded-lg bg-primary px-4 font-semibold text-primary-ink">Find</button>
+        </form>
+        {found && (
+          <ul className="mt-3 divide-y divide-line">
+            {found.map((b: any) => (
+              <li key={b.id} className="flex items-center justify-between gap-3 py-2.5">
+                <span className="min-w-0"><span className="font-semibold text-ink">{b.name}</span> <span className="text-sm">· {(b.business_locations?.[0]?.country_code ?? "").toUpperCase()} · {b.listing_status === "published" ? "live" : b.listing_status === "pending_review" ? "waiting for approval" : b.listing_status}</span></span>
+                <Link href={`/admin/listings/${b.id}#operator`} className="shrink-0 rounded-lg border border-line px-3 py-2 text-sm font-semibold text-ink">Set up</Link>
+              </li>
+            ))}
+            {!found.length && <li className="py-2.5 text-sm">No business found with that name. Check the Review queue: new registrations appear there until approved.</li>}
+          </ul>
+        )}
+      </section>
 
       <section aria-labelledby="pending-h">
         <h2 id="pending-h" className="text-xl font-semibold">Applications to review ({pending.length})</h2>

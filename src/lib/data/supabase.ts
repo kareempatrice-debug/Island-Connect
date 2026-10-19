@@ -21,7 +21,7 @@ function db(): SupabaseClient {
 }
 
 const BUSINESS_SELECT = `
-  id, slug, name, tagline, description, verification_status, is_demo, claim_status, contact_preference, external_booking_url, is_featured, founder_owned, rating_avg, rating_count,
+  id, slug, name, tagline, description, verification_status, is_demo, claim_status, contact_preference, external_booking_url, is_featured, founder_owned, provider_type, rating_avg, rating_count,
   phone_e164, whatsapp_e164, email, website, logo_path, cover_path, gallery_paths, payment_methods, cancellation_policy, created_at,
   business_categories ( is_primary, categories ( slug, name ) ),
   business_locations ( is_primary, landmark, lat, lng, country_code, islands ( slug, name ), districts ( slug, name ) ),
@@ -46,6 +46,7 @@ function toBusiness(r: any): Business {
     externalBookingUrl: r.external_booking_url ?? null,
     isFeatured: r.is_featured,
     founderOwned: Boolean(r.founder_owned),
+    providerType: r.provider_type === "individual" ? "individual" : "business",
     ratingAvg: r.rating_avg == null ? null : Number(r.rating_avg),
     ratingCount: r.rating_count,
     phone: r.phone_e164,
@@ -193,6 +194,14 @@ export const supabaseSource: DataSource = {
       results = results.filter((b) => isOpenNow(b.hours, tz));
     }
     return results;
+  },
+  async countBusinesses(country, f) {
+    const { data, error } = await db().rpc("search_businesses", {
+      p_country: country, p_query: f.q || null, p_category: f.category || null, p_island: f.island || null, p_district: f.district || null,
+      p_verified_only: Boolean(f.verifiedOnly), p_min_rating: f.minRating ?? null, p_sort: "relevance", p_limit: 500,
+    });
+    if (error) fail("Counting businesses", error);
+    return (data ?? []).length;
   },
   async getBusiness(slug) {
     const { data, error } = await db().from("businesses").select(BUSINESS_SELECT).eq("slug", slug).maybeSingle();

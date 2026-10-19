@@ -1,5 +1,14 @@
 # Progress
 
+## Increment 15 (20 October 2026): road routes, official fares, self-employed listings, favourite country
+
+- **Road-following map routes:** `scripts/build-road-routes.mts` precomputes the road route between every pair of ride points on the same island from OpenStreetMap (OSRM), stored in `src/data/road-routes.json` (124 routes). The ride map draws the route along the roads and the trip summary shows distance and approximate driving time. Re-run the script when points change.
+- **Official fares:** `src/data/fares.ts` holds the Grenada Airport Taxi Association rates (published by the GTA) and the SVG Cabinet-approved taxi fares (decision 1744, effective 1 September 2022: from Argyle International Airport and from Kingstown), each with its source. The taxi flow shows the official fare when both ends match a listed place, and `/[country]/ride/fares` lists them all. No fare is shown for places the sources don't name.
+- **Self-employed listings:** registration asks “A business” or “Myself”; individuals are labelled “Self-employed” (`provider_type`, migration `20261020000009`).
+- **Favourite country:** the site and sign-in now open on the welcome page unless a favourite country is saved (star on each country card, cookie `ic_home`).
+- **Grenada banner:** new supplied photo of a sailing boat leaving St. George’s harbour.
+- Tests: 76 passing.
+
 ## Increment 14 (20 October 2026): phone notifications for the installed app
 
 - Island Connect installs to a phone's home screen (web app manifest) and can now show **notifications**: new trip requests (operators), new quotes (customers), bookings (operators) and enquiry messages (both sides), alongside the emails.

@@ -1,12 +1,16 @@
+import { BottomNav } from "@/components/nav";
+import { navCountry } from "@/lib/nav-country";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { photos } from "@/data/photos";
 
 export const metadata: Metadata = { title: "Photo credits" };
 
-export default function Credits() {
+export default async function Credits() {
+  const country = await navCountry();
   return (
-    <main className="mx-auto max-w-3xl px-5 py-12 sm:px-8">
+    <>
+    <main className="mx-auto max-w-3xl px-5 pb-28 pt-12 sm:px-8 lg:pb-12">
       <Link href="/?choose=1" className="text-sm font-semibold text-link hover:underline">
         Island Connect
       </Link>
@@ -47,5 +51,7 @@ export default function Credits() {
         data, © OpenStreetMap contributors, available under the Open Database Licence.
       </p>
     </main>
+    <BottomNav country={country} />
+    </>
   );
 }

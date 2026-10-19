@@ -12,6 +12,8 @@ export interface DataSource {
   getDistricts(country: string): Promise<District[]>;
   getCategories(country: string): Promise<Category[]>;
   searchBusinesses(country: string, filters: SearchFilters, limit?: number): Promise<Business[]>;
+  /** How many businesses match, without loading them (cheap). */
+  countBusinesses(country: string, filters: SearchFilters): Promise<number>;
   getBusiness(slug: string): Promise<Business | null>;
   getFeatured(country: string, limit: number): Promise<Business[]>;
   getRecent(country: string, limit: number): Promise<Business[]>;

@@ -54,7 +54,10 @@ export default async function RideHub({ params }: { params: Promise<{ country: s
             <li>You choose. Nothing is booked until you agree a price with an operator.</li>
           </ol>
         </section>
-        <p className="mt-6 text-sm">
+        <p className="mt-6">
+          <Link href={`/${code}/ride/fares`} className="font-semibold text-link hover:underline">See the official taxi fares</Link>
+        </p>
+        <p className="mt-3 text-sm">
           Drive a taxi, run a boat or operate trucks?{" "}
           <Link href={`/${code}/ride/operate`} className="font-semibold text-link hover:underline">Work with Island Connect</Link>
         </p>

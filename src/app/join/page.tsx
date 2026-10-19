@@ -14,7 +14,9 @@ export default async function Join({ searchParams }: { searchParams: Promise<{ n
   const [sp, jar, countries] = await Promise.all([searchParams, cookies(), getCountries()]);
   const remembered = jar.get("ic_country")?.value;
   const country = countries.some((c) => c.code === remembered) ? remembered! : countries[0].code;
-  const next = safeNext(sp.next, `/${country}`);
+  // After signing in, go to the welcome page, or straight to a saved favourite country.
+  const favourite = jar.get("ic_home")?.value;
+  const next = safeNext(sp.next, countries.some((c) => c.code === favourite) ? `/${favourite}` : "/?choose=1");
   if (await getViewer()) redirect(next);
 
   return (

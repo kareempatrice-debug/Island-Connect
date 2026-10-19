@@ -2,7 +2,8 @@ import { cookies } from "next/headers";
 import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowRight, Briefcase, CarFront, Search } from "lucide-react";
+import { ArrowRight, Briefcase, CarFront, Search, Star } from "lucide-react";
+import { setHomeCountryAction } from "@/app/home-actions";
 import { getViewer } from "@/lib/auth";
 import { IslandChain } from "@/components/island-chain";
 import { PlacePhoto } from "@/components/photo";
@@ -30,7 +31,9 @@ const CARD: Record<string, { flag: string; title: string; islands: string; text:
 export default async function Welcome({ searchParams }: { searchParams: Promise<{ choose?: string }> }) {
   const [countries, params, jar] = await Promise.all([getCountries(), searchParams, cookies()]);
   const remembered = jar.get("ic_country")?.value;
-  if (!params.choose && remembered && countries.some((c) => c.code === remembered)) redirect(`/${remembered}`);
+  // Open straight into a country only if the person saved it as their favourite.
+  const favourite = jar.get("ic_home")?.value;
+  if (!params.choose && favourite && countries.some((c) => c.code === favourite)) redirect(`/${favourite}`);
 
   const islands = (await Promise.all(countries.map((c) => data.getIslands(c.code)))).flat();
   const viewer = isSupabaseConfigured ? await getViewer() : null;
@@ -96,6 +99,13 @@ export default async function Welcome({ searchParams }: { searchParams: Promise<
                     </span>
                   </div>
                 </Link>
+                <form action={setHomeCountryAction} className="mt-2 flex justify-end">
+                  <input type="hidden" name="country" value={favourite === c.code ? "none" : c.code} />
+                  <button className="inline-flex h-10 items-center gap-1.5 rounded-full px-3 text-sm font-semibold text-link hover:bg-sunken" aria-pressed={favourite === c.code}>
+                    <Star className={`h-4 w-4 ${favourite === c.code ? "fill-gold text-gold" : ""}`} aria-hidden="true" />
+                    {favourite === c.code ? `Favourite: opens first (tap to clear)` : `Make ${c.shortName} my favourite`}
+                  </button>
+                </form>
               </li>
             );
           })}
@@ -113,7 +123,7 @@ export default async function Welcome({ searchParams }: { searchParams: Promise<
               <ul className="grid gap-3 sm:grid-cols-3">
                 {[
                   { as: "customer", Icon: Search, title: "Find services", text: "Save places, message businesses and request rides." },
-                  { as: "business", Icon: Briefcase, title: "List a business", text: "A free listing, reviewed before it goes live." },
+                  { as: "business", Icon: Briefcase, title: "List your services", text: "For businesses and self-employed people: a free listing, reviewed before it goes live." },
                   { as: "operator", Icon: CarFront, title: "Drive or haul", text: "Taxis, boats and freight across the islands." },
                 ].map((r) => (
                   <li key={r.as}>

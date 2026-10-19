@@ -49,5 +49,8 @@ export async function registerBusinessAction(_: FormState, form: FormData): Prom
     p: { ...d, phone, whatsapp },
   });
   if (error) return { error: error.message.replace(/^.*?:\s*/, "") || "Something went wrong. Please try again." };
+  if (form.get("providerType") === "individual") {
+    await supabase.from("businesses").update({ provider_type: "individual" }).eq("slug", (data as { slug: string }).slug);
+  }
   redirect(`/${d.country}/account?registered=${encodeURIComponent((data as { slug: string }).slug)}`);
 }

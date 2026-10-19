@@ -85,6 +85,8 @@ export interface Business {
   isFeatured: boolean;
   /** Owned by Island Connect's founder: always disclosed. */
   founderOwned?: boolean;
+  /** A self-employed person rather than a business. */
+  providerType?: "business" | "individual";
   /** Unclaimed listings were added from research and can be claimed by their owner. */
   claimStatus: "claimed" | "unclaimed";
   /** How the business wants customers to get in touch. */

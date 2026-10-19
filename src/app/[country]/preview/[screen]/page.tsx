@@ -24,18 +24,18 @@ const inDays = (d: number, h = 10) => { const t = new Date(); t.setDate(t.getDat
 function sample(country: string) {
   const vc = country === "vc";
   const trip: TripView = vc
-    ? { id: "sample", kind: "freight", status: "open", pickup: "Hardware store, Kingstown", dropoff: "Building site above Tyrrel Bay", from_place: "St Vincent", to_place: "Carriacou (Grenada)", travel_at: inDays(5, 12), passengers: null, details: "Building materials. 40 bags of cement and 20 lengths of rebar, about 2 tonnes. Needs help loading and unloading. Dates flexible.", cross_border: true }
+    ? { id: "sample", kind: "haulage", status: "open", pickup: "Hardware store, Kingstown", dropoff: "Building site, Lower Bay", from_place: "St Vincent", to_place: "Bequia", travel_at: inDays(5, 12), passengers: null, details: "Building materials. 40 bags of cement and 20 lengths of rebar, about 2 tonnes. Needs help loading and unloading. Dates flexible.", cross_border: false }
     : { id: "sample", kind: "airport", status: "open", pickup: "Maurice Bishop International Airport", dropoff: "Grand Anse Beach", from_place: "Grenada", to_place: "Grenada", travel_at: inDays(2, 15), passengers: 3, details: "Flight lands 2:40pm. Two large suitcases.", cross_border: false };
   const quotes: QuoteView[] = vc
     ? [
-        { id: "q1", amount_xcd: 1450, includes: "Truck collection, sailing on Thursday’s cargo boat, delivery to site", valid_until: inDays(3), status: "offered", businesses: { name: "Kingstown Island Freight", slug: "kingstown-island-freight", phone_e164: null, whatsapp_e164: null } },
-        { id: "q2", amount_xcd: 1290, includes: "Port to port only; customs paperwork prepared", valid_until: inDays(1), status: "offered", businesses: { name: "Grenadines Link Water Taxi", slug: "grenadines-link-water-taxi", phone_e164: null, whatsapp_e164: null } },
+        { id: "q1", amount_xcd: 1450, includes: "Truck collection, Thursday’s cargo boat to Port Elizabeth, delivery to site", valid_until: inDays(3), status: "offered", businesses: { name: "Kingstown Island Freight", slug: "kingstown-island-freight", phone_e164: null, whatsapp_e164: null } },
+        { id: "q2", amount_xcd: 1290, includes: "Port to port only, loading included", valid_until: inDays(1), status: "offered", businesses: { name: "Grenadines Link Water Taxi", slug: "grenadines-link-water-taxi", phone_e164: null, whatsapp_e164: null } },
       ]
     : [
         { id: "q1", amount_xcd: 70, includes: "Meet at arrivals with a name sign, luggage, up to 30 minutes’ waiting", valid_until: inDays(1), status: "offered", businesses: { name: "Point Salines Transfers", slug: "point-salines-transfers", phone_e164: null, whatsapp_e164: null } },
         { id: "q2", amount_xcd: 65, includes: "Fixed fare, luggage included", valid_until: inDays(1), status: "offered", businesses: { name: "Windward Transfers", slug: "windward-transfers", phone_e164: null, whatsapp_e164: null } },
       ];
-  return { trip, quotes, operatorName: vc ? "Kingstown Island Freight" : "Point Salines Transfers", kinds: vc ? ["haulage", "freight"] : ["taxi", "airport", "group"] };
+  return { trip, quotes, operatorName: vc ? "Kingstown Island Freight" : "Point Salines Transfers", kinds: vc ? ["haulage"] : ["taxi", "airport", "group"] };
 }
 
 const banner = <p className="mb-6 rounded-xl bg-gold/20 px-4 py-3 text-sm text-ink">Preview with sample data. On the live site these screens show real requests, quotes and bookings.</p>;

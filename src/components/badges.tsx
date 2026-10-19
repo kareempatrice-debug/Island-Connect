@@ -28,6 +28,11 @@ export function ListingBadges({
           Demo listing
         </span>
       )}
+      {business.providerType === "individual" && (
+        <span className={`${pill} ${s} ${neutral}`} title="A self-employed person rather than a registered business">
+          Self-employed
+        </span>
+      )}
       {business.founderOwned && (
         <span className={`${pill} ${s} ${neutral}`} title="This business is owned by the founder of Island Connect">
           Founder’s business

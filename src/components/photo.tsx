@@ -6,12 +6,15 @@ import { photos } from "@/data/photos";
 export function PlacePhoto({
   photoKey,
   sizes,
+  quality,
   priority,
   className = "",
   credit,
 }: {
   photoKey: string;
   sizes: string;
+  /** Image quality 1 to 100; the hero uses a higher value so large banners stay crisp. */
+  quality?: number;
   priority?: boolean;
   className?: string;
   credit?: boolean | "top";
@@ -25,6 +28,7 @@ export function PlacePhoto({
         alt={p.alt}
         fill
         sizes={sizes}
+        quality={quality ?? 75}
         priority={priority}
         className={`object-cover ${className}`}
         style={{ objectPosition: p.focus ?? "50% 50%" }}

@@ -1,12 +1,16 @@
 import Link from "next/link";
+import { BottomNav } from "@/components/nav";
+import { navCountry } from "@/lib/nav-country";
 
 export const LEGAL_UPDATED = "19 October 2026";
 export const CONTACT_EMAIL = "hello@islandconnect.cc";
 
 /* Shared frame for the privacy policy, terms and contact pages. */
-export function LegalPage({ title, intro, children }: { title: string; intro: React.ReactNode; children: React.ReactNode }) {
+export async function LegalPage({ title, intro, children }: { title: string; intro: React.ReactNode; children: React.ReactNode }) {
+  const country = await navCountry();
   return (
-    <main className="mx-auto max-w-3xl px-5 py-12 sm:px-8">
+    <>
+    <main className="mx-auto max-w-3xl px-5 pb-28 pt-12 sm:px-8 lg:pb-12">
       <Link href="/?choose=1" className="text-sm font-semibold text-link hover:underline">Island Connect</Link>
       <h1 className="mt-3 text-4xl font-semibold leading-tight">{title}</h1>
       <p className="mt-2 text-sm">Last updated {LEGAL_UPDATED}</p>
@@ -21,5 +25,7 @@ export function LegalPage({ title, intro, children }: { title: string; intro: Re
         <Link href="/credits" className="text-link hover:underline">Photo credits</Link>
       </nav>
     </main>
+    <BottomNav country={country} />
+    </>
   );
 }

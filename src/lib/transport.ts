@@ -25,21 +25,16 @@ export function transportOptions(country: string, mainIsland: string) {
     },
     {
       kind: "haulage", title: "Trucking and haulage",
-      text: `Building materials, moving house and heavy loads on ${mainIsland}${vc ? ", Bequia or Union Island" : " or Carriacou"}.`,
-      price: "Custom quote from the operator", custom: true, href: `/${country}/ride/quote?type=haulage`,
-    },
-    {
-      kind: "freight", title: "Freight to the Grenadines",
       text: vc
-        ? "From mainland St Vincent to Bequia, Mustique, Canouan, Mayreau and Union Island, and across to Carriacou. Door to door."
-        : "From mainland Grenada to Carriacou and Petite Martinique, and across to Union Island and St Vincent. Door to door.",
-      price: "Custom quote from the operator", custom: true, href: `/${country}/ride/quote?type=freight`,
+        ? "Building materials, moving house and heavy loads on St Vincent and across the Grenadines: Bequia, Mustique, Canouan, Mayreau and Union Island. Door to door."
+        : "Building materials, moving house and heavy loads on Grenada, Carriacou and Petite Martinique, including between the islands. Door to door.",
+      price: "Custom quote from the operator", custom: true, href: `/${country}/ride/quote?type=haulage`,
     },
   ] as const;
 }
 
 export const QUOTE_TITLES: Record<QuoteKind, { title: string; lead: string }> = {
   freight: { title: "Freight to the Grenadines", lead: "Door to door by truck and cargo boat. Operators quote for the whole job." },
-  haulage: { title: "Trucking and haulage", lead: "Building materials, moving house and heavy loads on one island." },
+  haulage: { title: "Trucking and haulage", lead: "Building materials, moving house and heavy loads, on one island or between the islands. Operators quote for the whole job." },
   boat: { title: "Boat and water taxi", lead: "Between islands, beaches and yachts. Operators quote per trip." },
 };

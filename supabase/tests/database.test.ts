@@ -525,3 +525,26 @@ describe("phone notification devices", () => {
     expect(mine.rows).toHaveLength(1);
   });
 });
+
+describe("admin sets up an operator directly", () => {
+  it("approves a business for chosen trip kinds in one step, admins only", async () => {
+    const id = (await db.query<{ id: string }>(`select id from public.businesses where listing_status = 'published' and not is_demo order by name desc limit 1`)).rows[0].id;
+    await expect(as("authenticated", OWNER, () => db.query(`select public.admin_set_operator($1, array['taxi']::public.trip_kind[])`, [id]))).rejects.toThrow(/administrators/);
+    await as("authenticated", ADMIN, () => db.query(`select public.admin_set_operator($1, array['taxi','airport']::public.trip_kind[], 'Licence seen')`, [id]));
+    const r = await db.query<{ status: string; kinds: string }>(`select status, kinds::text from public.operator_profiles where business_id = $1`, [id]);
+    expect(r.rows[0]).toEqual({ status: "approved", kinds: "{taxi,airport}" });
+  });
+});
+
+describe("admin assigns a listing to its owner's account", () => {
+  it("makes the account owner, marks the listing claimed, admins only", async () => {
+    const id = (await db.query<{ id: string }>(`select id from public.businesses where claim_status = 'unclaimed' order by name limit 1`)).rows[0].id;
+    await expect(as("authenticated", OWNER, () => db.query(`select public.admin_assign_owner($1, 'rider@example.com')`, [id]))).rejects.toThrow(/administrators/);
+    await expect(as("authenticated", ADMIN, () => db.query(`select public.admin_assign_owner($1, 'nobody@example.com')`, [id]))).rejects.toThrow(/No account/);
+    await as("authenticated", ADMIN, () => db.query(`select public.admin_assign_owner($1, ' Rider@Example.com ')`, [id]));
+    const b = await db.query<{ claim_status: string }>(`select claim_status from public.businesses where id = $1`, [id]);
+    expect(b.rows[0].claim_status).toBe("claimed");
+    const owners = await as("authenticated", ADMIN, () => db.query<{ email: string }>(`select email from public.admin_business_owners($1)`, [id]));
+    expect(owners.rows.map((r) => r.email)).toContain("rider@example.com");
+  });
+});

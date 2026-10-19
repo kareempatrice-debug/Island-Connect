@@ -177,6 +177,9 @@ export const demoSource: DataSource = {
     else results = results.sort((a, b) => a.name.localeCompare(b.name));
     return results.slice(0, limit);
   },
+  async countBusinesses(country, f) {
+    return (await this.searchBusinesses(country, f, 500)).length;
+  },
   async getBusiness(slug) {
     return businesses.find((b) => b.slug === slug) ?? null;
   },

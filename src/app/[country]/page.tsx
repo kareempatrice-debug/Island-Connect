@@ -46,7 +46,7 @@ export default async function CountryHome({ params }: { params: Promise<{ countr
   ]);
   const enabled = new Set(categories.map((x) => x.slug));
   const counts = await Promise.all(
-    EVERYDAY.map(async (e) => (enabled.has(e.slug) ? (await data.searchBusinesses(code, { category: e.slug })).length : 0)),
+    EVERYDAY.map(async (e) => (enabled.has(e.slug) ? data.countBusinesses(code, { category: e.slug }) : 0)),
   );
   const favourites = featured.length ? featured : recent;
   const other = countries.filter((x) => x.code !== code);
@@ -72,8 +72,8 @@ export default async function CountryHome({ params }: { params: Promise<{ countr
     <main>
       {/* Hero */}
       <section className="relative isolate overflow-hidden bg-deep">
-        <PlacePhoto photoKey={imagery.hero} sizes="100vw" priority credit="top" />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#032E33]/70 via-[#032E33]/45 to-[#032E33]/85" aria-hidden="true" />
+        <PlacePhoto photoKey={imagery.hero} sizes="(max-width: 767px) 250vw, 100vw" priority quality={85} credit="top" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#032E33]/60 via-[#032E33]/25 to-[#032E33]/70" aria-hidden="true" />
         <Container className="relative pb-12 pt-10 sm:pb-20 sm:pt-24">
           <p className="text-sm font-medium tracking-wide text-gold">{c.name}</p>
           <h1 className="mt-2 max-w-3xl text-[2.35rem] font-semibold leading-[1.04] text-white sm:text-6xl lg:text-7xl">
