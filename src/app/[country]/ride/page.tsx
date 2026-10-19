@@ -26,6 +26,13 @@ export default async function RideHub({ params }: { params: Promise<{ country: s
         </Container>
       </section>
       <Container className="pt-6">
+        <Link href={`/${code}/ride/operate/apply`} className="mb-4 flex items-center justify-between gap-4 rounded-card bg-gold/20 p-4 ring-1 ring-gold/40">
+          <span>
+            <span className="block font-display text-base font-bold text-ink">Drive with Island Connect</span>
+            <span className="mt-0.5 block text-sm">Have a car, van, boat or truck? Apply in a few minutes and start getting trips.</span>
+          </span>
+          <span className="shrink-0 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-ink">Apply</span>
+        </Link>
         <ul className="grid gap-3 md:grid-cols-2">
           {options.map((o) => {
             const Icon = ICONS[o.kind];
@@ -57,13 +64,6 @@ export default async function RideHub({ params }: { params: Promise<{ country: s
         <p className="mt-6">
           <Link href={`/${code}/ride/fares`} className="font-semibold text-link hover:underline">See the official taxi fares</Link>
         </p>
-        <Link href={`/${code}/ride/operate/apply`} className="mt-6 flex items-center justify-between gap-4 rounded-card bg-deep p-5 text-white">
-          <span>
-            <span className="block font-display text-lg font-bold">Drive with Island Connect</span>
-            <span className="mt-1 block text-sm text-white/85">Have a car, van, boat or truck? Apply in a few minutes and start getting trips.</span>
-          </span>
-          <span className="shrink-0 rounded-full bg-gold px-4 py-2 text-sm font-semibold text-[#172B32]">Apply</span>
-        </Link>
       </Container>
     </main>
   );

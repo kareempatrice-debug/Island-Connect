@@ -2,7 +2,7 @@
 
 import { InAppRequest, type RequestInApp } from "./in-app-request";
 import { fareAmount, officialFare } from "@/data/fares";
-import { ArrowDownUp, ArrowLeft, BadgeCheck, CarFront, Clock, FlaskConical, Info, MessageCircle, Minus, Phone, Plus, Users, Bus } from "lucide-react";
+import { ArrowDownUp, ArrowLeft, BadgeCheck, CarFront, Clock, FlaskConical, Info, MessageCircle, Minus, Phone, Plus, Users, Bus, MessagesSquare } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { Landmark } from "@/data/landmarks";
@@ -17,6 +17,8 @@ export interface RideOperator {
   phone: string | null;
   isDemo: boolean;
   verified: boolean;
+  /** Claimed by its owner, so it can receive messages in the app. */
+  canMessage?: boolean;
 }
 
 type Step = "where" | "ride" | "send";
@@ -311,6 +313,12 @@ export function RideBooker({
                         <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-[0.72rem] font-semibold text-success"><BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />Verified</span>
                       ) : null}
                     </div>
+                    {o.canMessage && (
+                      <Link href={`/${countryCode}/business/${o.slug}/enquire?subject=${encodeURIComponent("Ride request")}&message=${encodeURIComponent(message)}`}
+                        className="mt-3 flex h-11 items-center justify-center gap-2 rounded-full bg-deep font-semibold text-white">
+                        <MessagesSquare className="h-5 w-5" aria-hidden="true" /> Message in the app
+                      </Link>
+                    )}
                     {o.whatsapp || o.phone ? (
                       <div className="mt-3 flex gap-2">
                         {o.whatsapp && (
@@ -325,7 +333,7 @@ export function RideBooker({
                           </a>
                         )}
                       </div>
-                    ) : (
+                    ) : !o.canMessage && (
                       <p className="mt-3 text-sm">{o.isDemo ? "Demonstration listing: it can’t receive requests." : "This operator hasn’t added contact details yet."}</p>
                     )}
                   </li>

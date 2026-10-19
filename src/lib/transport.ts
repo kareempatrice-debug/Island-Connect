@@ -17,7 +17,6 @@ export function transportOptions(country: string, mainIsland: string) {
   return [
     { kind: "taxi", title: "Taxi", text: `Now or scheduled, anywhere on ${mainIsland}.`, price: "Set fare on common routes, driver’s fare elsewhere", custom: false, href: `/${country}/ride/taxi` },
     { kind: "airport", title: "Airport transfer", text: "Meet at arrivals, or a drop-off for your flight.", price: "Set fare on airport routes", custom: false, href: `/${country}/ride/taxi?from=airport` },
-    { kind: "group", title: "Minivan and groups", text: "Families, wedding parties and tours, up to 8 passengers.", price: "Driver’s fare, confirmed before you go", custom: false, href: `/${country}/ride/taxi?vehicle=van` },
     {
       kind: "boat", title: "Boat and water taxi",
       text: vc ? "Between St Vincent, the Grenadines, beaches and yachts." : "Between Grenada, Carriacou, Petite Martinique and nearby beaches.",

@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, BadgeCheck, FlaskConical, Info, MessageCircle, Minus, Phone, Plus } from "lucide-react";
+import { ArrowLeft, BadgeCheck, FlaskConical, Info, MessageCircle, Minus, Phone, Plus, MessagesSquare } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { QUOTE_TITLES as TITLES } from "@/lib/transport";
@@ -31,6 +31,8 @@ export interface QuoteOperator {
   phone: string | null;
   isDemo: boolean;
   verified: boolean;
+  /** Claimed by its owner, so it can receive messages in the app. */
+  canMessage?: boolean;
 }
 
 type Kind = "boat" | "haulage" | "freight";
@@ -181,6 +183,12 @@ export function QuoteRequest({
                     <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-xs font-semibold text-success"><BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />Verified</span>
                   ) : null}
                 </div>
+                {o.canMessage && (
+                  <Link href={`/${countryCode}/business/${o.slug}/enquire?subject=${encodeURIComponent("Quote request")}&message=${encodeURIComponent(message)}`}
+                    className="mt-3 flex h-11 items-center justify-center gap-2 rounded-full bg-deep font-semibold text-white">
+                    <MessagesSquare className="h-5 w-5" aria-hidden="true" /> Message in the app
+                  </Link>
+                )}
                 {o.whatsapp || o.phone ? (
                   <div className="mt-3 flex gap-2">
                     {o.whatsapp && (
@@ -195,7 +203,7 @@ export function QuoteRequest({
                       </a>
                     )}
                   </div>
-                ) : (
+                ) : !o.canMessage && (
                   <p className="mt-3 text-sm">{o.isDemo ? "Demonstration listing: it can’t receive requests." : "This operator hasn’t added contact details yet."}</p>
                 )}
               </li>

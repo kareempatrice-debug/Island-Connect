@@ -52,7 +52,7 @@ export default async function BusinessPage({ params }: Props) {
   const mainAction = bookingHref
     ? { href: bookingHref, label: "Book on their website", Icon: CalendarCheck, external: true, channel: "booking" as const }
     : pref === "platform" && canEnquire
-      ? { href: enquireHref, label: "Send an enquiry", Icon: MessageSquareText, external: false, channel: null }
+      ? { href: enquireHref, label: "Message in the app", Icon: MessageSquareText, external: false, channel: null }
       : pref === "phone" && business.phone
         ? { href: `tel:${business.phone}`, label: "Call", Icon: Phone, external: false, channel: "phone" as const }
         : pref === "website" && business.website
@@ -64,7 +64,7 @@ export default async function BusinessPage({ params }: Props) {
               : business.email
                 ? { href: `mailto:${business.email}`, label: "Email", Icon: Mail, external: false, channel: "email" as const }
                 : canEnquire
-                  ? { href: enquireHref, label: "Send an enquiry", Icon: MessageSquareText, external: false, channel: null }
+                  ? { href: enquireHref, label: "Message in the app", Icon: MessageSquareText, external: false, channel: null }
                   : null;
 
   const sections = [
@@ -287,7 +287,7 @@ export default async function BusinessPage({ params }: Props) {
                     </ContactLink>
                   )}
                   {canEnquire && mainAction?.href !== enquireHref && (
-                    <Link className={ghost} href={enquireHref}><MessageSquareText className="h-5 w-5" aria-hidden="true" /> Send an enquiry</Link>
+                    <Link className={ghost} href={enquireHref}><MessageSquareText className="h-5 w-5" aria-hidden="true" /> Message in the app</Link>
                   )}
                 </div>
               ) : (

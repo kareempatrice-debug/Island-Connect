@@ -3,6 +3,7 @@
 import { Check, ChevronDown, MapPin, UserRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import { useEffect, useRef } from "react";
 import { equivalentPath } from "@/lib/format";
 
 interface Option {
@@ -18,10 +19,25 @@ interface Option {
 export interface AccountLinks { signedIn: boolean; name?: string | null; isAdmin?: boolean }
 
 export function CountrySwitcher({ current, countries, account }: { current: Option; countries: Option[]; account?: AccountLinks }) {
+  // Close when tapping or clicking anywhere outside the menu, pressing Escape, or changing page.
+  const ref = useRef<HTMLDetailsElement>(null);
+  const pathnameNow = usePathname();
+  useEffect(() => {
+    const close = (e: Event) => {
+      const el = ref.current;
+      if (el?.open && !el.contains(e.target as Node)) el.open = false;
+    };
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape" && ref.current) ref.current.open = false; };
+    document.addEventListener("pointerdown", close);
+    document.addEventListener("keydown", esc);
+    return () => { document.removeEventListener("pointerdown", close); document.removeEventListener("keydown", esc); };
+  }, []);
+  useEffect(() => { if (ref.current) ref.current.open = false; }, [pathnameNow]);
+
   const pathname = usePathname();
   const search = useSearchParams().toString();
   return (
-    <details className="group relative">
+    <details ref={ref} className="group relative">
       <summary
         className="flex h-10 cursor-pointer items-center gap-2 rounded-full bg-white/10 px-3.5 text-sm font-semibold text-white ring-1 ring-white/20 transition hover:bg-white/15"
         aria-label={`Country: ${current.name}. Change country`}

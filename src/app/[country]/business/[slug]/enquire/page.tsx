@@ -8,8 +8,9 @@ import { data, isSupabaseConfigured } from "@/lib/data";
 
 export const metadata: Metadata = { title: "Send an enquiry", robots: { index: false } };
 
-export default async function Enquire({ params }: { params: Promise<{ country: string; slug: string }> }) {
+export default async function Enquire({ params, searchParams }: { params: Promise<{ country: string; slug: string }>; searchParams: Promise<{ subject?: string; message?: string }> }) {
   const { country, slug } = await params;
+  const sp = await searchParams;
   const business = await data.getBusiness(slug);
   if (!business) notFound();
   if (!isSupabaseConfigured || business.isDemo) return <Container className="max-w-xl py-12"><NeedsDatabase feature="Enquiries" /></Container>;
@@ -24,7 +25,7 @@ export default async function Enquire({ params }: { params: Promise<{ country: s
         <>
           <p className="mt-3">The business replies here, and you’ll find the conversation under Messages.</p>
           <div className="mt-8 rounded-panel bg-raised p-5 shadow-card ring-1 ring-line/60 sm:p-7">
-            <StartEnquiryForm country={country} businessId={business.id} services={business.services.map(({ id, name }) => ({ id, name }))} />
+            <StartEnquiryForm country={country} businessId={business.id} services={business.services.map(({ id, name }) => ({ id, name }))} subject={(sp.subject ?? "").slice(0, 120)} body={(sp.message ?? "").slice(0, 2000)} />
           </div>
         </>
       )}

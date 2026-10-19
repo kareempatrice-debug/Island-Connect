@@ -39,6 +39,7 @@ export default async function RidePage({
       whatsapp: b.whatsapp,
       phone: b.phone,
       isDemo: b.isDemo,
+          canMessage: isSupabaseConfigured && !b.isDemo && b.claimStatus === "claimed",
       verified: b.verificationStatus === "verified" && !b.isDemo,
     }))
     .sort((a, b) => Number(a.isDemo) - Number(b.isDemo) || Number(b.verified) - Number(a.verified));
