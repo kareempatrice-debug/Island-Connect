@@ -40,7 +40,7 @@ export async function signUpAction(_: FormState, form: FormData): Promise<FormSt
     role === "business"
       ? `/${country}/for-business/register`
       : role === "operator"
-        ? `/${country}/ride/operate`
+        ? `/${country}/ride/operate/apply`
         : safeNext(String(form.get("next") ?? ""), `/${country}`);
   const supabase = await supabaseForRequest();
   const { data, error } = await supabase.auth.signUp({

@@ -28,6 +28,7 @@ export async function TripsTab({ ids, isOwner, sp }: { ids: { businessId: string
   if (op.status === "pending") {
     return (
       <div className="space-y-4">
+        {sp.applied && <p role="status" className="rounded-xl bg-success/10 px-4 py-3 font-medium text-success">Application sent. We’ll check your documents and email you, usually within two working days. Meanwhile, add photos of your vehicle in the Photos tab.</p>}
         <p className="rounded-xl bg-gold/15 px-4 py-3 text-ink">Your application is being reviewed. We’ll email you once you’re approved.</p>
         {isOwner && <OperatorApply ids={ids} current={{ kinds: op.kinds, licence: op.licence_details, vehicles: op.vehicle_details, insurance: op.insurance_details ?? "" }} />}
       </div>

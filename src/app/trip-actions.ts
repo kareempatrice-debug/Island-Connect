@@ -218,3 +218,39 @@ export async function sendTripMessageAction(form: FormData) {
   revalidatePath(page);
   redirect(`${page}${error ? `?error=${encodeURIComponent(error.message)}` : ""}#latest`);
 }
+
+/* ---------- One-step driver and operator sign-up ---------- */
+export async function applyAsDriverAction(_: FormState, form: FormData): Promise<FormState> {
+  const viewer = await getViewer();
+  if (!viewer) return { error: "Please sign in again." };
+  const d = z.object({
+    country: z.string().regex(/^[a-z]{2}$/), providerType: z.enum(["individual", "business"]),
+    name: z.string().trim().min(2, "Enter your name").max(120), island: z.string().regex(/^[a-z0-9-]{2,40}$/), area: z.string().trim().max(120).optional(),
+    phone: z.string().max(30), whatsapp: z.string().max(30).optional(), whatsappSame: z.string().optional(),
+    licence: z.string().trim().min(3, "Add your licence or permit numbers").max(500), vehicles: z.string().trim().min(3, "Describe your vehicle or boat").max(500),
+    insurance: z.string().trim().max(500).optional(),
+  }).safeParse(Object.fromEntries(form));
+  if (!d.success) return { error: d.error.issues[0].message };
+  const kinds = form.getAll("kinds").map(String).filter((k) => (KINDS as readonly string[]).includes(k));
+  if (!kinds.length) return { error: "Choose at least one kind of trip" };
+  const documents = form.getAll("documents").map(String).filter((p) => p.startsWith(`${viewer.id}/`)).slice(0, 5);
+  let phone: string | null, whatsapp: string | null;
+  try {
+    const code = d.data.country === "vc" ? "+1784" : "+1473";
+    phone = toE164International(d.data.phone, code);
+    whatsapp = d.data.whatsappSame ? phone : toE164International(d.data.whatsapp ?? "", code);
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
+  if (!phone) return { error: "Add a phone number customers can reach you on" };
+  const label = kinds.map((k) => ({ taxi: "Taxi", airport: "Airport transfers", group: "Minivan and groups", boat: "Boat and water taxi", haulage: "Trucking and haulage", freight: "Freight" })[k]).join(", ");
+  const supabase = await supabaseForRequest();
+  const { data, error } = await supabase.rpc("apply_as_driver", { p: {
+    country: d.data.country, island: d.data.island, area: d.data.area ?? "", name: d.data.name, provider_type: d.data.providerType,
+    tagline: `${label}${d.data.area ? ` from ${d.data.area}` : ""}`.slice(0, 160), phone, whatsapp, kinds,
+    licence: d.data.licence, vehicles: d.data.vehicles, insurance: d.data.insurance ?? "", documents,
+  } });
+  if (error) return { error: error.message };
+  revalidatePath("/admin/operators");
+  redirect(`/${d.data.country}/dashboard/${(data as { slug: string }).slug}?tab=trips&applied=1`);
+}

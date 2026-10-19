@@ -8,7 +8,8 @@ import { BottomNav, DesktopNav } from "@/components/nav";
 import { RememberCountry } from "@/components/remember-country";
 import { SiteFooter } from "@/components/site-footer";
 import { Wordmark } from "@/components/wordmark";
-import { data, getCountries, getCountry } from "@/lib/data";
+import { data, getCountries, getCountry, isSupabaseConfigured } from "@/lib/data";
+import { getViewer } from "@/lib/auth";
 
 type Props = { children: React.ReactNode; params: Promise<{ country: string }> };
 
@@ -19,7 +20,7 @@ export async function generateMetadata({ params }: Omit<Props, "children">): Pro
 
 export default async function CountryLayout({ children, params }: Props) {
   const { country: code } = await params;
-  const [country, countries] = await Promise.all([getCountry(code), getCountries()]);
+  const [country, countries, viewer] = await Promise.all([getCountry(code), getCountries(), isSupabaseConfigured ? getViewer() : Promise.resolve(null)]);
   if (!country) notFound();
   const options = countries.map(({ code, name, shortName }) => ({ code, name, shortName }));
 
@@ -49,7 +50,8 @@ export default async function CountryLayout({ children, params }: Props) {
               <Search className="h-[1.15rem] w-[1.15rem]" aria-hidden="true" />
             </Link>
             <Suspense fallback={<span className="h-10 w-28 rounded-full bg-white/10" />}>
-              <CountrySwitcher current={options.find((o) => o.code === country.code)!} countries={options} />
+              <CountrySwitcher current={options.find((o) => o.code === country.code)!} countries={options}
+                account={isSupabaseConfigured ? { signedIn: Boolean(viewer), name: viewer?.name ?? null, isAdmin: viewer?.role === "admin" } : undefined} />
             </Suspense>
           </div>
         </div>

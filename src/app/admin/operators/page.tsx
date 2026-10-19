@@ -17,6 +17,10 @@ export default async function Operators({ searchParams }: { searchParams: Promis
     supabase.from("trip_requests").select("id", { count: "exact", head: true }).eq("status", "open"),
   ]);
   const pending = (ops ?? []).filter((o: any) => o.status === "pending");
+  // Private documents: short-lived links only admins can open.
+  const docPaths = pending.flatMap((o: any) => o.document_paths ?? []);
+  const { data: signed } = docPaths.length ? await supabase.storage.from("operator-documents").createSignedUrls(docPaths, 3600) : { data: [] as any[] };
+  const docUrl = new Map((signed ?? []).map((x: any) => [x.path, x.signedUrl]));
   const approved = (ops ?? []).filter((o: any) => o.status === "approved");
   const month = new Date().toISOString().slice(0, 7);
   const thisMonth = (ledger ?? []).filter((l: any) => l.created_at.startsWith(month));
@@ -70,7 +74,16 @@ export default async function Operators({ searchParams }: { searchParams: Promis
                   <dt>Vehicles</dt><dd className="text-ink">{o.vehicle_details}</dd>
                   <dt>Insurance</dt><dd className="text-ink">{o.insurance_details ?? "Not given"}</dd>
                   <dt>Phone</dt><dd className="text-ink">{o.businesses?.phone_e164 ?? "None on listing"}</dd>
+                  <dt>Documents</dt>
+                  <dd className="flex flex-wrap gap-2">
+                    {(o.document_paths ?? []).length ? (o.document_paths as string[]).map((p) => (
+                      <a key={p} href={docUrl.get(p) ?? "#"} target="_blank" rel="noopener noreferrer" className="font-semibold text-link underline">
+                        {p.split("/")[1]?.split("-")[0] ?? "document"}
+                      </a>
+                    )) : <span className="text-ink">None uploaded</span>}
+                  </dd>
                 </dl>
+                <p className="mt-2 text-xs">Approving also puts their listing live.</p>
                 <form action={approveOperatorAction} className="mt-3 flex flex-wrap items-center gap-2">
                   <input type="hidden" name="id" value={o.business_id} />
                   <input name="note" maxLength={300} placeholder="Note (e.g. licence seen)" className="h-10 min-w-0 flex-1 rounded-lg border border-line bg-raised px-3 text-sm" />

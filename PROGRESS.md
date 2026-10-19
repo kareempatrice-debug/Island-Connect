@@ -1,5 +1,13 @@
 # Progress
 
+## Increment 17 (22 October 2026): one-step driver sign-up
+
+- `/[country]/ride/operate` rewritten: everything listed is available now (requests, instant official-fare rides, quotes, chat, notifications). “Apply now” leads to `/[country]/ride/operate/apply`.
+- **One form** for individuals or businesses: name, base, phone/WhatsApp, trip types, licence and vehicle details, and photos of documents (licence required; insurance and registration optional). Documents go to the **private** `operator-documents` storage bucket (own folder only; admins can read) and appear to admins as short-lived links.
+- `apply_as_driver` creates the listing (marked self-employed for individuals, categories matched to trip types) and the operator application together. **Approving the operator also puts the listing live**, so it’s one approval, not two.
+- Joining as “Drive or haul” goes straight to the application form.
+- Migration `20261022000013_driver_signup.sql`. Tests: 85 passing.
+
 ## Increment 16 (21 October 2026): trip chat, instant booking, international numbers, admin tools
 
 - **Instant booking at the official fare:** taxi and airport requests matching a published fare carry that fare (worked out on the server from `src/data/fares.ts`, never from the browser; extra passengers and per-passenger SVG rates included). Approved drivers see “Official fare EC$X” and **Accept trip**; the first to accept gets it (`accept_fixed_fare`, row-locked so only one can win). Quotes remain for groups, boats, trucking and routes without a published fare.

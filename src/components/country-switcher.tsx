@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronDown, MapPin } from "lucide-react";
+import { Check, ChevronDown, MapPin, UserRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { equivalentPath } from "@/lib/format";
@@ -15,7 +15,9 @@ interface Option {
  * Built on <details> so it opens and closes without JavaScript. Each option
  * keeps the visitor on the equivalent page in the other country.
  */
-export function CountrySwitcher({ current, countries }: { current: Option; countries: Option[] }) {
+export interface AccountLinks { signedIn: boolean; name?: string | null; isAdmin?: boolean }
+
+export function CountrySwitcher({ current, countries, account }: { current: Option; countries: Option[]; account?: AccountLinks }) {
   const pathname = usePathname();
   const search = useSearchParams().toString();
   return (
@@ -51,6 +53,25 @@ export function CountrySwitcher({ current, countries }: { current: Option; count
         <Link href="/?choose=1" className="mt-1 block rounded-xl px-3 py-2.5 text-sm font-semibold text-link hover:bg-sunken">
           Compare destinations
         </Link>
+        {account && (
+          <div className="mt-1 border-t border-line pt-1">
+            {account.signedIn ? (
+              <>
+                <Link href={`/${current.code}/account`} className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold text-ink hover:bg-sunken">
+                  <UserRound className="h-4 w-4 text-primary" aria-hidden="true" />
+                  Your account{account.name ? <span className="truncate font-normal text-muted">· {account.name}</span> : null}
+                </Link>
+                <Link href={`/${current.code}/trips`} className="block rounded-xl px-3 py-2.5 pl-9 text-sm text-ink hover:bg-sunken">Your trips</Link>
+                {account.isAdmin && <Link href="/admin" className="block rounded-xl px-3 py-2.5 pl-9 text-sm text-ink hover:bg-sunken">Admin</Link>}
+              </>
+            ) : (
+              <Link href="/join?mode=sign-in" className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold text-ink hover:bg-sunken">
+                <UserRound className="h-4 w-4 text-primary" aria-hidden="true" />
+                Sign in or join free
+              </Link>
+            )}
+          </div>
+        )}
       </div>
     </details>
   );

@@ -582,3 +582,31 @@ describe("instant booking at the official fare, and trip chat", () => {
     await expect(as("authenticated", OTHER, () => db.query(`select public.send_trip_message($1, 'hi')`, [id]))).rejects.toThrow(/Only the customer/);
   });
 });
+
+describe("one-step driver sign-up", () => {
+  const DRIVER = "00000000-0000-0000-0000-000000000020";
+  beforeAll(async () => {
+    await db.exec(`insert into auth.users (id, email) values ('${DRIVER}', 'driver@example.com') on conflict do nothing`);
+  });
+  const apply = (docs: string[]) => as("authenticated", DRIVER, () => db.query<{ r: { id: string; slug: string } }>(`select public.apply_as_driver($1::jsonb) as r`, [JSON.stringify({
+    country: "gd", island: "grenada", name: "Marcus Taxi", tagline: "Taxi and airport runs", provider_type: "individual",
+    phone: "+14734401234", whatsapp: "+14734401234", kinds: ["taxi", "airport"], licence: "Driving licence D123, taxi permit T45",
+    vehicles: "Toyota Noah, 7 seats, H1234", insurance: "Comprehensive", documents: docs,
+  })]));
+
+  it("needs a licence photo in the applicant's own folder", async () => {
+    await expect(apply([])).rejects.toThrow(/licence/);
+    await expect(apply(["someone-else/licence.jpg"])).rejects.toThrow(/licence/);
+  });
+
+  it("creates an individual listing and an operator application together; approval publishes both", async () => {
+    const { r } = (await apply([`${DRIVER}/licence-1.jpg`])).rows[0];
+    const b = await db.query<{ listing_status: string; provider_type: string; claim_status: string }>(`select listing_status, provider_type, claim_status from public.businesses where id = $1`, [r.id]);
+    expect(b.rows[0]).toEqual({ listing_status: "pending_review", provider_type: "individual", claim_status: "claimed" });
+    const op = await db.query<{ status: string; docs: string }>(`select status, document_paths::text as docs from public.operator_profiles where business_id = $1`, [r.id]);
+    expect(op.rows[0].status).toBe("pending");
+    await as("authenticated", ADMIN, () => db.query(`select public.admin_review_operator($1, true, 'Licence checked')`, [r.id]));
+    const after = await db.query<{ listing_status: string }>(`select listing_status from public.businesses where id = $1`, [r.id]);
+    expect(after.rows[0].listing_status).toBe("published");
+  });
+});
