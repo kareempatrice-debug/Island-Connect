@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { OperatorTrips } from "@/components/trips/operator-trips";
+import { InsightsPanel } from "@/components/admin/insights";
 import { TripChat } from "@/components/trips/trip-chat";
 import { TripDetail, type QuoteView, type TripView } from "@/components/trips/trip-detail";
 import { Container } from "@/components/ui";
@@ -15,7 +16,7 @@ import { TRIP_KIND_LABEL, TRIP_STATUS_LABEL, fmtWhen, fmtXcd } from "@/lib/trips
  */
 export const metadata: Metadata = { title: "Trips preview", robots: { index: false } };
 
-const SCREENS = ["trips", "trip", "trip-booked", "operator", "operator-sent", "operator-accepted", "operator-completed", "chat", "admin", "admin-approved"] as const;
+const SCREENS = ["trips", "trip", "trip-booked", "operator", "operator-sent", "operator-accepted", "operator-completed", "chat", "admin", "admin-approved", "dashboard"] as const;
 export function generateStaticParams() {
   return ["gd", "vc"].flatMap((country) => SCREENS.map((screen) => ({ country, screen })));
 }
@@ -124,6 +125,29 @@ export default async function TripsPreview({ params }: { params: Promise<{ count
             complete={() => <Link href={`${base}/operator-completed`} className="mt-3 inline-flex h-10 items-center rounded-full border border-line px-4 text-sm font-semibold text-ink">Mark as completed</Link>}
           />
         </div>
+      </Container>
+    );
+  }
+
+  if (screen === "dashboard") {
+    // Invented numbers, only to show what the dashboard looks like once people use the site.
+    const days = 30, today = new Date();
+    const wave = (i: number, base: number, amp: number) => Math.max(0, Math.round(base + amp * Math.sin(i / 3) + i * base * 0.02));
+    const series = Array.from({ length: days }, (_, i) => {
+      const d = new Date(today); d.setDate(d.getDate() - (days - 1 - i));
+      return { day: d.toISOString().slice(0, 10), views: wave(i, 140, 40), signups: wave(i, 3, 2), requests: wave(i, 4, 2), booked: wave(i, 3, 1), completed: wave(i, 2, 1),
+        fares: wave(i, 2, 1) * 65, conversations: wave(i, 5, 2), messages: wave(i, 18, 6), clicks: wave(i, 22, 8) };
+    });
+    const data = { series, previous: { views: 3100, signups: 60, requests: 70, booked: 52, conversations: 110, clicks: 520 },
+      trip_kinds: { airport: 61, taxi: 42, haulage: 18, boat: 9 }, trip_countries: { gd: 83, vc: 47 }, trip_status: { open: 3 },
+      click_channels: { whatsapp: 410, phone: 160, website: 55, maps: 40 },
+      top_pages: [{ path: "/gd", views: 1320 }, { path: "/gd/ride/taxi", views: 640 }, { path: "/vc", views: 610 }, { path: "/gd/services/taxis", views: 330 }, { path: "/vc/ride", views: 290 }],
+      top_businesses: [{ name: "Point Salines Transfers", clicks: 88, conversations: 12 }, { name: "Spice Isle Taxi", clicks: 61, conversations: 8 }, { name: "Bequia Water Taxi", clicks: 40, conversations: 5 }],
+      totals: { accounts: 412, listings: 385, claimed: 37, verified: 21, operators: 14, notification_devices: 26 } };
+    return (
+      <Container className="py-8">
+        {banner}
+        <InsightsPanel data={data} range={30} />
       </Container>
     );
   }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { InsightsPanel } from "@/components/admin/insights";
 import { approveBusinessAction, approveClaimAction, rejectBusinessAction, rejectClaimAction } from "./actions";
 import { supabaseForRequest } from "@/lib/supabase/server";
 
@@ -14,10 +15,12 @@ function ReviewButtons({ id, approve, reject }: { id: string; approve: (f: FormD
   );
 }
 
-export default async function AdminHome({ searchParams }: { searchParams: Promise<{ error?: string; done?: string }> }) {
+export default async function AdminHome({ searchParams }: { searchParams: Promise<{ error?: string; done?: string; range?: string }> }) {
   const sp = await searchParams;
+  const range = [7, 30, 90, 365].includes(Number(sp.range)) ? Number(sp.range) : 30;
   const supabase = await supabaseForRequest();
-  const [{ data: pending }, { data: claims }, { count: live }, { count: unclaimed }, { count: opApps }] = await Promise.all([
+  const [{ data: insights }, { data: pending }, { data: claims }, { count: live }, { count: unclaimed }, { count: opApps }] = await Promise.all([
+    supabase.rpc("admin_insights", { p_days: range }),
     supabase.from("businesses")
       .select("id, slug, name, tagline, phone_e164, whatsapp_e164, email, website, created_at, claim_status, source_url, source_note, source_checked_at, business_locations ( country_code, landmark, islands ( name ), districts ( name ) ), business_categories ( categories ( name ) ), business_members ( user_id )")
       .eq("listing_status", "pending_review").order("created_at"),
@@ -32,6 +35,8 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
   const stat = "rounded-2xl bg-raised p-5 ring-1 ring-line/60";
   return (
     <div className="mt-4 space-y-10">
+      <InsightsPanel data={insights} range={range} />
+      <h2 className="pt-6 text-2xl font-semibold">Review queue</h2>
       <form action="/admin/listings" className="flex gap-2" role="search">
         <label htmlFor="admin-q" className="sr-only">Find any business</label>
         <input id="admin-q" name="q" placeholder="Find any business by name" className="h-11 min-w-0 flex-1 rounded-lg border border-line bg-raised px-3" />

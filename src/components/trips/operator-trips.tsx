@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { directionsLink } from "@/lib/geo";
 import type { ReactNode } from "react";
 import { PushSetup } from "@/components/push-setup";
 import { TRIP_KIND_LABEL, TRIP_STATUS_LABEL, fmtWhen, fmtXcd } from "@/lib/trips";
@@ -25,8 +26,11 @@ export function OperatorTrips({ kinds, open, mine, totals, businessId, notice, q
               return (
                 <li key={r.id} className={card}>
                   <p className="font-semibold text-ink">{r.pickup}, {r.from_place} → {r.dropoff}, {r.to_place}</p>
-                  <p className="text-sm">{TRIP_KIND_LABEL[r.kind]} · {fmtWhen(r.travel_at)}{r.passengers ? ` · ${r.passengers} passengers` : ""}{r.cross_border ? " · crosses the border" : ""}</p>
+                  <p className="text-sm">{TRIP_KIND_LABEL[r.kind]} · {fmtWhen(r.travel_at)}{r.passengers ? ` · ${r.passengers} passengers` : ""}{r.distance_km ? ` · ${r.distance_km} km, about ${r.duration_min} min` : ""}{r.cross_border ? " · crosses the border" : ""}</p>
+                  {r.rider_name && <p className="mt-1 text-sm text-ink">Booked for <strong>{r.rider_name}</strong></p>}
                   {r.details && <p className="mt-1 text-sm text-ink">{r.details}</p>}
+                  <a href={directionsLink({ lat: r.pickup_lat ?? undefined, lng: r.pickup_lng ?? undefined, label: r.pickup }, { lat: r.dropoff_lat ?? undefined, lng: r.dropoff_lng ?? undefined, label: r.dropoff })}
+                    target="_blank" rel="noopener noreferrer" className="mt-1 inline-block text-sm font-semibold text-link underline">See the route in Google Maps</a>
                   {r.fixed_fare_xcd ? (
                     <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl bg-gold/15 p-3">
                       <p className="min-w-0 flex-1 text-sm text-ink"><strong>Official fare {fmtXcd(r.fixed_fare_xcd)}.</strong> First driver to accept gets the trip.</p>
@@ -47,7 +51,9 @@ export function OperatorTrips({ kinds, open, mine, totals, businessId, notice, q
           <ul className="mt-3 space-y-3">
             {mine.map((q: any) => {
               const r = q.trip_requests;
-              const phone = r?.trip_contacts?.phone_e164 ?? (Array.isArray(r?.trip_contacts) ? r.trip_contacts[0]?.phone_e164 : null);
+              const contact = Array.isArray(r?.trip_contacts) ? r.trip_contacts[0] : r?.trip_contacts;
+              const phone = contact?.phone_e164 ?? null;
+              const riderPhone = contact?.rider_phone_e164 ?? null;
               return (
                 <li key={q.id} className={card}>
                   <div className="flex items-start justify-between gap-3">
@@ -58,8 +64,15 @@ export function OperatorTrips({ kinds, open, mine, totals, businessId, notice, q
                     </div>
                     <p className="shrink-0 font-semibold text-ink">{fmtXcd(q.amount_xcd)}</p>
                   </div>
+                  {r.rider_name && r.status === "booked" && (
+                    <p className="mt-2 text-sm">Passenger: <strong className="text-ink">{r.rider_name}</strong>{riderPhone && <> · <a href={`https://wa.me/${riderPhone.replace(/^\+/, "")}`} className="font-semibold text-link underline">WhatsApp</a> or <a href={`tel:${riderPhone}`} className="font-semibold text-link underline">call {riderPhone}</a></>}</p>
+                  )}
                   {phone && r.status === "booked" && (
-                    <p className="mt-2 text-sm">Customer: <a href={`https://wa.me/${phone.replace(/^\+/, "")}`} className="font-semibold text-link underline">WhatsApp</a> or <a href={`tel:${phone}`} className="font-semibold text-link underline">call {phone}</a></p>
+                    <p className="mt-2 text-sm">{r.rider_name ? "Booked by" : "Customer"}: <a href={`https://wa.me/${phone.replace(/^\+/, "")}`} className="font-semibold text-link underline">WhatsApp</a> or <a href={`tel:${phone}`} className="font-semibold text-link underline">call {phone}</a></p>
+                  )}
+                  {r.status === "booked" && (
+                    <a href={directionsLink({ lat: r.pickup_lat ?? undefined, lng: r.pickup_lng ?? undefined, label: r.pickup }, { lat: r.dropoff_lat ?? undefined, lng: r.dropoff_lng ?? undefined, label: r.dropoff })}
+                      target="_blank" rel="noopener noreferrer" className="mt-1 inline-block text-sm font-semibold text-link underline">Directions in Google Maps</a>
                   )}
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     <Link href={chatHref(r)} className="inline-flex h-10 items-center rounded-full bg-deep px-4 text-sm font-semibold text-white">Message the customer</Link>

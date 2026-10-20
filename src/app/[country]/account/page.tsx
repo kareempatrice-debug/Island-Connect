@@ -4,6 +4,8 @@ import { CheckCircle2, Clock3, ShieldCheck, Store, XCircle } from "lucide-react"
 import { signOutAction } from "@/app/auth-actions";
 import { NeedsDatabase } from "@/components/demo-notice";
 import { DeleteAccountForm } from "@/components/forms/account-forms";
+import { PasskeySetup } from "@/components/forms/passkey";
+import { removePasskeyAction } from "@/app/passkey-actions";
 import { Container, btn } from "@/components/ui";
 import { requireViewer } from "@/lib/auth";
 import { isSupabaseConfigured } from "@/lib/data";
@@ -32,9 +34,10 @@ export default async function Account({
   if (!isSupabaseConfigured) return <Container className="max-w-2xl py-12"><NeedsDatabase feature="Accounts" /></Container>;
   const viewer = await requireViewer(`/${country}/account`, country);
   const supabase = await supabaseForRequest();
-  const [{ data: memberships }, { data: claims }] = await Promise.all([
+  const [{ data: memberships }, { data: claims }, { data: passkeys }] = await Promise.all([
     supabase.from("business_members").select("role, businesses ( slug, name, listing_status, review_note )").eq("user_id", viewer.id),
     supabase.from("business_claims").select("id, status, review_note, created_at, businesses ( slug, name )").eq("user_id", viewer.id).order("created_at", { ascending: false }),
+    supabase.from("passkeys").select("id, device_name, created_at, last_used_at").order("created_at"),
   ]);
   /* eslint-disable @typescript-eslint/no-explicit-any */
   const businesses = (memberships ?? []).map((m: any) => ({ role: m.role, ...m.businesses })).filter((b: any) => b.slug);
@@ -115,6 +118,7 @@ export default async function Account({
       <section className="mt-12" aria-labelledby="settings-heading">
         <h2 id="settings-heading" className="text-2xl font-semibold">Account settings</h2>
         <div className="mt-4 space-y-3">
+          <PasskeySetup devices={passkeys ?? []} remove={removePasskeyAction} />
           <Link href="/join?mode=reset" className="flex items-center justify-between rounded-2xl bg-raised p-4 font-semibold text-ink ring-1 ring-line/60">Change my password <span aria-hidden="true">→</span></Link>
           <DeleteAccountForm />
         </div>

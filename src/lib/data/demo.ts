@@ -1,10 +1,11 @@
+import guides from "@/data/guides-published.json";
 import { categories as allCategories, disabledIn } from "@/data/categories";
 import { demoBusinesses } from "@/data/demo";
 import directory from "@/data/directory-2026-10-18.json";
 import trades from "@/data/directory-2026-10-18-trades.json";
 import { countries, districts, islands } from "@/data/geography";
 import { isOpenNow } from "@/lib/format";
-import type { Business, SearchFilters } from "@/lib/types";
+import type { Article, Business, SearchFilters } from "@/lib/types";
 import { businessCountries, type DataSource } from "./source";
 
 const today = Date.now();
@@ -192,11 +193,11 @@ export const demoSource: DataSource = {
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
       .slice(0, limit);
   },
-  // No guidance content ships with the demo: it must come from verified sources.
-  async getArticles() {
-    return [];
+  // Only verified guides ship with the demo: the same text as supabase/content (scripts/build-guides-json.py).
+  async getArticles(country, section) {
+    return (guides as unknown as Article[]).filter((a) => a.countryCode === country && (!section || a.section === section));
   },
-  async getArticle() {
-    return null;
+  async getArticle(country, section, slug) {
+    return (guides as unknown as Article[]).find((a) => a.countryCode === country && a.section === section && a.slug === slug) ?? null;
   },
 };

@@ -1,7 +1,8 @@
 import { createTripRequestAction } from "@/app/trip-actions";
 import { isSupabaseConfigured } from "@/lib/data";
 import type { Metadata } from "next";
-import { RideBooker, type RideOperator } from "@/components/ride/ride-booker";
+import { RideRequest, type RideOperator } from "@/components/ride/ride-request";
+import { getViewer } from "@/lib/auth";
 import { coastlines } from "@/data/coastlines";
 import { landmarks } from "@/data/landmarks";
 import roadRoutes from "@/data/road-routes.json";
@@ -19,7 +20,8 @@ export default async function RidePage({
   const { country: code } = await params;
   const sp = await searchParams;
   const country = (await getCountry(code))!;
-  const [islands, taxis, transfers] = await Promise.all([
+  const [viewer, islands, taxis, transfers] = await Promise.all([
+    getViewer(),
     data.getIslands(code),
     data.searchBusinesses(code, { category: "taxis" }, 100),
     data.searchBusinesses(code, { category: "airport-transfers" }, 100),
@@ -47,11 +49,12 @@ export default async function RidePage({
   const points = landmarks.filter((l) => l.countryCode === code);
   const rideIslands = islands
     .filter((i) => points.some((p) => p.island === i.slug) && coastlines[i.slug])
-    .map((i) => ({ slug: i.slug, name: i.name }));
+    .map((i) => ({ slug: i.slug, name: i.name }))
+    .sort((a, b) => Number(b.slug === (code === "vc" ? "st-vincent" : "grenada")) - Number(a.slug === (code === "vc" ? "st-vincent" : "grenada")));
 
   return (
     <main>
-      <RideBooker
+      <RideRequest
         countryCode={code}
         countryName={country.name}
         islands={rideIslands}
@@ -61,6 +64,8 @@ export default async function RidePage({
         operators={operators}
         initialVehicle={sp.vehicle === "van" ? "van" : "car"}
         startAtAirport={sp.from === "airport"}
+        googleKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || undefined}
+        signedIn={Boolean(viewer) || !isSupabaseConfigured}
         requestInApp={isSupabaseConfigured ? createTripRequestAction : undefined}
       />
     </main>

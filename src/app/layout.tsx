@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
+import { PageViewTracker } from "@/components/page-view-tracker";
+import { isSupabaseConfigured } from "@/lib/data";
 import "./globals.css";
 
 /*
@@ -40,7 +42,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${display.variable} ${body.variable}`}>
-      <body>{children}</body>
+      <body>
+        <PageViewTracker enabled={isSupabaseConfigured} />
+        {children}
+      </body>
     </html>
   );
 }

@@ -51,7 +51,8 @@ export default async function CountryLayout({ children, params }: Props) {
             </Link>
             <Suspense fallback={<span className="h-10 w-28 rounded-full bg-white/10" />}>
               <CountrySwitcher current={options.find((o) => o.code === country.code)!} countries={options}
-                account={isSupabaseConfigured ? { signedIn: Boolean(viewer), name: viewer?.name ?? null, isAdmin: viewer?.role === "admin" } : undefined} />
+                account={isSupabaseConfigured ? { signedIn: Boolean(viewer), name: viewer?.name ?? null, isAdmin: viewer?.role === "admin" }
+                  : process.env.PREVIEW_SAMPLE_ACCOUNT ? { signedIn: true, name: "Sample admin", isAdmin: true } : undefined} />
             </Suspense>
           </div>
         </div>

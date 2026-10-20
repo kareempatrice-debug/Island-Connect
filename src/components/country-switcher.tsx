@@ -1,9 +1,10 @@
 "use client";
 
-import { Check, ChevronDown, MapPin, UserRound } from "lucide-react";
+import { Check, ChevronDown, MapPin, UserRound, House, LogOut } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useRef } from "react";
+import { signOutAction } from "@/app/auth-actions";
 import { equivalentPath } from "@/lib/format";
 
 interface Option {
@@ -48,8 +49,11 @@ export function CountrySwitcher({ current, countries, account }: { current: Opti
         <ChevronDown className="h-4 w-4 opacity-80 transition-transform group-open:rotate-180" aria-hidden="true" />
       </summary>
       <div className="absolute right-0 z-50 mt-3 w-[min(20rem,calc(100vw-2.5rem))] overflow-hidden rounded-2xl bg-raised p-2 text-ink shadow-lift ring-1 ring-line">
-        <p className="px-3 pb-1 pt-2 text-sm text-muted">Show listings and guides for</p>
-        <ul>
+        <Link href="/?choose=1" className="flex items-center gap-2 rounded-xl px-3 py-3 font-semibold text-ink hover:bg-sunken">
+          <House className="h-4 w-4 text-primary" aria-hidden="true" />
+          Home
+        </Link>
+        <ul className="mt-1 border-t border-line pt-1">
           {countries.map((c) => {
             const active = c.code === current.code;
             return (
@@ -66,9 +70,6 @@ export function CountrySwitcher({ current, countries, account }: { current: Opti
             );
           })}
         </ul>
-        <Link href="/?choose=1" className="mt-1 block rounded-xl px-3 py-2.5 text-sm font-semibold text-link hover:bg-sunken">
-          Compare destinations
-        </Link>
         {account && (
           <div className="mt-1 border-t border-line pt-1">
             {account.signedIn ? (
@@ -78,7 +79,15 @@ export function CountrySwitcher({ current, countries, account }: { current: Opti
                   Your account{account.name ? <span className="truncate font-normal text-muted">· {account.name}</span> : null}
                 </Link>
                 <Link href={`/${current.code}/trips`} className="block rounded-xl px-3 py-2.5 pl-9 text-sm text-ink hover:bg-sunken">Your trips</Link>
+                <Link href={`/${current.code}/messages`} className="block rounded-xl px-3 py-2.5 pl-9 text-sm text-ink hover:bg-sunken">Messages</Link>
                 {account.isAdmin && <Link href="/admin" className="block rounded-xl px-3 py-2.5 pl-9 text-sm text-ink hover:bg-sunken">Admin</Link>}
+                <form action={signOutAction}>
+                  <input type="hidden" name="next" value="/?choose=1" />
+                  <button className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-ink hover:bg-sunken">
+                    <LogOut className="h-4 w-4 text-primary" aria-hidden="true" />
+                    Sign out
+                  </button>
+                </form>
               </>
             ) : (
               <Link href="/join?mode=sign-in" className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold text-ink hover:bg-sunken">

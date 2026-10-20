@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useActionState, useState } from "react";
+import { PasskeySignIn } from "./passkey";
 import type { FormState } from "@/app/auth-actions";
 
 type Mode = "sign-in" | "sign-up" | "link" | "reset";
@@ -103,6 +104,12 @@ export function AuthForm({
             <Link href="/privacy" className="font-semibold text-link underline">privacy policy</Link>.
           </p>
         </form>
+      )}
+
+      {mode === "sign-in" && actions && (
+
+        <div className="mt-6"><PasskeySignIn next={next} /></div>
+
       )}
 
       {mode === "sign-in" && (

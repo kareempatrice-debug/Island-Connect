@@ -169,3 +169,15 @@ export async function setVerifiedAction(form: FormData) {
   revalidateTag("listings");
   redirect(`/admin/listings/${id}?${error ? `error=${encodeURIComponent(error.message)}` : `done=${on ? "verified" : "unverified"}`}`);
 }
+
+/* ---------- Admin team ---------- */
+export async function setAdminAction(form: FormData) {
+  await requireAdmin();
+  const email = String(form.get("email") ?? "").trim().slice(0, 200);
+  const on = form.get("value") !== "off";
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) redirect(`/admin/team?error=${encodeURIComponent("Enter a valid email address")}`);
+  const supabase = await supabaseForRequest();
+  const { error } = await supabase.rpc("admin_set_admin", { p_email: email, p_admin: on });
+  revalidatePath("/admin/team");
+  redirect(`/admin/team?${error ? `error=${encodeURIComponent(error.message)}` : `done=${on ? "added" : "removed"}`}`);
+}

@@ -6,7 +6,7 @@ import { z } from "zod";
 import type { FormState } from "@/app/auth-actions";
 import { getViewer, requireAdmin } from "@/lib/auth";
 import { toE164International } from "@/lib/phone";
-import { fareAmount, officialFare } from "@/data/fares";
+import { fareAmount, officialFare, officialFareForText } from "@/data/fares";
 import { landmarks } from "@/data/landmarks";
 import { notifyCustomerOfAcceptance, notifyCustomerOfQuote, notifyOperatorOfBooking, notifyOperatorsOfRequest, notifyTripMessage } from "@/lib/notify";
 import { supabaseForRequest } from "@/lib/supabase/server";
@@ -18,6 +18,8 @@ const KINDS = ["taxi", "airport", "group", "boat", "haulage", "freight"] as cons
 export interface TripPayload {
   country: string; kind: (typeof KINDS)[number]; from: string; to: string; pickup: string; dropoff: string;
   travel_at?: string | null; passengers?: number | null; details?: string | null; cross_border?: boolean; contact_phone?: string; contact_code?: string; pickup_id?: string; dropoff_id?: string;
+  pickup_lat?: number | null; pickup_lng?: number | null; dropoff_lat?: number | null; dropoff_lng?: number | null;
+  distance_km?: number | null; duration_min?: number | null; rider_name?: string | null; rider_phone?: string | null; rider_code?: string;
 }
 
 const payload = z.object({
@@ -35,6 +37,11 @@ const payload = z.object({
   contact_code: z.string().regex(/^(\+\d{1,4}|other)$/).optional(),
   pickup_id: z.string().max(60).optional(),
   dropoff_id: z.string().max(60).optional(),
+  pickup_lat: z.number().min(-90).max(90).nullish(), pickup_lng: z.number().min(-180).max(180).nullish(),
+  dropoff_lat: z.number().min(-90).max(90).nullish(), dropoff_lng: z.number().min(-180).max(180).nullish(),
+  distance_km: z.number().min(0).max(2000).nullish(), duration_min: z.number().int().min(0).max(5000).nullish(),
+  rider_name: z.string().trim().max(80).nullish(), rider_phone: z.string().max(30).nullish(),
+  rider_code: z.string().regex(/^(\+\d{1,4}|other)$/).optional(),
 });
 
 /** Sends a trip request to every approved operator who can take it. Returns the trip page to open. */
@@ -51,18 +58,28 @@ export async function createTripRequestAction(input: TripPayload): Promise<{ url
     return { error: (e as Error).message };
   }
   if (!phone) return { error: "Add a phone or WhatsApp number so the operator you choose can reach you." };
+  // Booking for someone else: their name and number go to the driver once the trip is booked.
+  let riderPhone: string | null = null;
+  if (d.rider_name) {
+    try {
+      riderPhone = toE164International(d.rider_phone ?? "", d.rider_code ?? (d.country === "vc" ? "+1784" : "+1473"));
+    } catch (e) {
+      return { error: `Rider’s number: ${(e as Error).message}` };
+    }
+    if (!riderPhone) return { error: "Add the rider’s phone number so the driver can reach them." };
+  }
   const supabase = await supabaseForRequest();
   // Official fare, worked out here on the server from the published tables (never taken from the browser).
   let fixed: { fixed_fare_xcd: number; fare_source: string } | null = null;
-  if ((d.kind === "taxi" || d.kind === "airport") && d.pickup_id && d.dropoff_id) {
+  if (d.kind === "taxi" || d.kind === "airport") {
     const a = landmarks.find((l) => l.id === d.pickup_id && l.countryCode === d.country);
     const b = landmarks.find((l) => l.id === d.dropoff_id && l.countryCode === d.country);
-    const f = a && b ? officialFare(a, b) : null;
+    const f = (a && b ? officialFare(a, b) : null) ?? officialFareForText(d.country, d.pickup, d.dropoff);
     if (f) fixed = { fixed_fare_xcd: fareAmount(f, d.passengers ?? 1), fare_source: `${f.table.source}, ${f.table.sourceDate}` };
   }
-  const { contact_code: _code, pickup_id: _a, dropoff_id: _b, ...trip } = d;
-  void _code; void _a; void _b;
-  const { data, error } = await supabase.rpc("create_trip_request", { p: { ...trip, travel_at: d.travel_at || null, contact_phone: phone, ...(fixed ?? {}) } });
+  const { contact_code: _code, pickup_id: _a, dropoff_id: _b, rider_code: _rc, rider_phone: _rp, ...trip } = d;
+  void _code; void _a; void _b; void _rc; void _rp;
+  const { data, error } = await supabase.rpc("create_trip_request", { p: { ...trip, travel_at: d.travel_at || null, contact_phone: phone, rider_phone: riderPhone, ...(fixed ?? {}) } });
   if (error) return { error: error.message };
   await notifyOperatorsOfRequest(String(data));
   return { url: `/${d.country}/trips/${data}` };

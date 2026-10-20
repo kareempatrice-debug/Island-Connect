@@ -21,7 +21,12 @@ export default async function GuideSectionPage({ params }: Props) {
   const { country: code, section: slug } = await params;
   const section = getGuideSection(slug);
   if (!section) notFound();
-  const [country, articles, categories] = await Promise.all([getCountry(code), data.getArticles(code, section.slug), data.getCategories(code)]);
+  const [country, unordered, categories] = await Promise.all([getCountry(code), data.getArticles(code, section.slug), data.getCategories(code)]);
+  // Articles follow the guide's own topic order; topics already published drop out of "on the way".
+  const order = (t: string) => { const i = section.topics.findIndex((x) => x.title.toLowerCase() === t.toLowerCase()); return i < 0 ? 999 : i; };
+  const articles = [...unordered].sort((a, b) => order(a.title) - order(b.title));
+  const published = new Set(articles.map((a) => a.title.toLowerCase()));
+  const upcoming = section.topics.filter((t) => !published.has(t.title.toLowerCase()));
   const c = country!;
   const imagery = countryImagery[code] ?? fallbackImagery;
   const photo = imagery.guides[section.slug] ?? imagery.hero;
@@ -67,7 +72,7 @@ export default async function GuideSectionPage({ params }: Props) {
               </section>
             )}
 
-            <section aria-labelledby="topics-heading">
+            {upcoming.length > 0 && <section aria-labelledby="topics-heading">
               <h2 id="topics-heading" className="text-2xl font-semibold">
                 {articles.length ? "More topics on the way" : "What this guide will cover"}
               </h2>
@@ -77,7 +82,7 @@ export default async function GuideSectionPage({ params }: Props) {
                 </p>
               )}
               <ul className="mt-5 grid gap-3 sm:grid-cols-2">
-                {section.topics.map((t) => (
+                {upcoming.map((t) => (
                   <li key={t.title} className="flex gap-3 rounded-2xl bg-raised p-4 ring-1 ring-line/60">
                     <CircleDashed className="mt-0.5 h-5 w-5 shrink-0 text-muted" aria-hidden="true" />
                     <span>
@@ -87,7 +92,7 @@ export default async function GuideSectionPage({ params }: Props) {
                   </li>
                 ))}
               </ul>
-            </section>
+            </section>}
 
             {section.areas && (
               <section aria-labelledby="areas-heading" className="mt-12">

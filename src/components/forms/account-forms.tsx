@@ -34,7 +34,7 @@ export function DeleteAccountForm() {
     <details className="rounded-2xl border border-danger/30 p-5">
       <summary className="cursor-pointer font-semibold text-danger">Delete my account</summary>
       <form action={act} className="mt-4 space-y-3">
-        <p className="text-sm">This permanently deletes your account, your messages and your trip requests. Any business you alone manage is hidden from the site. This can’t be undone.</p>
+        <p className="text-sm">This permanently deletes your account and your data: your profile, messages, trip requests, saved phone numbers, sign-in devices and any documents you uploaded. Listings you created or that describe you as self-employed are deleted with their photos, if nobody else manages them. Listings that came from public directories go back to unclaimed and are hidden. A record of completed trips, without your details, is kept for Island Connect’s accounts. This can’t be undone.</p>
         <label className="block"><span className="mb-1.5 block text-sm font-semibold text-ink">Type DELETE to confirm</span>
           <input name="confirm" autoComplete="off" className={field} /></label>
         {state.error && <p role="alert" className="rounded-xl bg-danger/10 px-4 py-3 text-sm font-medium text-danger">{state.error}</p>}

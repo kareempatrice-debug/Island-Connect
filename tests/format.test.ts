@@ -94,3 +94,22 @@ describe("official fares and road routes", () => {
     }
   });
 });
+
+import { officialFareForText } from "@/data/fares";
+import { decodePolyline } from "@/lib/geo";
+
+describe("official fares for any address", () => {
+  it("prices popular routes typed or picked from Google", () => {
+    expect(officialFareForText("gd", "Maurice Bishop International Airport, Point Salines", "St. George's, Grenada")?.row.xcd).toBe(50);
+    expect(officialFareForText("gd", "Grand Anse Beach, St George's, Grenada", "Maurice Bishop International Airport")?.row.xcd).toBe(40);
+    expect(officialFareForText("vc", "Argyle International Airport", "Kingstown, St Vincent")?.row.xcd).toBe(91);
+    expect(officialFareForText("vc", "Kingstown", "Layou")?.row.xcd).toBe(72);
+  });
+  it("leaves unlisted routes to the driver", () => {
+    expect(officialFareForText("gd", "Grand Anse", "Gouyave")).toBeNull();
+    expect(officialFareForText("vc", "Kingstown", "Union Island")).toBeNull();
+  });
+  it("decodes route lines", () => {
+    expect(decodePolyline("_p~iF~ps|U_ulLnnqC_mqNvxq`@")).toEqual([{ lat: 38.5, lng: -120.2 }, { lat: 40.7, lng: -120.95 }, { lat: 43.252, lng: -126.453 }]);
+  });
+});

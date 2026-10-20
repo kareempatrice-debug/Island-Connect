@@ -27,10 +27,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-5">
           <Link href="/?choose=1" aria-label="Island Connect main page" className="shrink-0"><Wordmark onDark compact /></Link>
           <nav aria-label="Admin" className="-mr-5 flex min-w-0 flex-1 items-center gap-1 overflow-x-auto whitespace-nowrap pr-5 text-sm font-medium [scrollbar-width:none] sm:justify-end">
-            <Link href="/admin" className="rounded-full px-3 py-2 text-white/85 hover:bg-white/10 hover:text-white">Review queue{badge((regs ?? 0) + (claims ?? 0))}</Link>
+            <Link href="/admin" className="rounded-full px-3 py-2 text-white/85 hover:bg-white/10 hover:text-white">Dashboard{badge((regs ?? 0) + (claims ?? 0))}</Link>
             <Link href="/admin/listings" className="rounded-full px-3 py-2 text-white/85 hover:bg-white/10 hover:text-white">Listings</Link>
             <Link href="/admin/operators" className="rounded-full px-3 py-2 text-white/85 hover:bg-white/10 hover:text-white">Operators{badge(ops)}</Link>
             <Link href="/admin/add-listing" className="rounded-full px-3 py-2 text-white/85 hover:bg-white/10 hover:text-white">Add listing</Link>
+            <Link href="/admin/team" className="rounded-full px-3 py-2 text-white/80 hover:bg-white/10 hover:text-white">Team</Link>
             <Link href={`/${country}`} className="rounded-full px-3 py-2 text-white/60 hover:text-white">View site</Link>
           </nav>
         </div>

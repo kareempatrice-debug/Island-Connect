@@ -40,8 +40,18 @@ describe("demo data source", () => {
     expect(directory.every((b) => b.claimStatus === "unclaimed" && b.verificationStatus === "unverified" && !b.coverUrl)).toBe(true);
   });
 
-  it("ships no guidance articles", async () => {
-    expect(await demoSource.getArticles("gd")).toEqual([]);
+  it("ships only verified guides, each with sources and check dates", async () => {
+    for (const cc of ["gd", "vc"]) {
+      const list = await demoSource.getArticles(cc);
+      expect(list.length).toBeGreaterThan(0);
+      for (const a of list) {
+        expect(a.countryCode).toBe(cc);
+        expect(a.sources.length).toBeGreaterThan(0);
+        expect(a.verifiedAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+        expect(a.nextReviewAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+        expect(a.body.length).toBeGreaterThan(600);
+      }
+    }
   });
 });
 

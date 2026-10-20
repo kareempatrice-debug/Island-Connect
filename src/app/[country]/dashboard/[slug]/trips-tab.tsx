@@ -39,7 +39,7 @@ export async function TripsTab({ ids, isOwner, sp }: { ids: { businessId: string
   // Approved: open requests this business can take (Row Level Security does the matching), plus its own quotes and trips.
   const [{ data: open }, { data: mine }, { data: ledger }] = await Promise.all([
     supabase.from("trip_requests").select("*, trip_quotes!trip_quotes_request_id_fkey ( business_id, amount_xcd, status )").eq("status", "open").order("created_at", { ascending: false }).limit(50),
-    supabase.from("trip_quotes").select("id, amount_xcd, status, includes, trip_requests!trip_quotes_request_id_fkey ( id, kind, pickup, dropoff, from_place, to_place, travel_at, passengers, details, status, trip_contacts ( phone_e164 ) )").eq("business_id", ids.businessId).in("status", ["accepted"]).order("created_at", { ascending: false }).limit(50),
+    supabase.from("trip_quotes").select("id, amount_xcd, status, includes, trip_requests!trip_quotes_request_id_fkey ( id, kind, pickup, dropoff, from_place, to_place, travel_at, passengers, details, status, rider_name, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, distance_km, duration_min, trip_contacts ( phone_e164, rider_phone_e164 ) )").eq("business_id", ids.businessId).in("status", ["accepted"]).order("created_at", { ascending: false }).limit(50),
     supabase.from("commission_ledger").select("fare_xcd, commission_xcd").eq("business_id", ids.businessId),
   ]);
   const totals = (ledger ?? []).reduce((a, r) => ({ n: a.n + 1, fares: a.fares + Number(r.fare_xcd), commission: a.commission + Number(r.commission_xcd) }), { n: 0, fares: 0, commission: 0 });

@@ -11,7 +11,7 @@ let db: PGlite;
 
 const AUTH_STUB = `
   create schema auth;
-  create table auth.users (id uuid primary key, email text, raw_user_meta_data jsonb default '{}'::jsonb);
+  create table auth.users (id uuid primary key, email text, raw_user_meta_data jsonb default '{}'::jsonb, created_at timestamptz not null default now());
   create function auth.uid() returns uuid language sql stable as $$
     select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
   create role anon nologin;
@@ -613,7 +613,7 @@ describe("one-step driver sign-up", () => {
 });
 
 describe("deleting an account", () => {
-  it("hides listings the person alone owns, then removes the account cleanly", async () => {
+  it("erases the person's own listings, keeps the trip accounts, and leaves nothing personal behind", async () => {
     const GONE = "00000000-0000-0000-0000-000000000030";
     await db.exec(`insert into auth.users (id, email) values ('${GONE}', 'gone@example.com') on conflict do nothing`);
     const { r } = (await as("authenticated", GONE, () => db.query<{ r: { id: string } }>(`select public.apply_as_driver($1::jsonb) as r`, [JSON.stringify({
@@ -621,10 +621,27 @@ describe("deleting an account", () => {
       kinds: ["taxi"], licence: "Licence D123", vehicles: "Toyota car", insurance: "Comprehensive", documents: [`${GONE}/licence-1.jpg`, `${GONE}/insurance-1.jpg`, `${GONE}/vehicle-1.jpg`],
     })]))).rows[0];
     await as("authenticated", ADMIN, () => db.query(`select public.admin_review_operator($1, true)`, [r.id]));
-    await as("authenticated", GONE, () => db.query(`select public.prepare_account_deletion()`));
-    expect((await db.query<{ s: string }>(`select listing_status as s from public.businesses where id = $1`, [r.id])).rows[0].s).toBe("suspended");
+    // A researched listing they had claimed, and a trip they asked for as a customer.
+    const researched = (await db.query<{ id: string }>(`select b.id from public.businesses b where b.id <> $1 and not b.is_demo and not exists (select 1 from public.business_members m where m.business_id = b.id) order by b.name limit 1`, [r.id])).rows[0].id;
+    await db.query(`update public.businesses set source_url = 'https://example.com/directory', source_checked_at = now() where id = $1`, [researched]);
+    await db.query(`insert into public.business_members (business_id, user_id, role) values ($1, $2, 'owner') on conflict do nothing`, [researched, GONE]);
+    await db.query(`update public.businesses set claim_status = 'claimed' where id = $1`, [researched]);
+    const trip = (await as("authenticated", GONE, () => db.query<{ id: string }>(`select public.create_trip_request($1::jsonb) as id`, [JSON.stringify({
+      country: "gd", kind: "taxi", from: "Grenada", to: "Grenada", pickup: "Home", dropoff: "Town", passengers: 1, contact_phone: "+447835028032" })]))).rows[0].id;
+    await db.query(`insert into public.audit_events (actor_id, action, entity_type, entity_id, data) values (null, 'business.owner_assigned', 'business', 'x', '{"email":"gone@example.com"}')`);
+
+    const erased = (await as("authenticated", GONE, () => db.query<{ e: string[] }>(`select public.prepare_account_deletion() as e`))).rows[0].e;
+    expect(erased).toContain(r.id);
+    expect((await db.query(`select 1 from public.businesses where id = $1`, [r.id])).rows).toHaveLength(0);
+    const back = (await db.query<{ claim_status: string; listing_status: string }>(`select claim_status, listing_status from public.businesses where id = $1`, [researched])).rows[0];
+    expect(back).toEqual({ claim_status: "unclaimed", listing_status: "suspended" });
+
     await db.query(`delete from auth.users where id = $1`, [GONE]);
-    expect((await db.query(`select 1 from public.business_members where user_id = $1`, [GONE])).rows).toHaveLength(0);
+    for (const [table, col] of [["business_members", "user_id"], ["trip_requests", "customer_id"], ["profiles", "id"]]) {
+      expect((await db.query(`select 1 from public.${table} where ${col} = $1`, [GONE])).rows, table).toHaveLength(0);
+    }
+    expect((await db.query(`select 1 from public.trip_contacts where request_id = $1`, [trip])).rows).toHaveLength(0);
+    expect((await db.query(`select 1 from public.audit_events where data::text ilike '%gone@example.com%'`)).rows).toHaveLength(0);
   });
   it("won't let the only administrator delete themselves", async () => {
     await expect(as("authenticated", ADMIN, () => db.query(`select public.prepare_account_deletion()`))).rejects.toThrow(/only administrator/);
@@ -640,5 +657,79 @@ describe("verification", () => {
     await as("authenticated", ADMIN, () => db.query(`select public.admin_set_verified($1, false)`, [id]));
     await as("authenticated", ADMIN, () => db.query(`select public.admin_set_operator($1, array['haulage']::public.trip_kind[])`, [id]));
     expect((await db.query<{ v: string }>(`select verification_status as v from public.businesses where id = $1`, [id])).rows[0].v).toBe("verified");
+  });
+});
+
+describe("rides to any address, for someone else", () => {
+  it("stores the route and the rider, with the rider's number kept private", async () => {
+    const RIDER = "00000000-0000-0000-0000-000000000040";
+    await db.exec(`insert into auth.users (id, email) values ('${RIDER}', 'booker@example.com') on conflict do nothing`);
+    const res = await as("authenticated", RIDER, () => db.query<{ id: string }>(`select public.create_trip_request($1::jsonb) as id`, [JSON.stringify({
+      country: "gd", kind: "taxi", from: "Grenada", to: "Grenada", pickup: "Spice Basket, Beaulieu", dropoff: "Grand Anse Beach",
+      pickup_lat: 12.08, pickup_lng: -61.72, dropoff_lat: 12.03, dropoff_lng: -61.76, distance_km: 9.4, duration_min: 17,
+      passengers: 1, rider_name: "Auntie Joan", rider_phone: "+14734405555", contact_phone: "+447835028032",
+    })]));
+    const id = res.rows[0].id;
+    const r = await db.query(`select rider_name, distance_km::text, pickup_lat from public.trip_requests where id = $1`, [id]);
+    expect(r.rows[0]).toMatchObject({ rider_name: "Auntie Joan", distance_km: "9.4", pickup_lat: 12.08 });
+    const c = await db.query<{ rider_phone_e164: string }>(`select rider_phone_e164 from public.trip_contacts where request_id = $1`, [id]);
+    expect(c.rows[0].rider_phone_e164).toBe("+14734405555");
+  });
+});
+
+describe("insights and admin team", () => {
+  it("counts page views without personal detail, and gives admins the dashboard data", async () => {
+    await as("anon", null, () => db.query(`select public.record_view('/gd/ride?x=1')`));
+    await as("anon", null, () => db.query(`select public.record_view('/gd/ride')`));
+    await as("anon", null, () => db.query(`select public.record_view('/admin/listings')`));
+    await as("anon", null, () => db.query(`select public.record_view('/gd/trips/00000000-0000-0000-0000-00000000abcd')`));
+    const v = await db.query<{ path: string; views: number }>(`select path, views from public.page_views order by path`);
+    expect(v.rows).toEqual(expect.arrayContaining([{ path: "/gd/ride", views: 2 }, { path: "/gd/trips/…", views: 1 }]));
+    expect(v.rows.some((r) => r.path.startsWith("/admin"))).toBe(false);
+    await expect(as("authenticated", OWNER, () => db.query(`select public.admin_insights(30)`))).rejects.toThrow(/administrators/);
+    const r = await as("authenticated", ADMIN, () => db.query<{ i: any }>(`select public.admin_insights(30) as i`));
+    expect(r.rows[0].i.series).toHaveLength(30);
+    expect(r.rows[0].i.series.at(-1).views).toBeGreaterThanOrEqual(2);
+    expect(r.rows[0].i.totals.listings).toBeGreaterThan(0);
+  });
+  it("lets admins add and remove other admins, never the last one", async () => {
+    await expect(as("authenticated", ADMIN, () => db.query(`select public.admin_set_admin('nobody@example.com', true)`))).rejects.toThrow(/No account/);
+    await as("authenticated", ADMIN, () => db.query(`select public.admin_set_admin('Rider@Example.com', true)`));
+    const team = await as("authenticated", ADMIN, () => db.query<{ email: string }>(`select email from public.admin_team()`));
+    expect(team.rows.map((t) => t.email)).toContain("rider@example.com");
+    await as("authenticated", ADMIN, () => db.query(`select public.admin_set_admin('rider@example.com', false)`));
+    await expect(as("authenticated", OWNER, () => db.query(`select public.admin_set_admin('rider@example.com', true)`))).rejects.toThrow(/administrators/);
+  });
+});
+
+describe("guide content", () => {
+  it("loads the Start a business guides for both countries, published with sources", async () => {
+    const { readFileSync } = await import("node:fs");
+    await db.exec(readFileSync("supabase/content/2026-10-20-guides-start-a-business.sql", "utf8"));
+    const r = await db.query<{ country_code: string; n: number }>(`select country_code, count(*)::int n from public.articles where section = 'start-a-business' and status = 'published' group by country_code order by 1`);
+    expect(r.rows).toEqual([{ country_code: "gd", n: 6 }, { country_code: "vc", n: 6 }]);
+    const anon = await as("anon", null, () => db.query(`select 1 from public.articles where section = 'start-a-business'`));
+    expect(anon.rows).toHaveLength(12);
+  });
+  it("loads the Property and investment guides for both countries", async () => {
+    const { readFileSync } = await import("node:fs");
+    await db.exec(readFileSync("supabase/content/2026-10-20-guides-property-investment.sql", "utf8"));
+    const r = await db.query<{ country_code: string; n: number }>(`select country_code, count(*)::int n from public.articles where section = 'property-investment' and status = 'published' group by country_code order by 1`);
+    expect(r.rows).toEqual([{ country_code: "gd", n: 6 }, { country_code: "vc", n: 6 }]);
+  });
+  it("loads the Returning home guides for both countries", async () => {
+    const { readFileSync } = await import("node:fs");
+    await db.exec(readFileSync("supabase/content/2026-10-20-guides-returning-home.sql", "utf8"));
+    const r = await db.query<{ country_code: string; n: number }>(`select country_code, count(*)::int n from public.articles where section = 'returning-home' and status = 'published' group by country_code order by 1`);
+    expect(r.rows).toEqual([{ country_code: "gd", n: 10 }, { country_code: "vc", n: 10 }]);
+  });
+});
+
+describe("passkeys", () => {
+  it("are private to their owner", async () => {
+    await as("authenticated", OWNER, () => db.query(`insert into public.passkeys (user_id, credential_id, public_key, device_name) values ($1, 'cred-owner-0000000001', 'pk', 'iPhone')`, [OWNER]));
+    await expect(as("authenticated", OWNER, () => db.query(`insert into public.passkeys (user_id, credential_id, public_key) values ($1, 'cred-stranger-000000001', 'pk')`, [STRANGER]))).rejects.toThrow();
+    expect((await as("authenticated", STRANGER, () => db.query(`select 1 from public.passkeys`))).rows).toHaveLength(0);
+    expect((await as("authenticated", OWNER, () => db.query(`select 1 from public.passkeys`))).rows).toHaveLength(1);
   });
 });

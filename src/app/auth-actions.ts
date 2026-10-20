@@ -102,11 +102,26 @@ export async function deleteAccountAction(_: FormState, form: FormData): Promise
   const supabase = await supabaseForRequest();
   const { data } = await supabase.auth.getUser();
   if (!data.user) return { error: "Please sign in again." };
-  const { error: prepError } = await supabase.rpc("prepare_account_deletion");
+  // 1. Erase the person's listings and scrub the admin log (database), getting back the listings removed.
+  const { data: erased, error: prepError } = await supabase.rpc("prepare_account_deletion");
   if (prepError) return { error: prepError.message };
   const { createClient } = await import("@supabase/supabase-js");
   const { SUPABASE_URL } = await import("@/lib/supabase/env");
   const admin = createClient(SUPABASE_URL, secret, { auth: { persistSession: false, autoRefreshToken: false } });
+
+  // 2. Delete their files: licence and insurance documents, and photos of the listings that were erased.
+  const removeFolder = async (bucket: string, folder: string) => {
+    for (let round = 0; round < 10; round++) {
+      const { data: files } = await admin.storage.from(bucket).list(folder, { limit: 100 });
+      if (!files?.length) return;
+      await admin.storage.from(bucket).remove(files.map((f) => `${folder}/${f.name}`));
+      if (files.length < 100) return;
+    }
+  };
+  await removeFolder("operator-documents", data.user.id).catch(() => undefined);
+  for (const id of ((erased as string[] | null) ?? [])) await removeFolder("business-media", id).catch(() => undefined);
+
+  // 3. Delete the account itself; everything else linked to it is removed by the database.
   const { error } = await admin.auth.admin.deleteUser(data.user.id);
   if (error) return { error: "Your account couldn’t be deleted. Please try again, or email hello@islandconnect.cc." };
   await supabase.auth.signOut();

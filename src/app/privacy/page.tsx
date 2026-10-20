@@ -63,7 +63,7 @@ export default function Privacy() {
       <section>
         <h2>How long we keep it</h2>
         <ul>
-          <li>Your account and messages are kept while your account is open. When you ask us to delete your account, we delete your account details and your side of any conversations within 30 days.</li>
+          <li>Your account and messages are kept while your account is open. You can delete your account at any time from Your account, Account settings. Deleting it immediately erases your account details, messages, trip requests and the phone numbers attached to them, sign-in devices, uploaded documents, and any listing you created or that describes you as self-employed (if nobody else manages it). The only thing kept is the financial record of completed trips (date, fare, commission and the business name, without your details), which we need for our accounts. Copies in our database backups are overwritten within our provider’s backup period.</li>
           <li>Business listings stay up until the business or Island Connect removes them. A business can ask for its listing to be corrected or removed at any time.</li>
           <li>Records of administrative changes, such as approvals and removals, are kept for as long as needed to show how the directory has been managed.</li>
         </ul>
@@ -71,7 +71,7 @@ export default function Privacy() {
 
       <section>
         <h2>Your choices and rights</h2>
-        <p>You can ask us to show you the information we hold about you, correct it, delete it, or stop using it for a particular purpose. Businesses can ask us to correct or remove a listing, including one compiled from public sources. Email <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a> from the address on your account and we’ll respond as soon as we can.</p>
+        <p>You can delete your account and data yourself from Your account. You can also ask us to show you the information we hold about you, correct it, delete it, or stop using it for a particular purpose. Businesses can ask us to correct or remove a listing, including one compiled from public sources. Email <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a> from the address on your account and we’ll respond as soon as we can.</p>
       </section>
 
       <section>

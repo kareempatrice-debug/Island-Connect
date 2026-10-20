@@ -143,3 +143,42 @@ export function fareAmount(f: { table: FareTable; row: FareRow }, passengers: nu
   if (f.table.id === "vc-airport") return f.row.xcd + Math.max(0, p - 3) * 13;
   return f.row.xcd;
 }
+
+/* ---------- Matching free-typed or Google places to the official tables ---------- */
+const ORIGIN_ALIASES: Record<string, string[]> = {
+  "gd-airport": ["maurice bishop", "point salines", "mbia", "gnd airport", "grenada airport", "airport"],
+  "vc-airport": ["argyle international", "argyle airport", "argyle", "svd", "airport"],
+  "vc-kingstown": ["kingstown"],
+};
+const clean = (s: string) => ` ${norm(s).replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim()} `;
+const placeTokens = (row: FareRow) =>
+  row.places.split(/,| to | and |\(|\)/).map((p) => clean(p.replace(/\b(town|and surroundings|up to|lower|upper|from junction|playing field|and up|bay road)\b/gi, "")).trim())
+    .filter((t) => t.length >= 3 && !["in and around kingstown", "around"].includes(t));
+
+/**
+ * The official fare between two places described in words (a typed address, a Google place,
+ * or a named point), for the given country. Returns null when the published tables don't
+ * cover the trip, rather than guessing.
+ */
+export function officialFareForText(country: string, a: string, b: string): { table: FareTable; row: FareRow } | null {
+  const A = clean(a), B = clean(b);
+  for (const t of fareTables.filter((x) => x.country === country)) {
+    const aliases = ORIGIN_ALIASES[t.id] ?? [];
+    const isOrigin = (s: string) => aliases.some((al) => s.includes(` ${al} `) || s.includes(` ${al}`));
+    const otherRaw = isOrigin(A) ? b : isOrigin(B) ? a : null;
+    if (otherRaw === null) continue;
+    const other = clean(otherRaw);
+    if (isOrigin(other)) continue;
+    // Try the place's own name first (before the first comma), then the whole address.
+    for (const target of [clean(otherRaw.split(",")[0]), other]) {
+      let best: { row: FareRow; len: number } | null = null;
+      for (const row of t.rows) {
+        for (const tok of placeTokens(row)) {
+          if (target.includes(` ${tok} `) && (!best || tok.length > best.len)) best = { row, len: tok.length };
+        }
+      }
+      if (best) return { table: t, row: best.row };
+    }
+  }
+  return null;
+}
