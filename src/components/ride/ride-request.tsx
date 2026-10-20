@@ -178,7 +178,7 @@ export function RideRequest({
   return (
     <div className="lg:grid lg:min-h-[calc(100dvh-4rem)] lg:grid-cols-[minmax(0,26rem)_1fr] lg:gap-6 lg:p-6">
       {/* Map */}
-      <div className="relative h-[40vh] min-h-64 bg-sunken lg:sticky lg:top-24 lg:order-2 lg:h-[calc(100dvh-7rem)] lg:overflow-hidden lg:rounded-[1.75rem]">
+      <div className="relative h-[32vh] min-h-56 bg-sunken lg:sticky lg:top-24 lg:order-2 lg:h-[calc(100dvh-7rem)] lg:overflow-hidden lg:rounded-[1.75rem]">
         {useGoogle && googleKey ? (
           <GoogleRideMap apiKey={googleKey} center={centre} pickup={pickup?.lat != null ? (pickup as any) : null} dropoff={dropoff?.lat != null ? (dropoff as any) : null}
             path={route?.path?.length ? route.path : null} pinMode={Boolean(pinFor)} onTap={placeFromTap} onFail={() => setUseGoogle(false)} />
@@ -220,18 +220,6 @@ export function RideRequest({
               );
             })}
           </div>
-
-          {/* Quick places */}
-          {!ready && (
-            <div className="flex flex-wrap gap-2">
-              {landmarks.filter((l) => l.island === main?.slug).slice(0, 8).map((l) => (
-                <button key={l.id} type="button" onClick={() => (pickup ? setDropoff(asPlace(l)) : setPickup(asPlace(l)))}
-                  className="inline-flex h-9 items-center gap-1.5 rounded-full border border-line px-3 text-sm text-ink hover:bg-sunken">
-                  <MapPin className="h-3.5 w-3.5 text-primary" aria-hidden="true" />{l.name}
-                </button>
-              ))}
-            </div>
-          )}
 
           {/* When and who */}
           <div className="flex flex-wrap gap-2">
@@ -279,6 +267,21 @@ export function RideRequest({
                   <p className="text-xs">The driver gets their name and number once your trip is booked. You’ll get the updates.</p>
                 </>
               )}
+            </div>
+          )}
+
+          {/* Popular places: one tidy row that scrolls sideways */}
+          {!ready && (
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">Popular places</p>
+              <div className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {landmarks.filter((l) => l.island === main?.slug).slice(0, 8).map((l) => (
+                  <button key={l.id} type="button" onClick={() => (pickup ? setDropoff(asPlace(l)) : setPickup(asPlace(l)))}
+                    className="inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-sunken px-3.5 text-sm font-medium text-ink hover:bg-line/60">
+                    <MapPin className="h-3.5 w-3.5 text-primary" aria-hidden="true" />{l.kind === "airport" ? "Airport" : l.name.replace(/ town centre$/i, "").replace(/ Beach$/i, "")}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
