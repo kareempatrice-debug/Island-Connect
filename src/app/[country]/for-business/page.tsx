@@ -10,9 +10,9 @@ const STAGES = [
   { Icon: Store, title: "A free business profile", text: "Your services, prices, opening hours, location and contact details, found by people searching nearby.", live: true },
   { Icon: CheckCircle2, title: "Claim an existing listing", text: "If we’ve already listed your business, claim it to take over and keep it up to date.", live: true },
   { Icon: CheckCircle2, title: "Verification", text: "Submit your documents and earn a Verified badge, so customers know you’re who you say you are.", live: false },
-  { Icon: MessageSquare, title: "Enquiries and quote requests", text: "Customers describe the job, add photos and send it to you. You reply with a price.", live: false },
+  { Icon: MessageSquare, title: "Messages and quote requests", text: "Customers describe the job, add photos and send it to you. You reply with a price.", live: false },
   { Icon: CalendarCheck, title: "Bookings", text: "Set your availability and let customers book appointments, tours and transfers.", live: false },
-  { Icon: FileText, title: "A business dashboard", text: "Manage your listing, enquiries, bookings and reviews in one place.", live: false },
+  { Icon: FileText, title: "A business dashboard", text: "Manage your listing, messages, bookings and reviews in one place.", live: false },
 ];
 
 export default async function ForBusiness({ params }: { params: Promise<{ country: string }> }) {

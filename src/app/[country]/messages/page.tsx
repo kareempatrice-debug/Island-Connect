@@ -21,7 +21,7 @@ export default async function Messages({ params }: { params: Promise<{ country: 
   return (
     <Container className="max-w-2xl py-10 sm:py-14">
       <h1 className="text-4xl font-semibold">Messages</h1>
-      <p className="mt-2">Your enquiries to businesses. Businesses manage theirs from their dashboard.</p>
+      <p className="mt-2">Your conversations with businesses. Businesses reply from their dashboard.</p>
       {rows?.length ? (
         <ul className="mt-8 divide-y divide-line rounded-panel bg-raised ring-1 ring-line/60">
           {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
@@ -35,7 +35,7 @@ export default async function Messages({ params }: { params: Promise<{ country: 
           ))}
         </ul>
       ) : (
-        <p className="mt-8 rounded-panel border border-dashed border-line p-6 text-center">No messages yet. Send an enquiry from any business page.</p>
+        <p className="mt-8 rounded-panel border border-dashed border-line p-6 text-center">No messages yet. Tap “Message in the app” on any business page.</p>
       )}
     </Container>
   );

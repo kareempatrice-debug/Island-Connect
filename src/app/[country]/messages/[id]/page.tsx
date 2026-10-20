@@ -27,10 +27,10 @@ export default async function Thread({ params }: { params: Promise<{ country: st
 
   return (
     <Container className="max-w-2xl py-8 sm:py-12">
-      <Link href={back} className="text-sm font-semibold text-link hover:underline">{isCustomer ? "All messages" : "Back to enquiries"}</Link>
+      <Link href={back} className="text-sm font-semibold text-link hover:underline">{isCustomer ? "All messages" : "Back to messages"}</Link>
       <h1 className="mt-2 text-3xl font-semibold">{enquiry.subject}</h1>
       <p className="mt-1 text-sm">
-        {isCustomer ? `With ${enquiry.businesses?.name}` : `Customer enquiry to ${enquiry.businesses?.name}`}
+        {isCustomer ? `With ${enquiry.businesses?.name}` : `Customer message to ${enquiry.businesses?.name}`}
         {enquiry.services?.name && ` · ${enquiry.services.name}`}
         {enquiry.preferred_date && ` · Preferred date ${new Date(enquiry.preferred_date).toLocaleDateString("en-GB", { day: "numeric", month: "long" })}`}
       </p>
@@ -53,7 +53,7 @@ export default async function Thread({ params }: { params: Promise<{ country: st
           <input type="hidden" name="enquiryId" value={id} />
           <input type="hidden" name="country" value={country} />
           <input type="hidden" name="status" value={enquiry.status === "closed" ? "open" : "closed"} />
-          <button className="text-sm font-semibold text-link hover:underline">{enquiry.status === "closed" ? "Reopen enquiry" : "Mark as done"}</button>
+          <button className="text-sm font-semibold text-link hover:underline">{enquiry.status === "closed" ? "Reopen conversation" : "Mark as done"}</button>
         </form>
       )}
     </Container>

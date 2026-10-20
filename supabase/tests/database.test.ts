@@ -630,3 +630,15 @@ describe("deleting an account", () => {
     await expect(as("authenticated", ADMIN, () => db.query(`select public.prepare_account_deletion()`))).rejects.toThrow(/only administrator/);
   });
 });
+
+describe("verification", () => {
+  it("admins verify and unverify listings; approving an operator verifies it", async () => {
+    const id = (await db.query<{ id: string }>(`select id from public.businesses where not is_demo and verification_status <> 'verified' order by name limit 1`)).rows[0].id;
+    await expect(as("authenticated", OWNER, () => db.query(`select public.admin_set_verified($1, true)`, [id]))).rejects.toThrow(/administrators/);
+    await as("authenticated", ADMIN, () => db.query(`select public.admin_set_verified($1, true)`, [id]));
+    expect((await db.query<{ v: string }>(`select verification_status as v from public.businesses where id = $1`, [id])).rows[0].v).toBe("verified");
+    await as("authenticated", ADMIN, () => db.query(`select public.admin_set_verified($1, false)`, [id]));
+    await as("authenticated", ADMIN, () => db.query(`select public.admin_set_operator($1, array['haulage']::public.trip_kind[])`, [id]));
+    expect((await db.query<{ v: string }>(`select verification_status as v from public.businesses where id = $1`, [id])).rows[0].v).toBe("verified");
+  });
+});

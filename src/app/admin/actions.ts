@@ -158,3 +158,14 @@ export async function approveBusinessAction(form: FormData) { form.set("decision
 export async function rejectBusinessAction(form: FormData) { form.set("decision", "reject"); return reviewBusinessAction(form); }
 export async function approveClaimAction(form: FormData) { form.set("decision", "approve"); return reviewClaimAction(form); }
 export async function rejectClaimAction(form: FormData) { form.set("decision", "reject"); return reviewClaimAction(form); }
+
+/* ---------- Verified badge ---------- */
+export async function setVerifiedAction(form: FormData) {
+  await requireAdmin();
+  const id = z.string().uuid().parse(form.get("id"));
+  const on = form.get("value") === "on";
+  const supabase = await supabaseForRequest();
+  const { error } = await supabase.rpc("admin_set_verified", { p_business: id, p_verified: on });
+  revalidateTag("listings");
+  redirect(`/admin/listings/${id}?${error ? `error=${encodeURIComponent(error.message)}` : `done=${on ? "verified" : "unverified"}`}`);
+}

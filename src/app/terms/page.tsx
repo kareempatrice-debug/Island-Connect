@@ -48,7 +48,7 @@ export default function Terms() {
         <ul>
           <li>You must be the owner of the business or authorised to act for it.</li>
           <li>Everything you publish must be accurate and lawful, and you must hold any licence, registration or insurance your work requires.</li>
-          <li>Answer enquiries honestly and promptly, and don’t use customers’ details for anything other than their enquiry.</li>
+          <li>Answer messages honestly and promptly, and don’t use customers’ details for anything other than their request.</li>
           <li>You keep ownership of the text, prices and photos you add, and you allow Island Connect to display them on the site and in material promoting it.</li>
           <li>We review new listings and claims before they go live and may decline, edit for accuracy, hide or remove a listing.</li>
           <li>Listing a business is free at present. If we introduce charges, such as commission on bookings made through the site, we will tell you in advance and they will apply only if you agree to them.</li>

@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { buildAlert } from "@/lib/email";
 
-describe("enquiry alert emails", () => {
+describe("message alert emails", () => {
   const base = { businessName: "Harbourline Electrical", subject: "Rewire a kitchen", link: "https://islandconnect.cc/gd/messages/abc" };
 
   it("words each kind of alert for its reader", () => {
-    expect(buildAlert({ ...base, kind: "new_enquiry", preview: "Hello" }).subject).toBe("New enquiry: Rewire a kitchen");
+    expect(buildAlert({ ...base, kind: "new_enquiry", preview: "Hello" }).subject).toBe("New message: Rewire a kitchen");
     expect(buildAlert({ ...base, kind: "reply_to_customer", preview: "Hello" }).subject).toBe("Harbourline Electrical replied: Rewire a kitchen");
     expect(buildAlert({ ...base, kind: "reply_to_business", preview: "Hello" }).subject).toBe("New message: Rewire a kitchen");
   });

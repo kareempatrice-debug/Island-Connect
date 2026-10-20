@@ -15,7 +15,7 @@ import { supabaseForRequest } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Business dashboard", robots: { index: false } };
 
-const TABS = [["overview", "Overview"], ["enquiries", "Enquiries"], ["profile", "Profile"], ["photos", "Photos"], ["trips", "Trips"], ["services", "Services"], ["hours", "Hours"]] as const;
+const TABS = [["overview", "Overview"], ["enquiries", "Messages"], ["profile", "Profile"], ["photos", "Photos"], ["trips", "Trips"], ["services", "Services"], ["hours", "Hours"]] as const;
 const CHANNELS: Record<string, string> = { whatsapp: "WhatsApp", phone: "Calls", email: "Emails", website: "Website visits", booking: "Booking page", maps: "Directions" };
 
 export default async function Dashboard({
@@ -70,7 +70,7 @@ export default async function Dashboard({
       </nav>
 
       <div className="mt-8">
-        {tab === "enquiries" && <div className="mb-6"><PushSetup what="new enquiries" /></div>}
+        {tab === "enquiries" && <div className="mb-6"><PushSetup what="new messages" /></div>}
         {tab === "trips" && (
           <TripsTab ids={{ businessId: b.id as string, country, slug }} sp={sp}
             isOwner={(b as { business_members: { role: string }[] }).business_members.some((m) => m.role === "owner")} />
@@ -87,7 +87,7 @@ export default async function Dashboard({
           <div className="space-y-6">
             <h2 className="text-xl font-semibold">Customers sent to you in the last 30 days</h2>
             <div className="grid gap-3 sm:grid-cols-3">
-              <div className={card}><p className="text-sm">Enquiries</p><p className="font-display text-3xl font-semibold text-ink">{(enquiries ?? []).filter((e) => e.created_at >= since).length}</p></div>
+              <div className={card}><p className="text-sm">Messages</p><p className="font-display text-3xl font-semibold text-ink">{(enquiries ?? []).filter((e) => e.created_at >= since).length}</p></div>
               {Object.entries(CHANNELS).map(([k, l]) => (
                 <div key={k} className={card}><p className="text-sm">{l}</p><p className="font-display text-3xl font-semibold text-ink">{byChannel[k] ?? 0}</p></div>
               ))}
@@ -112,7 +112,7 @@ export default async function Dashboard({
                 </li>
               ))}
             </ul>
-          ) : <p className="rounded-panel border border-dashed border-line p-6 text-center">No enquiries yet. They appear here when customers message you through your listing.</p>
+          ) : <p className="rounded-panel border border-dashed border-line p-6 text-center">No messages yet. They appear here when customers message you through your listing.</p>
         )}
 
         {tab === "profile" && (

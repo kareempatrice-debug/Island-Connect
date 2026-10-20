@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { assignOwnerAction, setListingStatusAction } from "../../actions";
+import { assignOwnerAction, setListingStatusAction, setVerifiedAction } from "../../actions";
 import { adminRemoveOperatorAction, adminSetOperatorAction, setFounderAction } from "@/app/trip-actions";
 import { TRIP_KIND_LABEL } from "@/lib/trips";
 import { AdminListingEdit } from "@/components/forms/admin-listing-edit";
@@ -13,7 +13,7 @@ export default async function EditListing({ params, searchParams }: { params: Pr
   const supabase = await supabaseForRequest();
   const { data: b } = await supabase
     .from("businesses")
-    .select("id, slug, name, founder_owned, tagline, description, phone_e164, whatsapp_e164, email, website, listing_status, claim_status, source_url, source_checked_at, business_locations ( country_code, landmark, is_primary )")
+    .select("id, slug, name, founder_owned, verification_status, tagline, description, phone_e164, whatsapp_e164, email, website, listing_status, claim_status, source_url, source_checked_at, business_locations ( country_code, landmark, is_primary )")
     .eq("id", id).maybeSingle();
   if (!b) notFound();
   const { data: owners } = await supabase.rpc("admin_business_owners", { p_business: id });
@@ -31,7 +31,7 @@ export default async function EditListing({ params, searchParams }: { params: Pr
         {b.source_url && <> · <a href={b.source_url} target="_blank" rel="noopener noreferrer" className="text-link underline">source</a> checked {b.source_checked_at}</>}
         {live && loc && <> · <Link href={`/${loc.country_code}/business/${b.slug}`} className="text-link underline">view on site</Link></>}
       </p>
-      {sp.done && <p role="status" className="mt-3 rounded-lg bg-success/10 px-3 py-2 text-sm font-medium text-success">{sp.done === "suspended" ? "Hidden from the site." : sp.done === "published" ? "The listing is live." : sp.done === "operator" ? "Saved. This business now receives trip requests for the ticked trips." : sp.done === "operator-removed" ? "This business no longer receives trip requests." : sp.done === "owner" ? "Owner added. They can now manage this listing from their account." : "Updated."}</p>}
+      {sp.done && <p role="status" className="mt-3 rounded-lg bg-success/10 px-3 py-2 text-sm font-medium text-success">{sp.done === "suspended" ? "Hidden from the site." : sp.done === "published" ? "The listing is live." : sp.done === "operator" ? "Saved. This business now receives trip requests for the ticked trips." : sp.done === "operator-removed" ? "This business no longer receives trip requests." : sp.done === "owner" ? "Owner added. They can now manage this listing from their account." : sp.done === "verified" ? "Marked as verified. The Verified badge now shows on the site." : sp.done === "unverified" ? "Verified badge removed." : "Updated."}</p>}
       {sp.error && <p role="alert" className="mt-3 rounded-lg bg-danger/10 px-3 py-2 text-sm font-medium text-danger">{sp.error}</p>}
 
       <form action={setListingStatusAction} className="mt-4">
@@ -42,6 +42,14 @@ export default async function EditListing({ params, searchParams }: { params: Pr
         </button>
       </form>
 
+      <form action={setVerifiedAction} className="mt-4 flex flex-wrap items-center gap-3 text-sm">
+        <input type="hidden" name="id" value={b.id} />
+        <input type="hidden" name="value" value={(b as any).verification_status === "verified" ? "off" : "on"} />
+        <span>{(b as any).verification_status === "verified" ? "Verified: shows the green Verified badge." : "Not verified: customers see a note that the details were supplied by the business."}</span>
+        <button className={`h-9 rounded-lg px-3 font-semibold ${(b as any).verification_status === "verified" ? "border border-line bg-raised text-ink" : "bg-success text-white"}`}>
+          {(b as any).verification_status === "verified" ? "Remove Verified badge" : "Mark as verified"}
+        </button>
+      </form>
       <form action={setFounderAction} className="mt-3 flex flex-wrap items-center gap-3 rounded-xl bg-sunken px-4 py-3 text-sm">
         <input type="hidden" name="id" value={b.id} />
         <span className="flex-1 text-ink">{(b as any).founder_owned ? "Shows the label “Operated by the Island Connect founder”." : "No founder label."}</span>

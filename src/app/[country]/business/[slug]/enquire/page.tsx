@@ -6,7 +6,7 @@ import { Container } from "@/components/ui";
 import { requireViewer } from "@/lib/auth";
 import { data, isSupabaseConfigured } from "@/lib/data";
 
-export const metadata: Metadata = { title: "Send an enquiry", robots: { index: false } };
+export const metadata: Metadata = { title: "Send a message", robots: { index: false } };
 
 export default async function Enquire({ params, searchParams }: { params: Promise<{ country: string; slug: string }>; searchParams: Promise<{ subject?: string; message?: string }> }) {
   const { country, slug } = await params;
@@ -18,7 +18,7 @@ export default async function Enquire({ params, searchParams }: { params: Promis
   return (
     <Container className="max-w-xl py-10 sm:py-14">
       <p className="text-sm font-semibold text-link">{business.name}</p>
-      <h1 className="mt-1 text-4xl font-semibold">Send an enquiry</h1>
+      <h1 className="mt-1 text-4xl font-semibold">Send a message</h1>
       {business.claimStatus === "unclaimed" ? (
         <p className="mt-4 text-lg">This business hasn’t joined Island Connect yet, so it can’t receive messages here. Use the contact details on its page.</p>
       ) : (

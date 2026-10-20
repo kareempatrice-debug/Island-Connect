@@ -29,7 +29,7 @@ export interface ProfileValues {
 }
 
 const PREFS = [
-  ["platform", "Enquiries on Island Connect", "Customers message you here; you reply from this dashboard."],
+  ["platform", "Messages on Island Connect", "Customers message you here; you reply from this dashboard."],
   ["whatsapp", "WhatsApp", "Customers are sent straight to a WhatsApp chat with you."],
   ["phone", "Phone call", "Customers are shown your number to call."],
   ["website", "My website", "Customers are sent to your website."],

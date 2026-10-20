@@ -97,7 +97,7 @@ export default async function TripsPreview({ params }: { params: Promise<{ count
         {banner}
         <h1 className="text-3xl font-semibold sm:text-4xl">{s.operatorName}</h1>
         <nav aria-label="Dashboard" className="-mx-5 mt-6 flex gap-1 overflow-x-auto border-b border-line px-5 sm:mx-0 sm:px-0">
-          {["Overview", "Enquiries", "Profile", "Photos", "Trips", "Services", "Hours"].map((l) => (
+          {["Overview", "Messages", "Profile", "Photos", "Trips", "Services", "Hours"].map((l) => (
             <span key={l} className={`shrink-0 border-b-2 px-3 py-3 text-[0.95rem] font-medium ${l === "Trips" ? "border-gold text-ink" : "border-transparent text-muted"}`}>{l}</span>
           ))}
         </nav>

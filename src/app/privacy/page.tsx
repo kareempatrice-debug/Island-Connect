@@ -21,7 +21,7 @@ export default function Privacy() {
         <ul>
           <li><strong>Your account:</strong> your name, email address and a password, which is stored in scrambled (hashed) form so that nobody, including us, can read it. We also note why you joined: to find services, to list a business or to operate transport.</li>
           <li><strong>Businesses you register or claim:</strong> the business’s name, categories, location, contact details, services, prices and opening hours. To confirm a claim we also ask for your name, your role at the business and how we can check it’s yours.</li>
-          <li><strong>Enquiries and messages:</strong> what you write to a business through the site, and their replies.</li>
+          <li><strong>Messages:</strong> what you write to a business through the site, and their replies.</li>
           <li><strong>Contact taps:</strong> when someone taps a business’s WhatsApp, phone, email or website button, we count the tap so the business can see how many people contacted it. These counts are not linked to your account.</li>
           <li><strong>Settings stored in your browser:</strong> a cookie remembering which country you chose, and the cookies that keep you signed in. We don’t use advertising or tracking cookies.</li>
         </ul>
@@ -32,9 +32,9 @@ export default function Privacy() {
         <h2>How we use it</h2>
         <ul>
           <li>To run your account and sign you in, including sending sign-in and confirmation emails.</li>
-          <li>To show business listings and pass your enquiries to the business you chose, and to email you or the business when a new message arrives.</li>
+          <li>To show business listings and pass your messages to the business you chose, and to email you or the business when a new message arrives.</li>
           <li>To check that businesses and claims are genuine before they go live.</li>
-          <li>To keep the site safe, for example by limiting how many enquiries an account can send in a day and keeping a record of administrative changes.</li>
+          <li>To keep the site safe, for example by limiting how many messages an account can send in a day and keeping a record of administrative changes.</li>
           <li>To answer you when you contact us.</li>
         </ul>
       </section>
@@ -43,7 +43,7 @@ export default function Privacy() {
         <h2>Who can see what</h2>
         <ul>
           <li><strong>Business listings</strong> are public once approved. Listings marked “Unclaimed” were compiled from public sources such as tourism and trade directories, and show only the business’s published contact details.</li>
-          <li><strong>Your enquiries</strong> are visible only to you and the business you wrote to. Island Connect administrators can see them when needed to deal with a complaint, abuse or a legal requirement.</li>
+          <li><strong>Your messages</strong> are visible only to you and the business you wrote to. Island Connect administrators can see them when needed to deal with a complaint, abuse or a legal requirement.</li>
           <li><strong>Your email address</strong> is not shown to businesses or other users.</li>
         </ul>
       </section>

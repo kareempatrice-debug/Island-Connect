@@ -12,16 +12,20 @@ const start = z.object({
   country: z.string().regex(/^[a-z]{2}$/),
   businessId: z.string().uuid(),
   subject: z.string().trim().min(2, "Add a short subject").max(120),
-  serviceId: z.union([z.string().uuid(), z.literal("")]),
-  preferredDate: z.union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.literal("")]),
+  serviceId: z.union([z.string().uuid(), z.literal("")]).optional().default(""),
+  preferredDate: z.union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a valid date"), z.literal("")]).optional().default(""),
   body: z.string().trim().min(10, "Tell the business a little more about what you need").max(4000),
 });
 
-export async function startEnquiryAction(_: FormState, form: FormData): Promise<FormState> {
+export type StartState = FormState & { values?: { subject: string; body: string; preferredDate: string } };
+
+export async function startEnquiryAction(_: StartState, form: FormData): Promise<StartState> {
+  // Send back what was typed, so a mistake never wipes the message.
+  const values = { subject: String(form.get("subject") ?? ""), body: String(form.get("body") ?? ""), preferredDate: String(form.get("preferredDate") ?? "") };
   const viewer = await getViewer();
-  if (!viewer) return { error: "Please sign in again." };
+  if (!viewer) return { error: "Please sign in again.", values };
   const parsed = start.safeParse(Object.fromEntries(form));
-  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  if (!parsed.success) return { error: parsed.error.issues[0].message, values };
   const d = parsed.data;
   const supabase = await supabaseForRequest();
   const { data, error } = await supabase.rpc("start_enquiry", {
@@ -31,7 +35,7 @@ export async function startEnquiryAction(_: FormState, form: FormData): Promise<
     p_service: d.serviceId || null,
     p_date: d.preferredDate || null,
   });
-  if (error) return { error: error.message };
+  if (error) return { error: error.message, values };
   await notifyEnquiryMessage(String(data), viewer.id, d.body, true);
   redirect(`/${d.country}/messages/${data}`);
 }

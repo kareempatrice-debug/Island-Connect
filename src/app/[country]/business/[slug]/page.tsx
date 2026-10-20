@@ -144,7 +144,7 @@ export default async function BusinessPage({ params }: Props) {
               {business.claimStatus === "unclaimed" && !business.isDemo && (
                 <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-dashed border-line p-4">
                   <p className="text-sm">
-                    <span className="font-semibold text-ink">Is this your business?</span> Claim it to update the details and receive enquiries.
+                    <span className="font-semibold text-ink">Is this your business?</span> Claim it to update the details and receive messages from customers.
                   </p>
                   <Link href={`/${code}/business/${business.slug}/claim`} className="font-semibold text-link hover:underline">Claim this listing</Link>
                 </div>
