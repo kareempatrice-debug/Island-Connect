@@ -1,13 +1,17 @@
 import type { Metadata, Viewport } from "next";
-import { DM_Sans, Manrope } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
 /*
  * Manrope for headings: confident and geometric. DM Sans for interface and body
  * text: clear at small sizes on phones.
  */
-const display = Manrope({ subsets: ["latin"], variable: "--font-display", weight: ["600", "700", "800"] });
-const body = DM_Sans({ subsets: ["latin"], variable: "--font-body", weight: ["400", "500", "600", "700"] });
+// Fonts are bundled with the site (variable fonts, SIL Open Font Licence) so builds never
+// depend on reaching Google Fonts, which is what made a Netlify deploy fail.
+const display = localFont({ src: "../fonts/manrope-latin.woff2", variable: "--font-display", weight: "200 800", display: "swap",
+  fallback: ["ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "Arial", "sans-serif"] });
+const body = localFont({ src: "../fonts/dm-sans-latin.woff2", variable: "--font-body", weight: "100 1000", display: "swap",
+  fallback: ["ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "Arial", "sans-serif"] });
 
 // A mistyped site address must never take the whole site down, so fall back safely.
 function safeSiteUrl(): URL {
