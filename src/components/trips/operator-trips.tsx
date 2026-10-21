@@ -3,7 +3,6 @@ import { directionsLink } from "@/lib/geo";
 import type { ReactNode } from "react";
 import { PushSetup } from "@/components/push-setup";
 import { AutoRefresh } from "./auto-refresh";
-import { GoOnline } from "./go-online";
 import { TRIP_KIND_LABEL, TRIP_STATUS_LABEL, fmtWhen, fmtXcd } from "@/lib/trips";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -20,7 +19,9 @@ export function OperatorTrips({ kinds, open, mine, totals, businessId, notice, q
     <div className="space-y-8">
       {notice}
       <AutoRefresh seconds={15} />
-      {kinds.some((k) => ["taxi", "airport", "group"].includes(k)) && <GoOnline businessId={businessId} />}
+      {kinds.some((k) => ["taxi", "airport", "group"].includes(k)) && (
+        <p className="rounded-2xl bg-sunken px-4 py-3 text-sm">Tap <strong className="text-ink">Go online</strong> at the top of the screen to appear on customers’ maps and receive ride offers. It stays on as you move around the app.</p>
+      )}
       <section aria-labelledby="open-h">
         <h2 id="open-h" className="flex items-center gap-2 text-xl font-semibold">
           New ride requests

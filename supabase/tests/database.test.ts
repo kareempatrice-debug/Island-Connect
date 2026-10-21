@@ -912,3 +912,18 @@ describe("updates are safe to run twice", () => {
     expect(fns.rows[0].n).toBe("1");
   });
 });
+
+describe("live map", () => {
+  it("hides busy drivers and shows a booked customer their own driver", async () => {
+    await db.exec(readFileSyncOnce("supabase/migrations/20261031000027_live_map.sql"));
+    // From the dispatch test: rider80 booked the "far" business, which is online.
+    const trip = (await db.query<{ id: string; business_id: string }>(`select r.id, q.business_id from public.trip_requests r join public.trip_quotes q on q.id = r.accepted_quote_id where r.status = 'booked' and r.customer_id = '00000000-0000-0000-0000-000000000080'`)).rows[0];
+    const pos = (await as("authenticated", "00000000-0000-0000-0000-000000000080", () => db.query<{ p: any }>(`select public.my_driver_position($1) as p`, [trip.id]))).rows[0].p;
+    expect(pos).toHaveProperty("lat");
+    expect((await as("authenticated", STRANGER, () => db.query<{ p: any }>(`select public.my_driver_position($1) as p`, [trip.id]))).rows[0].p).toBeNull();
+    const shown = (await as("anon", null, () => db.query(`select * from public.nearby_vehicles('gd')`))).rows.length;
+    const total = (await db.query(`select 1 from public.driver_presence where updated_at > now() - interval '3 minutes'`)).rows.length;
+    expect(shown).toBe(total - 1); // the busy driver is hidden
+  });
+});
+function readFileSyncOnce(p: string) { return require("node:fs").readFileSync(p, "utf8"); }

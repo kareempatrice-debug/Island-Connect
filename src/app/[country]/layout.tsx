@@ -11,6 +11,7 @@ import { Wordmark } from "@/components/wordmark";
 import { data, getCountries, getCountry, isSupabaseConfigured } from "@/lib/data";
 import { getViewer } from "@/lib/auth";
 import { RideStatusStrip } from "@/components/trips/ride-status-strip";
+import { DriverOnlineSlot } from "@/components/trips/driver-online-slot";
 
 type Props = { children: React.ReactNode; params: Promise<{ country: string }> };
 
@@ -43,6 +44,7 @@ export default async function CountryLayout({ children, params }: Props) {
           </Link>
           <DesktopNav country={country.code} />
           <div className="flex items-center gap-2">
+            {isSupabaseConfigured && viewer && <Suspense fallback={null}><DriverOnlineSlot /></Suspense>}
             <Link
               href={`/${country.code}/explore`}
               aria-label="Search"
@@ -57,7 +59,8 @@ export default async function CountryLayout({ children, params }: Props) {
             </Suspense>
           </div>
         </div>
-        {isSupabaseConfigured && viewer && <RideStatusStrip country={country.code} />}
+        {/* Streams in after the page, so it never slows anything down. */}
+        {isSupabaseConfigured && viewer && <Suspense fallback={null}><RideStatusStrip country={country.code} /></Suspense>}
       </header>
       <div id="main">{children}</div>
       <SiteFooter country={country} countries={countries} />

@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { OfferCard } from "@/components/trips/offer-card";
@@ -23,7 +24,7 @@ export default async function Offer({ params }: { params: Promise<{ country: str
   // If this offer has timed out, move the ride on to the next driver.
   if (offer.status === "offered" && new Date(offer.expires_at).getTime() <= Date.now()) {
     const { data: ev } = await supabase.rpc("dispatch_tick", { p_request: offer.request_id });
-    await handleDispatchEvent(ev, offer.request_id);
+    after(() => handleDispatchEvent(ev, offer.request_id));
   }
   const r = offer.trip_requests ?? {};
   return (

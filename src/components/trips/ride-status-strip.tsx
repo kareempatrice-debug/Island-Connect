@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { StripLink } from "./strip-link";
 import { getViewer } from "@/lib/auth";
 import { supabaseForRequest } from "@/lib/supabase/server";
 
@@ -34,25 +34,25 @@ export async function RideStatusStrip({ country }: { country: string }) {
   return (
     <div>
       {offer && (
-        <Link href={`/${country}/offers/${offer.id}`} className={`${base} animate-pulse bg-gold text-[#172B32]`}>
+        <StripLink href={`/${country}/offers/${offer.id}`} className={`${base} animate-pulse bg-gold text-[#172B32]`}>
           <span>Ride offer: EC${Number(offer.price_xcd).toFixed(0)}{offer.distance_km != null ? `, ${Number(offer.distance_km).toFixed(1)} km away` : ""}</span>
           <span>Accept →</span>
-        </Link>
+        </StripLink>
       )}
       {trip && (
-        <Link href={`/${trip.country_code}/trips/${trip.id}`} className={`${base} bg-gold text-[#172B32]`}>
+        <StripLink href={`/${trip.country_code}/trips/${trip.id}`} className={`${base} bg-gold text-[#172B32]`}>
           <span className="flex items-center gap-2">
             {trip.status === "open" && <span className="h-2 w-2 animate-pulse rounded-full bg-[#172B32]" aria-hidden="true" />}
             {trip.status === "open" ? "Ride requested: waiting for a driver" : trip.picked_up_at ? "You’re on your way" : "Your driver is confirmed"}
           </span>
           <span>View →</span>
-        </Link>
+        </StripLink>
       )}
       {waiting > 0 && op?.businesses?.slug && (
-        <Link href={`/${country}/dashboard/${op.businesses.slug}?tab=trips`} className={`${base} bg-primary text-primary-ink`}>
+        <StripLink href={`/${country}/dashboard/${op.businesses.slug}?tab=trips`} className={`${base} bg-primary text-primary-ink`}>
           <span className="flex items-center gap-2"><span className="h-2 w-2 animate-pulse rounded-full bg-gold" aria-hidden="true" />{waiting} new ride request{waiting === 1 ? "" : "s"} for you</span>
           <span>Respond →</span>
-        </Link>
+        </StripLink>
       )}
     </div>
   );

@@ -1,5 +1,7 @@
 "use server";
 
+import { after } from "next/server";
+
 import { revalidatePath, revalidateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -94,7 +96,7 @@ export async function createTripRequestAction(input: TripPayload): Promise<{ url
   // anything else, or if nobody is online nearby, alerts every eligible driver.
   // Routes without an official fare only use instant matching if the customer chose it; otherwise drivers send prices.
   const { data: dispatch } = await supabase.rpc("start_dispatch", { p_request: data, p_instant: bookMode === "instant" });
-  await handleDispatchEvent(dispatch ?? { event: "broadcast" }, String(data));
+  after(() => handleDispatchEvent(dispatch ?? { event: "broadcast" }, String(data)));
   return { url: `/${d.country}/trips/${data}` };
 }
 
@@ -104,7 +106,7 @@ export async function acceptQuoteAction(form: FormData) {
   const d = idForm.extend({ trip: z.string().uuid() }).parse(Object.fromEntries(form));
   const supabase = await supabaseForRequest();
   const { error } = await supabase.rpc("accept_trip_quote", { p_quote: d.id });
-  if (!error) await notifyOperatorOfBooking(d.id);
+  if (!error) after(() => notifyOperatorOfBooking(d.id));
   revalidatePath(`/${d.country}/trips/${d.trip}`);
   revalidateTag("listings");
   redirect(`/${d.country}/trips/${d.trip}${error ? `?error=${encodeURIComponent(error.message)}` : "?booked=1"}`);
@@ -156,7 +158,7 @@ export async function sendQuoteAction(form: FormData) {
   const d = parsed.data;
   const supabase = await supabaseForRequest();
   const { data, error } = await supabase.rpc("send_trip_quote", { p_request: d.request, p_business: d.businessId, p_amount: d.amount, p_includes: d.includes, p_valid_hours: d.hours });
-  if (!error) await notifyCustomerOfQuote(String(data));
+  if (!error) after(() => notifyCustomerOfQuote(String(data)));
   revalidatePath(back);
   revalidateTag("listings");
   redirect(`${back}&${error ? `error=${encodeURIComponent(error.message)}` : "quoted=1"}`);
@@ -228,7 +230,7 @@ export async function acceptFixedFareAction(form: FormData) {
   const d = z.object({ request: z.string().uuid(), businessId: z.string().uuid(), country: z.string().regex(/^[a-z]{2}$/), slug: z.string().regex(/^[a-z0-9-]{1,80}$/) }).parse(Object.fromEntries(form));
   const supabase = await supabaseForRequest();
   const { data, error } = await supabase.rpc("accept_fixed_fare", { p_request: d.request, p_business: d.businessId });
-  if (!error) await notifyCustomerOfAcceptance(String(data));
+  if (!error) after(() => notifyCustomerOfAcceptance(String(data)));
   const back = `/${d.country}/dashboard/${d.slug}?tab=trips`;
   revalidatePath(back);
   redirect(`${back}&${error ? `error=${encodeURIComponent(error.message)}` : "accepted=1"}`);
@@ -244,7 +246,7 @@ export async function sendTripMessageAction(form: FormData) {
   if (!viewer) redirect(`/join?mode=sign-in&next=${encodeURIComponent(page)}`);
   const supabase = await supabaseForRequest();
   const { error } = await supabase.rpc("send_trip_message", { p_request: d.data.id, p_body: d.data.body });
-  if (!error) await notifyTripMessage(d.data.id, viewer.id, d.data.body);
+  if (!error) after(() => notifyTripMessage(d.data.id, viewer.id, d.data.body));
   revalidatePath(page);
   redirect(`${page}${error ? `?error=${encodeURIComponent(error.message)}` : ""}#latest`);
 }
@@ -348,9 +350,9 @@ export async function respondToOfferAction(offerId: string, accept: boolean): Pr
   const country = o.trip_requests?.country_code ?? "gd";
   if (accept) {
     const { data: req } = await supabase.from("trip_requests").select("accepted_quote_id").eq("id", o.request_id).maybeSingle();
-    if (req?.accepted_quote_id) await notifyCustomerOfAcceptance(String(req.accepted_quote_id)).catch(() => undefined);
+    if (req?.accepted_quote_id) after(() => notifyCustomerOfAcceptance(String(req.accepted_quote_id)));
     return { url: `/${country}/dashboard/${o.businesses?.slug}?tab=trips&accepted=1` };
   }
-  await handleDispatchEvent(data, o.request_id);
+  after(() => handleDispatchEvent(data, o.request_id));
   return { url: `/${country}/dashboard/${o.businesses?.slug}?tab=trips` };
 }

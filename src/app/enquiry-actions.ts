@@ -1,5 +1,7 @@
 "use server";
 
+import { after } from "next/server";
+
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -36,7 +38,7 @@ export async function startEnquiryAction(_: StartState, form: FormData): Promise
     p_date: d.preferredDate || null,
   });
   if (error) return { error: error.message, values };
-  await notifyEnquiryMessage(String(data), viewer.id, d.body, true);
+  after(() => notifyEnquiryMessage(String(data), viewer.id, d.body, true));
   redirect(`/${d.country}/messages/${data}`);
 }
 
@@ -50,7 +52,7 @@ export async function replyAction(_: FormState, form: FormData): Promise<FormSta
   const supabase = await supabaseForRequest();
   const { error } = await supabase.from("enquiry_messages").insert({ enquiry_id: parsed.data.enquiryId, sender_id: viewer.id, body: parsed.data.body });
   if (error) return { error: "Your message couldn’t be sent." };
-  await notifyEnquiryMessage(parsed.data.enquiryId, viewer.id, parsed.data.body, false);
+  after(() => notifyEnquiryMessage(parsed.data.enquiryId, viewer.id, parsed.data.body, false));
   revalidatePath(`/${parsed.data.country}/messages/${parsed.data.enquiryId}`);
   return { message: "sent" };
 }

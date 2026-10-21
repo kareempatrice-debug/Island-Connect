@@ -40,8 +40,10 @@ const field = "h-12 w-full min-w-0 rounded-xl border border-line bg-raised px-3.
 
 export function RideRequest({
   countryCode, countryName, islands, landmarks, coastlines, routes, operators, googleKey, signedIn, startAtAirport, initialVehicle = "car", requestInApp,
-  liveVehicles = false, sampleVehicles, family = [], initialWhen = "now", prefill,
+  liveVehicles = false, sampleVehicles, family = [], initialWhen = "now", prefill, savedPhone,
 }: {
+  /** The number used on the customer's last trip, so they don't retype it every time. */
+  savedPhone?: string | null;
   family?: { name: string; phone_e164: string | null; kind: "adult" | "senior" | "teen" }[];
   initialWhen?: "now" | "later";
   prefill?: { from?: { label: string; lat?: number; lng?: number }; to?: { label: string; lat?: number; lng?: number } };
@@ -81,8 +83,8 @@ export function RideRequest({
   const [riderPhone, setRiderPhone] = useState("");
   const [riderCode, setRiderCode] = useState(countryCode === "vc" ? "+1784" : "+1473");
   const [note, setNote] = useState("");
-  const [phone, setPhone] = useState("");
-  const [code, setCode] = useState(countryCode === "vc" ? "+1784" : "+1473");
+  const [phone, setPhone] = useState(savedPhone ?? "");
+  const [code, setCode] = useState(savedPhone ? "other" : countryCode === "vc" ? "+1784" : "+1473");
   const [panel, setPanel] = useState<"when" | "who" | null>(initialWhen === "later" ? "when" : null);
   const [riderKind, setRiderKind] = useState<"adult" | "senior" | "teen">("adult");
   const [busy, setBusy] = useState(false);
@@ -140,9 +142,6 @@ export function RideRequest({
   const price = fare ? fareAmount(fare, passengers) : null;
   // No published fare: show a range from the distance, so customers know roughly what to expect.
   const estimate = !fare && vehicle === "car" ? estimateFare(countryCode, route?.km, passengers) : null;
-  // No official fare: the customer chooses between drivers' prices and an instant match at the estimate.
-  const [bookMode, setBookMode] = useState<"quotes" | "instant">("quotes");
-  const instantPrice = estimate ? Math.round((estimate.low + estimate.high) / 2 / 5) * 5 : null;
 
   // ---------- Places on the map ----------
   const islandOf = (p: Place | null) => {
@@ -196,7 +195,6 @@ export function RideRequest({
       distance_km: route?.km ?? null, duration_min: route?.min ?? null,
       rider_name: forOther ? riderName.trim() : null, rider_phone: forOther ? riderPhone : null, rider_code: riderCode,
       rider_kind: forOther ? (family.find((m) => m.name === riderName.trim())?.kind ?? riderKind) : null,
-      book_mode: estimate ? bookMode : undefined,
       contact_phone: phone, contact_code: code,
     });
     setBusy(false);
@@ -365,21 +363,7 @@ export function RideRequest({
                 </span>
               </div>
               {fare && vehicle === "car" && <p className="text-xs">{fare.table.basis}. Source: {fare.table.source}, {fare.table.sourceDate}. After-hours rates can apply.</p>}
-              {estimate && (
-                <fieldset className="space-y-2">
-                  <legend className="mb-1 text-sm font-semibold text-ink">How would you like to book?</legend>
-                  {([
-                    ["quotes", "Get prices from drivers", `Drivers reply with their price, usually around EC$${estimate.low}–${estimate.high}. You choose.`],
-                    ["instant", `Book now at EC$${instantPrice}`, "We offer your ride to the nearest available driver straight away."],
-                  ] as const).map(([v, title, sub]) => (
-                    <label key={v} className={`flex cursor-pointer items-start gap-3 rounded-2xl p-3.5 ring-1 ${bookMode === v ? "bg-primary/10 ring-2 ring-primary" : "bg-raised ring-line"}`}>
-                      <input type="radio" name="bookMode" value={v} checked={bookMode === v} onChange={() => setBookMode(v)} className="mt-1 h-4 w-4 accent-[rgb(var(--primary))]" />
-                      <span><span className="block font-semibold text-ink">{title}</span><span className="block text-xs">{sub}</span></span>
-                    </label>
-                  ))}
-                  <p className="text-xs">Prices are estimated from official fares for similar distances.</p>
-                </fieldset>
-              )}
+              {estimate && <p className="text-xs">No official fare for this route. Drivers send their price, usually around EC${estimate.low}–{estimate.high}, and you choose. Estimated from official fares for similar distances.</p>}
 
               <label className="block"><span className="sr-only">Note for the driver</span>
                 <input value={note} onChange={(e) => setNote(e.target.value.slice(0, 300))} className={field} placeholder="Note for the driver (optional): gate colour, luggage, flight number" /></label>
@@ -404,10 +388,10 @@ export function RideRequest({
                     </div>
                     {error && <p role="alert" className="rounded-xl bg-danger/10 px-4 py-3 text-sm font-medium text-danger">{error}</p>}
                     <button type="button" onClick={send} disabled={busy} className="h-14 w-full rounded-full bg-deep text-[1.0625rem] font-semibold text-white disabled:opacity-60">
-                      {busy ? "Sending…" : estimate ? (bookMode === "instant" ? `Book now · EC$${instantPrice}` : "Ask drivers for prices") : `Request ${vehicle === "van" ? "minivan" : "car"}${price != null && vehicle === "car" ? ` · EC$${price}` : ""}`}
+                      {busy ? "Booking…" : price != null && vehicle === "car" ? `Book now · EC$${price}` : "Ask drivers for prices"}
                     </button>
                     <p className="text-center text-xs">
-                      {price != null && vehicle === "car" ? "The first approved driver to accept takes your trip at this fare." : "Approved drivers reply with their fare. Nothing is booked until you accept one."}
+                      {price != null && vehicle === "car" ? "Your ride goes to the nearest available driver at the official fare." : "Approved drivers reply with their price. Nothing is booked until you accept one."}
                     </p>
                   </>
                 )

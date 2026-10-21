@@ -48,9 +48,17 @@ export default async function RidePage({
     .sort((a, b) => Number(a.isDemo) - Number(b.isDemo) || Number(b.verified) - Number(a.verified));
 
   let family: { name: string; phone_e164: string | null; kind: "adult" | "senior" | "teen" }[] = [];
+  let savedPhone: string | null = null;
   if (viewer) {
     const supabase = await supabaseForRequest();
-    family = ((await supabase.from("family_members").select("name, phone_e164, kind").order("created_at")).data ?? []) as typeof family;
+    const [{ data: fam }, { data: last }] = await Promise.all([
+      supabase.from("family_members").select("name, phone_e164, kind").order("created_at"),
+      supabase.from("trip_requests").select("trip_contacts ( phone_e164 )").eq("customer_id", viewer.id).order("created_at", { ascending: false }).limit(1),
+    ]);
+    family = (fam ?? []) as typeof family;
+    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+    const c = (last?.[0] as any)?.trip_contacts;
+    savedPhone = (Array.isArray(c) ? c[0]?.phone_e164 : c?.phone_e164) ?? null;
   }
   // Rebook: the previous trip's places, passed in the link.
   const ll = (v?: string) => { const m = /^(-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)$/.exec(v ?? ""); return m ? { lat: Number(m[1]), lng: Number(m[2]) } : {}; };
@@ -78,6 +86,7 @@ export default async function RidePage({
         signedIn={Boolean(viewer) || !isSupabaseConfigured}
         liveVehicles={isSupabaseConfigured}
         family={family}
+        savedPhone={savedPhone}
         initialWhen={sp.when === "later" ? "later" : "now"}
         prefill={prefill}
         requestInApp={isSupabaseConfigured ? createTripRequestAction : undefined}
