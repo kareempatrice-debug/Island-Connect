@@ -2,27 +2,32 @@ import Link from "next/link";
 import { directionsLink } from "@/lib/geo";
 import type { ReactNode } from "react";
 import { PushSetup } from "@/components/push-setup";
+import { AutoRefresh } from "./auto-refresh";
 import { GoOnline } from "./go-online";
 import { TRIP_KIND_LABEL, TRIP_STATUS_LABEL, fmtWhen, fmtXcd } from "@/lib/trips";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* An approved operator's Trips tab: open requests to price, bookings, and completed-trip totals. */
-export function OperatorTrips({ kinds, open, mine, totals, businessId, notice, quoteForm, complete, acceptFixed, chatHref, confirmPickup }: {
+export function OperatorTrips({ kinds, open, mine, totals, businessId, notice, quoteForm, complete, acceptFixed, chatHref, confirmPickup, alertsSetting }: {
   kinds: string[]; open: any[]; mine: any[]; totals: { n: number; fares: number; commission: number }; businessId: string;
   notice?: ReactNode; quoteForm: (r: any, my: any) => ReactNode; complete: (r: any) => ReactNode;
   acceptFixed: (r: any) => ReactNode; chatHref: (r: any) => string;
   confirmPickup?: (r: any) => ReactNode;
+  alertsSetting?: ReactNode;
 }) {
   const card = "rounded-2xl bg-raised p-5 ring-1 ring-line/60";
   return (
     <div className="space-y-8">
       {notice}
+      <AutoRefresh seconds={15} />
       {kinds.some((k) => ["taxi", "airport", "group"].includes(k)) && <GoOnline businessId={businessId} />}
-      <PushSetup what="new trip requests" />
       <section aria-labelledby="open-h">
-        <h2 id="open-h" className="text-xl font-semibold">Requests waiting for a price</h2>
-        <p className="mt-1 text-sm">Approved for: {kinds.map((k) => TRIP_KIND_LABEL[k]).join(", ")}.</p>
-        {!open?.length ? <p className="mt-3 rounded-2xl border border-dashed border-line p-5">No open requests right now. New ones are emailed to you as they arrive.</p> : (
+        <h2 id="open-h" className="flex items-center gap-2 text-xl font-semibold">
+          New ride requests
+          {open?.length ? <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-gold px-2 text-sm font-bold text-[#172B32]">{open.length}</span> : null}
+        </h2>
+        <p className="mt-1 text-sm">You receive: {[...new Set(kinds.map((k) => (k === "airport" ? "taxi" : k)))].map((k) => (k === "taxi" ? "Taxi and airport" : TRIP_KIND_LABEL[k])).join(", ")}. This page updates by itself.</p>
+        {!open?.length ? <p className="mt-3 rounded-2xl border border-dashed border-line p-5">No new requests right now. They appear here, and on your phone if notifications are on.</p> : (
           <ul className="mt-3 space-y-3">
             {open.map((r: any) => {
               const my = (r.trip_quotes ?? []).find((q: any) => q.business_id === businessId);
@@ -31,6 +36,7 @@ export function OperatorTrips({ kinds, open, mine, totals, businessId, notice, q
                   <p className="font-semibold text-ink">{r.pickup}, {r.from_place} → {r.dropoff}, {r.to_place}</p>
                   <p className="text-sm">{TRIP_KIND_LABEL[r.kind]} · {fmtWhen(r.travel_at)}{r.passengers ? ` · ${r.passengers} passengers` : ""}{r.distance_km ? ` · ${r.distance_km} km, about ${r.duration_min} min` : ""}{r.cross_border ? " · crosses the border" : ""}</p>
                   {r.rider_name && <p className="mt-1 text-sm text-ink">Booked for <strong>{r.rider_name}</strong></p>}
+                  {!r.fixed_fare_xcd && r.estimate_low_xcd && <p className="mt-1 text-sm">Customer was shown an estimate of <strong className="text-ink">EC${Number(r.estimate_low_xcd).toFixed(0)} to {Number(r.estimate_high_xcd).toFixed(0)}</strong></p>}
                   {r.details && <p className="mt-1 text-sm text-ink">{r.details}</p>}
                   <a href={directionsLink({ lat: r.pickup_lat ?? undefined, lng: r.pickup_lng ?? undefined, label: r.pickup }, { lat: r.dropoff_lat ?? undefined, lng: r.dropoff_lng ?? undefined, label: r.dropoff })}
                     target="_blank" rel="noopener noreferrer" className="mt-1 inline-block text-sm font-semibold text-link underline">See the route in Google Maps</a>
@@ -46,6 +52,12 @@ export function OperatorTrips({ kinds, open, mine, totals, businessId, notice, q
             })}
           </ul>
         )}
+      </section>
+
+      <section aria-labelledby="settings-h" className="space-y-3">
+        <h2 id="settings-h" className="text-xl font-semibold">How you get requests</h2>
+        <PushSetup what="new trip requests" />
+        {alertsSetting}
       </section>
 
       <section aria-labelledby="booked-h">

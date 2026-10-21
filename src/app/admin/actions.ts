@@ -181,3 +181,33 @@ export async function setAdminAction(form: FormData) {
   revalidatePath("/admin/team");
   redirect(`/admin/team?${error ? `error=${encodeURIComponent(error.message)}` : `done=${on ? "added" : "removed"}`}`);
 }
+
+/* ---------- Partners (villas, hotels, airport) ---------- */
+export async function createPartnerAction(form: FormData) {
+  await requireAdmin();
+  const d = z.object({
+    name: z.string().trim().min(2, "Add the partner’s name").max(120),
+    kind: z.enum(["hotel", "villa", "airport", "port", "other"]),
+    country: z.enum(["gd", "vc"]),
+    landing: z.enum(["ride", "airport", "home"]),
+    contact: z.string().trim().max(200).optional(),
+  }).safeParse(Object.fromEntries(form));
+  if (!d.success) redirect(`/admin/partners?error=${encodeURIComponent(d.error.issues[0].message)}`);
+  const base = d.data.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30) || "partner";
+  const supabase = await supabaseForRequest();
+  let code = base, n = 1, error = null as { message: string } | null;
+  do {
+    ({ error } = await supabase.from("partners").insert({ code, name: d.data.name, kind: d.data.kind, country_code: d.data.country, landing: d.data.landing, contact: d.data.contact || null }));
+    if (error && /duplicate|unique/i.test(error.message)) code = `${base}-${++n}`; else break;
+  } while (n < 20);
+  revalidatePath("/admin/partners");
+  redirect(`/admin/partners?${error ? `error=${encodeURIComponent(error.message)}` : `done=${code}`}`);
+}
+
+export async function togglePartnerAction(form: FormData) {
+  await requireAdmin();
+  const supabase = await supabaseForRequest();
+  await supabase.from("partners").update({ active: form.get("active") === "on" }).eq("id", String(form.get("id")));
+  revalidatePath("/admin/partners");
+  redirect("/admin/partners");
+}

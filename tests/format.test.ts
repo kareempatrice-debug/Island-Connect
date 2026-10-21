@@ -113,3 +113,40 @@ describe("official fares for any address", () => {
     expect(decodePolyline("_p~iF~ps|U_ulLnnqC_mqNvxq`@")).toEqual([{ lat: 38.5, lng: -120.2 }, { lat: 40.7, lng: -120.95 }, { lat: 43.252, lng: -126.453 }]);
   });
 });
+
+import { photoForCategory, typePhotos } from "@/data/category-photos";
+
+describe("category pictures", () => {
+  it("gives every category a picture, and the right one for the ones that used to be wrong", () => {
+    for (const c of categories) {
+      const group = (c as { parentSlug?: string | null }).parentSlug ?? c.slug;
+      expect(photoForCategory(c.slug, group), c.slug).toBeTruthy();
+    }
+    expect(typePhotos.hardware.src).toContain("home-construction");
+    expect(typePhotos["trucking-haulage"].src).toContain("haulage");
+    expect(typePhotos.vets.src).toContain("vets");
+    expect(typePhotos.events.src).toContain("events-venues");
+    expect(typePhotos["salons-barbers"].src).toContain("barber");
+  });
+  it("only points at pictures that exist", async () => {
+    const { existsSync } = await import("node:fs");
+    for (const v of Object.values(typePhotos)) expect(existsSync(`public${v.src}`), v.src).toBe(true);
+  });
+});
+
+import { estimateFare } from "@/lib/estimate";
+
+describe("fare estimates", () => {
+  it("lands close to the official fares it was fitted to", () => {
+    const gd = estimateFare("gd", 9.6)!; // airport to St George's, official EC$50
+    expect(gd.low).toBeLessThanOrEqual(50); expect(gd.high).toBeGreaterThanOrEqual(50);
+    const vc = estimateFare("vc", 16.9)!; // Argyle to Kingstown, official EC$91
+    expect(vc.low).toBeLessThanOrEqual(91); expect(vc.high).toBeGreaterThanOrEqual(91);
+  });
+  it("adds SVG's extra-passenger charge and refuses silly distances", () => {
+    expect(estimateFare("vc", 10, 5)!.low).toBeGreaterThan(estimateFare("vc", 10, 3)!.low);
+    expect(estimateFare("gd", 0)).toBeNull();
+    expect(estimateFare("gd", 500)).toBeNull();
+    expect(estimateFare("xx", 10)).toBeNull();
+  });
+});

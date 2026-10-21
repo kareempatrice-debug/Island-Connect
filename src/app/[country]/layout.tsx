@@ -10,6 +10,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { Wordmark } from "@/components/wordmark";
 import { data, getCountries, getCountry, isSupabaseConfigured } from "@/lib/data";
 import { getViewer } from "@/lib/auth";
+import { RideStatusStrip } from "@/components/trips/ride-status-strip";
 
 type Props = { children: React.ReactNode; params: Promise<{ country: string }> };
 
@@ -56,6 +57,7 @@ export default async function CountryLayout({ children, params }: Props) {
             </Suspense>
           </div>
         </div>
+        {isSupabaseConfigured && viewer && <RideStatusStrip country={country.code} />}
       </header>
       <div id="main">{children}</div>
       <SiteFooter country={country} countries={countries} />

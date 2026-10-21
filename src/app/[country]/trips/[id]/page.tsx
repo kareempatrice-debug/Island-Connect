@@ -8,6 +8,9 @@ import { isSupabaseConfigured } from "@/lib/data";
 import { supabaseForRequest } from "@/lib/supabase/server";
 import { PushSetup } from "@/components/push-setup";
 import { TripSafety } from "@/components/trips/trip-safety";
+import { handleDispatchEvent } from "@/lib/notify";
+import { AutoRefresh } from "@/components/trips/auto-refresh";
+import { TripProgress } from "@/components/trips/trip-progress";
 import { TripDetail, type QuoteView, type TripView } from "@/components/trips/trip-detail";
 
 export const metadata: Metadata = { title: "Your trip", robots: { index: false } };
@@ -25,14 +28,24 @@ export default async function Trip({ params, searchParams }: { params: Promise<{
     .maybeSingle();
   if (!t || t.customer_id !== viewer.id) notFound();
   const now = Date.now();
-  const [{ data: pinRow }, { data: contacts }] = await Promise.all([
+  // Keep the ride moving: if a driver's offer timed out, offer the next one (and alert them).
+  if (t.status === "open" && t.dispatch_state === "dispatching") {
+    const { data: ev } = await supabase.rpc("dispatch_tick", { p_request: t.id });
+    await handleDispatchEvent(ev, t.id);
+  }
+  const [{ data: pinRow }, { data: contacts }, { data: reach }, { data: dispatch }] = await Promise.all([
     supabase.from("trip_pins").select("pin").eq("request_id", t.id).maybeSingle(),
     supabase.from("trusted_contacts").select("name, phone_e164").order("created_at"),
+    supabase.rpc("request_reach", { p_request: t.id }),
+    supabase.rpc("dispatch_info", { p_request: t.id }),
   ]);
   const site = (process.env.NEXT_PUBLIC_SITE_URL ?? "").replace(/\/$/, "");
   const active = ["open", "booked"].includes(t.status);
   return (
     <Container className="max-w-3xl py-8 sm:py-12">
+      {active && <AutoRefresh seconds={t.status === "open" ? 5 : 10} />}
+      <TripProgress status={t.status} pickedUp={Boolean(t.picked_up_at)} reach={typeof reach === "number" ? reach : null} createdAt={t.created_at} fixed={Boolean(t.fixed_fare_xcd)}
+        dispatch={dispatch as { state: string | null; tried: number; current_km: number | null } | null} />
       {t.status === "open" && <div className="mb-6"><PushSetup what="new quotes" /></div>}
       {active && (
         <TripSafety pin={pinRow?.pin ?? null} shareUrl={t.share_token ? `${site}/share/${t.share_token}` : null} contacts={contacts ?? []}

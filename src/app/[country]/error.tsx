@@ -1,7 +1,11 @@
 "use client";
 
+import * as Sentry from "@sentry/nextjs";
+import { useEffect } from "react";
+
 /* Shown instead of a blank error screen if a page fails to load. */
-export default function PageError({ reset }: { error: Error; reset: () => void }) {
+export default function PageError({ error, reset }: { error: Error; reset: () => void }) {
+  useEffect(() => { Sentry.captureException(error); }, [error]);
   return (
     <main className="mx-auto max-w-xl px-5 py-20 text-center">
       <h1 className="text-3xl font-semibold">Something went wrong loading this page</h1>

@@ -25,8 +25,12 @@ export async function GET() {
 
   if (SUPABASE_URL && key && !key.startsWith("sb_secret_")) {
     const db = createClient(SUPABASE_URL.trim(), key, { auth: { persistSession: false } });
-    const { data, error } = await db.from("countries").select("code");
-    report.database = error ? `error: ${error.message}` : `ok, ${data?.length ?? 0} countries`;
+    // Give the database 8 seconds; a slow or paused database counts as down for the uptime checker.
+    const result = await Promise.race([
+      db.from("countries").select("code"),
+      new Promise<{ data: null; error: { message: string } }>((r) => setTimeout(() => r({ data: null, error: { message: "timed out after 8 seconds" } }), 8000)),
+    ]);
+    report.database = result.error ? `error: ${result.error.message}` : `ok, ${result.data?.length ?? 0} countries`;
   }
   const resend = process.env.RESEND_API_KEY ?? "";
   const secret = process.env.SUPABASE_SECRET_KEY ?? "";
@@ -39,5 +43,11 @@ export async function GET() {
     : "on";
   report.phoneNotifications =
     process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY ? (secret ? "on" : "missing SUPABASE_SECRET_KEY") : "off (add the two VAPID keys to switch on)";
-  return NextResponse.json(report, { headers: { "cache-control": "no-store" } });
+  report.whatsappAlerts = process.env.WHATSAPP_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID ? "on" : "off (add WHATSAPP_TOKEN and WHATSAPP_PHONE_NUMBER_ID to switch on)";
+  report.errorMonitoring = process.env.NEXT_PUBLIC_SENTRY_DSN ? "on" : "off (add NEXT_PUBLIC_SENTRY_DSN to switch on)";
+  report.googleMaps = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ? "on" : "off (add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to switch on)";
+  // For uptime checkers: "status" is "up" only when the site can reach its database.
+  const up = typeof report.database === "string" && report.database.startsWith("ok");
+  report.status = up ? "up" : "down";
+  return NextResponse.json(report, { status: up ? 200 : 503, headers: { "cache-control": "no-store" } });
 }

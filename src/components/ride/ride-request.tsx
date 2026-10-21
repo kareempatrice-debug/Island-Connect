@@ -8,6 +8,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { TripPayload } from "@/app/trip-actions";
 import { fareAmount, officialFare, officialFareForText } from "@/data/fares";
 import type { Landmark } from "@/data/landmarks";
+import { estimateFare } from "@/lib/estimate";
 import { haversineKm } from "@/lib/geo";
 import { CALLING_CODES } from "@/lib/phone";
 import { googleRoute, loadGoogleMaps, type RouteResult } from "./google-maps";
@@ -137,6 +138,11 @@ export function RideRequest({
       ?? officialFareForText(countryCode, [pickup.label, pickup.address].filter(Boolean).join(", "), [dropoff.label, dropoff.address].filter(Boolean).join(", "));
   }, [pickup, dropoff, vehicle, landmarks, countryCode]);
   const price = fare ? fareAmount(fare, passengers) : null;
+  // No published fare: show a range from the distance, so customers know roughly what to expect.
+  const estimate = !fare && vehicle === "car" ? estimateFare(countryCode, route?.km, passengers) : null;
+  // No official fare: the customer chooses between drivers' prices and an instant match at the estimate.
+  const [bookMode, setBookMode] = useState<"quotes" | "instant">("quotes");
+  const instantPrice = estimate ? Math.round((estimate.low + estimate.high) / 2 / 5) * 5 : null;
 
   // ---------- Places on the map ----------
   const islandOf = (p: Place | null) => {
@@ -190,6 +196,7 @@ export function RideRequest({
       distance_km: route?.km ?? null, duration_min: route?.min ?? null,
       rider_name: forOther ? riderName.trim() : null, rider_phone: forOther ? riderPhone : null, rider_code: riderCode,
       rider_kind: forOther ? (family.find((m) => m.name === riderName.trim())?.kind ?? riderKind) : null,
+      book_mode: estimate ? bookMode : undefined,
       contact_phone: phone, contact_code: code,
     });
     setBusy(false);
@@ -343,6 +350,7 @@ export function RideRequest({
                     <span className="min-w-0 flex-1"><span className="block font-semibold text-ink">{name}</span><span className="block text-sm">{sub}</span></span>
                     <span className="text-right">
                       {p != null ? <><span className="block text-lg font-bold text-ink">EC${p}</span><span className="block text-xs text-success">Official fare</span></>
+                        : v === "car" && estimate ? <><span className="block text-lg font-bold text-ink">EC${estimate.low}–{estimate.high}</span><span className="block text-xs">Estimate</span></>
                         : <span className="block text-sm font-semibold text-ink">Driver quotes</span>}
                     </span>
                   </button>
@@ -357,6 +365,21 @@ export function RideRequest({
                 </span>
               </div>
               {fare && vehicle === "car" && <p className="text-xs">{fare.table.basis}. Source: {fare.table.source}, {fare.table.sourceDate}. After-hours rates can apply.</p>}
+              {estimate && (
+                <fieldset className="space-y-2">
+                  <legend className="mb-1 text-sm font-semibold text-ink">How would you like to book?</legend>
+                  {([
+                    ["quotes", "Get prices from drivers", `Drivers reply with their price, usually around EC$${estimate.low}–${estimate.high}. You choose.`],
+                    ["instant", `Book now at EC$${instantPrice}`, "We offer your ride to the nearest available driver straight away."],
+                  ] as const).map(([v, title, sub]) => (
+                    <label key={v} className={`flex cursor-pointer items-start gap-3 rounded-2xl p-3.5 ring-1 ${bookMode === v ? "bg-primary/10 ring-2 ring-primary" : "bg-raised ring-line"}`}>
+                      <input type="radio" name="bookMode" value={v} checked={bookMode === v} onChange={() => setBookMode(v)} className="mt-1 h-4 w-4 accent-[rgb(var(--primary))]" />
+                      <span><span className="block font-semibold text-ink">{title}</span><span className="block text-xs">{sub}</span></span>
+                    </label>
+                  ))}
+                  <p className="text-xs">Prices are estimated from official fares for similar distances.</p>
+                </fieldset>
+              )}
 
               <label className="block"><span className="sr-only">Note for the driver</span>
                 <input value={note} onChange={(e) => setNote(e.target.value.slice(0, 300))} className={field} placeholder="Note for the driver (optional): gate colour, luggage, flight number" /></label>
@@ -381,7 +404,7 @@ export function RideRequest({
                     </div>
                     {error && <p role="alert" className="rounded-xl bg-danger/10 px-4 py-3 text-sm font-medium text-danger">{error}</p>}
                     <button type="button" onClick={send} disabled={busy} className="h-14 w-full rounded-full bg-deep text-[1.0625rem] font-semibold text-white disabled:opacity-60">
-                      {busy ? "Sending…" : `Request ${vehicle === "van" ? "minivan" : "car"}${price != null && vehicle === "car" ? ` · EC$${price}` : ""}`}
+                      {busy ? "Sending…" : estimate ? (bookMode === "instant" ? `Book now · EC$${instantPrice}` : "Ask drivers for prices") : `Request ${vehicle === "van" ? "minivan" : "car"}${price != null && vehicle === "car" ? ` · EC$${price}` : ""}`}
                     </button>
                     <p className="text-center text-xs">
                       {price != null && vehicle === "car" ? "The first approved driver to accept takes your trip at this fare." : "Approved drivers reply with their fare. Nothing is booked until you accept one."}

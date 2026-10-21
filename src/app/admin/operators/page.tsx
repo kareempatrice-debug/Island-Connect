@@ -22,6 +22,9 @@ export default async function Operators({ searchParams }: { searchParams: Promis
   const docPaths = pending.flatMap((o: any) => o.document_paths ?? []);
   const { data: signed } = docPaths.length ? await supabase.storage.from("operator-documents").createSignedUrls(docPaths, 3600) : { data: [] as any[] };
   const docUrl = new Map((signed ?? []).map((x: any) => [x.path, x.signedUrl]));
+  // Who each waiting request reached, and why not for everyone else.
+  const reach = new Map<string, { business_name: string; reached: boolean; reason: string }[]>(
+    await Promise.all((openReqs ?? []).slice(0, 20).map(async (r: any) => [r.id, ((await supabase.rpc("admin_request_reach", { p_request: r.id })).data ?? []) as any[]] as const)));
   const approved = (ops ?? []).filter((o: any) => o.status === "approved");
   const month = new Date().toISOString().slice(0, 7);
   const thisMonth = (ledger ?? []).filter((l: any) => l.created_at.startsWith(month));
@@ -126,6 +129,19 @@ export default async function Operators({ searchParams }: { searchParams: Promis
                   {r.fixed_fare_xcd ? `official fare ${fmtXcd(r.fixed_fare_xcd)}, waiting for a driver to accept` : `${(r.trip_quotes ?? []).length} quote${(r.trip_quotes ?? []).length === 1 ? "" : "s"} so far`}
                   {" "}· sent {fmtWhen(r.created_at)}
                 </p>
+                {reach.has(r.id) && (() => {
+                  const list = reach.get(r.id)!;
+                  const n = list.filter((x) => x.reached).length;
+                  return (
+                    <details className="mt-1 text-sm">
+                      <summary className={`cursor-pointer font-semibold ${n ? "text-success" : "text-danger"}`}>Reached {n} driver{n === 1 ? "" : "s"}{n ? "" : ": see why"}</summary>
+                      <ul className="mt-1 space-y-0.5 pl-4">
+                        {list.map((x) => <li key={x.business_name}><span className="text-ink">{x.business_name}</span>: {x.reason}</li>)}
+                        {!list.length && <li>No approved operators yet.</li>}
+                      </ul>
+                    </details>
+                  );
+                })()}
               </li>
             ))}
           </ul>

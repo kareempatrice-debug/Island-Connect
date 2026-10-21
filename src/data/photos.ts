@@ -229,7 +229,7 @@ export const countryImagery: Record<string, { hero: string; guides: Record<strin
   vc: {
     hero: "salt-whistle-beach",
     picker: "mayreau-aerial",
-    guides: { "returning-home": "kingstown-ferry", "property-investment": "st-vincent-leeward", "start-a-business": "kingstown" },
+    guides: { "returning-home": "kingstown-ferry", "property-investment": "mayreau-salt-whistle-bay", "start-a-business": "kingstown" },
   },
 };
 

@@ -28,11 +28,14 @@ export function BusinessCard({
   country,
   timeZone,
   priority,
+  browsing,
 }: {
   business: Business;
   country: string;
   timeZone: string;
   priority?: boolean;
+  /** The category page being viewed, so the picture matches what the person is looking for. */
+  browsing?: string;
 }) {
   const primary = business.categories.find((c) => c.isPrimary) ?? business.categories[0];
   const price = fromPrice(business);
@@ -46,7 +49,7 @@ export function BusinessCard({
       {/* The logo sits outside the clipped cover so it overlaps the edge without being cut off. */}
       <div className="relative">
         <div className="relative aspect-[16/10] overflow-hidden">
-          <BusinessCover business={business} sizes="(min-width: 1024px) 380px, (min-width: 640px) 50vw, 90vw" priority={priority} />
+          <BusinessCover business={business} sizes="(min-width: 1024px) 380px, (min-width: 640px) 50vw, 90vw" priority={priority} browsing={browsing} />
           <div className="absolute left-3 top-3">
             <ListingBadges business={business} onImage />
           </div>

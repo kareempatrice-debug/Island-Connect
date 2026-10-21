@@ -1,18 +1,25 @@
 import Image from "next/image";
 import { categoryArt } from "@/data/category-art";
+import { photoForCategory } from "@/data/category-photos";
 import type { Business } from "@/lib/types";
 import { categoryVisual, coverStyle, groupOf } from "./visuals";
 
 /*
- * A business's own cover photo, or its category group's placeholder illustration.
- * We never show stock photography on a business's behalf.
+ * A business's own cover photo, or its category group's illustration.
+ * We never show stock photography on a business's behalf: the illustrations are clearly artwork.
  */
-export function BusinessCover({ business, sizes, priority, large }: { business: Business; sizes: string; priority?: boolean; large?: boolean }) {
-  const primary = business.categories.find((c) => c.isPrimary) ?? business.categories[0];
+export function BusinessCover({ business, sizes, priority, large, browsing }: { business: Business; sizes: string; priority?: boolean; large?: boolean; browsing?: string }) {
+  // On a category page, show that category's picture if the business is in it (a hotel on the Restaurants page shows a restaurant).
+  const primary = (browsing && business.categories.find((c) => c.slug === browsing)) || business.categories.find((c) => c.isPrimary) || business.categories[0];
   if (business.coverUrl) {
     return <Image src={business.coverUrl} alt="" fill sizes={sizes} priority={priority} className="object-cover" />;
   }
-  const art = categoryArt[groupOf(primary?.slug ?? "")];
+  const group = groupOf(primary?.slug ?? "");
+  const photo = photoForCategory(primary?.slug ?? "", group);
+  if (photo) {
+    return <Image src={photo.src} alt="" fill sizes={sizes} priority={priority} quality={85} className="object-cover" style={{ objectPosition: photo.focus }} />;
+  }
+  const art = categoryArt[group];
   if (art) {
     return (
       <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${art.from}, ${art.to})` }} aria-hidden="true">

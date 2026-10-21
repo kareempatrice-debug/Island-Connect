@@ -6,9 +6,11 @@ import { z } from "zod";
 import type { FormState } from "@/app/auth-actions";
 import { getViewer, requireAdmin } from "@/lib/auth";
 import { toE164International } from "@/lib/phone";
+import { estimateFare } from "@/lib/estimate";
+import { cookies } from "next/headers";
 import { fareAmount, officialFare, officialFareForText } from "@/data/fares";
 import { landmarks } from "@/data/landmarks";
-import { notifyCustomerOfAcceptance, notifyCustomerOfQuote, notifyOperatorOfBooking, notifyOperatorsOfRequest, notifyTripMessage } from "@/lib/notify";
+import { handleDispatchEvent, notifyCustomerOfAcceptance, notifyCustomerOfQuote, notifyOperatorOfBooking, notifyTripMessage } from "@/lib/notify";
 import { supabaseForRequest } from "@/lib/supabase/server";
 
 const KINDS = ["taxi", "airport", "group", "boat", "haulage", "freight"] as const;
@@ -19,7 +21,7 @@ export interface TripPayload {
   country: string; kind: (typeof KINDS)[number]; from: string; to: string; pickup: string; dropoff: string;
   travel_at?: string | null; passengers?: number | null; details?: string | null; cross_border?: boolean; contact_phone?: string; contact_code?: string; pickup_id?: string; dropoff_id?: string;
   pickup_lat?: number | null; pickup_lng?: number | null; dropoff_lat?: number | null; dropoff_lng?: number | null;
-  distance_km?: number | null; duration_min?: number | null; rider_name?: string | null; rider_phone?: string | null; rider_code?: string; rider_kind?: "adult" | "senior" | "teen" | null;
+  distance_km?: number | null; duration_min?: number | null; rider_name?: string | null; rider_phone?: string | null; rider_code?: string; rider_kind?: "adult" | "senior" | "teen" | null; book_mode?: "quotes" | "instant";
 }
 
 const payload = z.object({
@@ -43,6 +45,7 @@ const payload = z.object({
   rider_name: z.string().trim().max(80).nullish(), rider_phone: z.string().max(30).nullish(),
   rider_code: z.string().regex(/^(\+\d{1,4}|other)$/).optional(),
   rider_kind: z.enum(["adult", "senior", "teen"]).nullish(),
+  book_mode: z.enum(["quotes", "instant"]).optional(),
 });
 
 /** Sends a trip request to every approved operator who can take it. Returns the trip page to open. */
@@ -78,12 +81,20 @@ export async function createTripRequestAction(input: TripPayload): Promise<{ url
     const f = (a && b ? officialFare(a, b) : null) ?? officialFareForText(d.country, d.pickup, d.dropoff);
     if (f) fixed = { fixed_fare_xcd: fareAmount(f, d.passengers ?? 1), fare_source: `${f.table.source}, ${f.table.sourceDate}` };
   }
-  const { contact_code: _code, pickup_id: _a, dropoff_id: _b, rider_code: _rc, rider_phone: _rp, rider_kind: riderKind, ...trip } = d;
+  const { contact_code: _code, pickup_id: _a, dropoff_id: _b, rider_code: _rc, rider_phone: _rp, rider_kind: riderKind, book_mode: bookMode, ...trip } = d;
   void _code; void _a; void _b; void _rc; void _rp;
-  const { data, error } = await supabase.rpc("create_trip_request", { p: { ...trip, travel_at: d.travel_at || null, contact_phone: phone, rider_phone: riderPhone, ...(fixed ?? {}) } });
+  // No official fare: record the estimate the customer saw, so the driver knows what they expect.
+  const est = !fixed && (d.kind === "taxi" || d.kind === "airport") ? estimateFare(d.country, d.distance_km, d.passengers ?? 1) : null;
+  const partner = (await cookies()).get("ic_partner")?.value ?? null;
+  const { data, error } = await supabase.rpc("create_trip_request", { p: { ...trip, travel_at: d.travel_at || null, contact_phone: phone, rider_phone: riderPhone, ...(fixed ?? {}),
+    ...(est ? { estimate_low_xcd: est.low, estimate_high_xcd: est.high } : {}), partner_code: partner } });
   if (!error && riderKind && d.rider_name) await supabase.rpc("set_rider_kind", { p_request: data, p_kind: riderKind });
   if (error) return { error: error.message };
-  await notifyOperatorsOfRequest(String(data));
+  // Taxi rides with a price go to the nearest online driver first (see the dispatch migration);
+  // anything else, or if nobody is online nearby, alerts every eligible driver.
+  // Routes without an official fare only use instant matching if the customer chose it; otherwise drivers send prices.
+  const { data: dispatch } = await supabase.rpc("start_dispatch", { p_request: data, p_instant: bookMode === "instant" });
+  await handleDispatchEvent(dispatch ?? { event: "broadcast" }, String(data));
   return { url: `/${d.country}/trips/${data}` };
 }
 
@@ -273,6 +284,7 @@ export async function applyAsDriverAction(_: FormState, form: FormData): Promise
     licence: d.data.licence, vehicles: d.data.vehicles, insurance: d.data.insurance, documents,
   } });
   if (error) return { error: error.message };
+  if (form.get("whatsappAlerts")) await supabase.rpc("set_whatsapp_alerts", { p_business: (data as { id: string }).id, p_on: true });
   revalidatePath("/admin/operators");
   redirect(`/${d.data.country}/dashboard/${(data as { slug: string }).slug}?tab=trips&applied=1`);
 }
@@ -310,4 +322,35 @@ export async function createDriverAccountAction(_: FormState, form: FormData): P
   const { error } = await supabase.auth.signUp({ email, password, options: { data: { full_name: name, joined_as: "operator" }, emailRedirectTo: `${site}/auth/callback?next=${encodeURIComponent(next)}` } });
   if (error) return { error: error.message };
   return { message: "Check your email and tap the link to continue your application." };
+}
+
+
+/* Driver chooses whether new trip requests also arrive on WhatsApp. */
+export async function setWhatsAppAlertsAction(form: FormData) {
+  const d = z.object({ businessId: z.string().uuid(), on: z.enum(["on", "off"]), country: z.string().regex(/^[a-z]{2}$/), slug: z.string().regex(/^[a-z0-9-]{1,80}$/) }).parse(Object.fromEntries(form));
+  const supabase = await supabaseForRequest();
+  await supabase.rpc("set_whatsapp_alerts", { p_business: d.businessId, p_on: d.on === "on" });
+  const back = `/${d.country}/dashboard/${d.slug}?tab=trips`;
+  revalidatePath(back);
+  redirect(back);
+}
+
+
+/* The driver answers a ride offer (accept or decline). */
+export async function respondToOfferAction(offerId: string, accept: boolean): Promise<{ error?: string; url?: string }> {
+  const supabase = await supabaseForRequest();
+  const { data: offer } = await supabase.from("trip_offers").select("request_id, business_id, businesses ( slug ), trip_requests ( country_code )").eq("id", offerId).maybeSingle();
+  if (!offer) return { error: "This offer is no longer available." };
+  const { data, error } = await supabase.rpc("respond_to_offer", { p_offer: offerId, p_accept: accept });
+  if (error) return { error: error.message };
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  const o = offer as any;
+  const country = o.trip_requests?.country_code ?? "gd";
+  if (accept) {
+    const { data: req } = await supabase.from("trip_requests").select("accepted_quote_id").eq("id", o.request_id).maybeSingle();
+    if (req?.accepted_quote_id) await notifyCustomerOfAcceptance(String(req.accepted_quote_id)).catch(() => undefined);
+    return { url: `/${country}/dashboard/${o.businesses?.slug}?tab=trips&accepted=1` };
+  }
+  await handleDispatchEvent(data, o.request_id);
+  return { url: `/${country}/dashboard/${o.businesses?.slug}?tab=trips` };
 }

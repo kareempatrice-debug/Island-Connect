@@ -793,3 +793,122 @@ describe("family, trip sharing and pick-up PINs", () => {
     expect((await as("anon", null, () => db.query<{ s: any }>(`select public.shared_trip('nottherealtoken0000000000000000') as s`))).rows[0].s).toBeNull();
   });
 });
+
+describe("partners and WhatsApp opt-in", () => {
+  it("counts partner scans, credits requests to the partner, and keeps partners admin-only", async () => {
+    await as("authenticated", ADMIN, () => db.query(`insert into public.partners (code, name, kind, country_code, landing) values ('mbia-arrivals', 'MBIA arrivals desk', 'airport', 'gd', 'airport')`));
+    await expect(as("authenticated", OWNER, () => db.query(`insert into public.partners (code, name, country_code) values ('sneaky', 'x', 'gd')`))).rejects.toThrow();
+    const land = (await as("anon", null, () => db.query<{ l: any }>(`select public.partner_landing('MBIA-Arrivals') as l`))).rows[0].l;
+    expect(land).toMatchObject({ country: "gd", landing: "airport" });
+    expect((await as("anon", null, () => db.query<{ l: any }>(`select public.partner_landing('nope') as l`))).rows[0].l).toBeNull();
+    const C = "00000000-0000-0000-0000-000000000060";
+    await db.exec(`insert into auth.users (id, email) values ('${C}', 'visitor@example.com') on conflict do nothing`);
+    await as("authenticated", C, () => db.query(`select public.create_trip_request($1::jsonb)`, [JSON.stringify({
+      country: "gd", kind: "taxi", from: "Grenada", to: "Grenada", pickup: "Airport", dropoff: "Villa", passengers: 2, contact_phone: "+447835028032",
+      partner_code: "mbia-arrivals", estimate_low_xcd: 45, estimate_high_xcd: 55 })]));
+    const s = (await as("authenticated", ADMIN, () => db.query<{ visits_total: string; requests: string }>(`select visits_total, requests from public.admin_partner_stats() where code = 'mbia-arrivals'`))).rows[0];
+    expect(Number(s.visits_total)).toBe(1); expect(Number(s.requests)).toBe(1);
+    await expect(as("authenticated", OWNER, () => db.query(`select * from public.admin_partner_stats()`))).rejects.toThrow(/administrators/);
+  });
+});
+
+describe("request reach", () => {
+  it("lets a taxi-only driver see airport rides, and explains who a request reached", async () => {
+    const biz = (await db.query<{ business_id: string }>(`select business_id from public.operator_profiles where status = 'approved' limit 1`)).rows[0].business_id;
+    await db.query(`update public.operator_profiles set kinds = array['taxi']::public.trip_kind[] where business_id = $1`, [biz]);
+    const cc = (await db.query<{ country_code: string }>(`select country_code from public.business_locations where business_id = $1 limit 1`, [biz])).rows[0].country_code;
+    expect((await db.query<{ ok: boolean }>(`select public.operator_can_serve($1, $2, 'airport') as ok`, [biz, cc])).rows[0].ok).toBe(true);
+    expect((await db.query<{ ok: boolean }>(`select public.operator_can_serve($1, $2, 'haulage') as ok`, [biz, cc])).rows[0].ok).toBe(false);
+    const C = "00000000-0000-0000-0000-000000000070";
+    await db.exec(`insert into auth.users (id, email) values ('${C}', 'reach@example.com') on conflict do nothing`);
+    const id = (await as("authenticated", C, () => db.query<{ id: string }>(`select public.create_trip_request($1::jsonb) as id`, [JSON.stringify({
+      country: cc, kind: "airport", from: "Main island", to: "Main island", pickup: "Airport", dropoff: "Town", passengers: 1, contact_phone: "+447835028032" })]))).rows[0].id;
+    expect((await as("authenticated", C, () => db.query<{ n: number }>(`select public.request_reach($1) as n`, [id]))).rows[0].n).toBeGreaterThanOrEqual(1);
+    const why = await as("authenticated", ADMIN, () => db.query<{ reached: boolean; reason: string }>(`select * from public.admin_request_reach($1)`, [id]));
+    expect(why.rows.some((w) => w.reached && w.reason === "Reached")).toBe(true);
+  });
+});
+
+describe("Uber-style dispatch", () => {
+  it("offers the nearest online driver first, moves on when they decline, and books on accept", async () => {
+    // Two approved taxi businesses with drivers online at different distances from the pick-up.
+    const ops = (await db.query<{ business_id: string }>(`select business_id from public.operator_profiles where status = 'approved' limit 2`)).rows;
+    if (ops.length < 2) {
+      const other = (await db.query<{ id: string }>(`select b.id from public.businesses b where b.listing_status = 'published' and not exists (select 1 from public.operator_profiles o where o.business_id = b.id) and exists (select 1 from public.business_locations l where l.business_id = b.id and l.country_code = 'gd') limit 1`)).rows[0];
+      await db.query(`insert into public.operator_profiles (business_id, kinds, status) values ($1, array['taxi']::public.trip_kind[], 'approved')`, [other.id]);
+      ops.push({ business_id: other.id });
+    }
+    const near = ops[0].business_id, far = ops[1].business_id;
+    for (const b of [near, far]) {
+      await db.query(`update public.operator_profiles set kinds = array['taxi']::public.trip_kind[], status = 'approved' where business_id = $1`, [b]);
+      await db.query(`update public.businesses set listing_status = 'published' where id = $1`, [b]);
+      await db.query(`insert into public.business_locations (business_id, country_code, island_id, address_line, is_primary) select $1, 'gd', (select id from public.islands where country_code = 'gd' limit 1), 'Test', false where not exists (select 1 from public.business_locations where business_id = $1 and country_code = 'gd')`, [b]);
+    }
+    const memberOf = async (b: string) => {
+      const m = (await db.query<{ user_id: string }>(`select user_id from public.business_members where business_id = $1 limit 1`, [b])).rows[0];
+      if (m) return m.user_id;
+      const u = b.replace(/^.{8}/, "dddddddd");
+      await db.exec(`insert into auth.users (id, email) values ('${u}', 'driver-${u.slice(0, 6)}@example.com') on conflict do nothing`);
+      await db.query(`insert into public.business_members (business_id, user_id, role) values ($1, $2, 'owner')`, [b, u]);
+      return u;
+    };
+    const nearUser = await memberOf(near), farUser = await memberOf(far);
+    await db.query(`delete from public.driver_presence`);
+    await db.query(`insert into public.driver_presence (business_id, user_id, country_code, kinds, lat, lng) values ($1, $2, 'gd', array['taxi']::public.trip_kind[], 12.003, -61.770), ($3, $4, 'gd', array['taxi']::public.trip_kind[], 12.050, -61.750)`, [near, nearUser, far, farUser]);
+
+    const C = "00000000-0000-0000-0000-000000000080";
+    await db.exec(`insert into auth.users (id, email) values ('${C}', 'rider80@example.com') on conflict do nothing`);
+    const id = (await as("authenticated", C, () => db.query<{ id: string }>(`select public.create_trip_request($1::jsonb) as id`, [JSON.stringify({
+      country: "gd", kind: "airport", from: "Grenada", to: "Grenada", pickup: "Airport", dropoff: "Grand Anse", passengers: 1, contact_phone: "+447835028032",
+      fixed_fare_xcd: 40, fare_source: "GATA", pickup_lat: 12.0042, pickup_lng: -61.7862 })]))).rows[0].id;
+    const first = (await as("authenticated", C, () => db.query<{ e: any }>(`select public.start_dispatch($1) as e`, [id]))).rows[0].e;
+    expect(first).toMatchObject({ event: "offered", business_id: near });
+
+    // The further driver can't see the ride or grab it while it's offered to the nearer one.
+    expect((await as("authenticated", farUser, () => db.query(`select 1 from public.trip_requests where id = $1`, [id]))).rows).toHaveLength(0);
+    await expect(as("authenticated", farUser, () => db.query(`select public.accept_fixed_fare($1, $2)`, [id, far]))).rejects.toThrow();
+
+    // Nearer driver declines: the offer moves to the next nearest.
+    const next = (await as("authenticated", nearUser, () => db.query<{ e: any }>(`select public.respond_to_offer($1, false) as e`, [first.offer_id]))).rows[0].e;
+    expect(next).toMatchObject({ event: "offered", business_id: far });
+    const accepted = (await as("authenticated", farUser, () => db.query<{ e: any }>(`select public.respond_to_offer($1, true) as e`, [next.offer_id]))).rows[0].e;
+    expect(accepted.event).toBe("accepted");
+    expect((await db.query<{ status: string }>(`select status from public.trip_requests where id = $1`, [id])).rows[0].status).toBe("booked");
+  });
+
+  it("times out offers and falls back to alerting everyone", async () => {
+    const C = "00000000-0000-0000-0000-000000000081";
+    await db.exec(`insert into auth.users (id, email) values ('${C}', 'rider81@example.com') on conflict do nothing`);
+    const id = (await as("authenticated", C, () => db.query<{ id: string }>(`select public.create_trip_request($1::jsonb) as id`, [JSON.stringify({
+      country: "gd", kind: "taxi", from: "Grenada", to: "Grenada", pickup: "Grand Anse", dropoff: "Gouyave", passengers: 1, contact_phone: "+447835028032",
+      estimate_low_xcd: 90, estimate_high_xcd: 110, pickup_lat: 12.03, pickup_lng: -61.76 })]))).rows[0].id;
+    // Without "Book now", an estimated route goes to drivers for prices.
+    const id0 = (await as("authenticated", C, () => db.query<{ id: string }>(`select public.create_trip_request($1::jsonb) as id`, [JSON.stringify({
+      country: "gd", kind: "taxi", from: "Grenada", to: "Grenada", pickup: "Grand Anse", dropoff: "Gouyave", passengers: 1, contact_phone: "+447835028032",
+      estimate_low_xcd: 90, estimate_high_xcd: 110, pickup_lat: 12.03, pickup_lng: -61.76 })]))).rows[0].id;
+    expect((await as("authenticated", C, () => db.query<{ e: any }>(`select public.start_dispatch($1) as e`, [id0]))).rows[0].e.event).toBe("broadcast");
+    const e = (await as("authenticated", C, () => db.query<{ e: any }>(`select public.start_dispatch($1, true) as e`, [id]))).rows[0].e;
+    expect(e.event).toBe("offered");
+    expect(Number((await db.query<{ price_xcd: string }>(`select price_xcd from public.trip_offers where id = $1`, [e.offer_id])).rows[0].price_xcd)).toBe(100);
+    // Pretend 20 seconds passed with no answer, then two minutes.
+    await db.query(`update public.trip_offers set expires_at = now() - interval '1 second' where request_id = $1`, [id]);
+    await db.query(`update public.trip_requests set dispatch_started_at = now() - interval '3 minutes' where id = $1`, [id]);
+    const t = (await as("authenticated", C, () => db.query<{ e: any }>(`select public.dispatch_tick($1) as e`, [id]))).rows[0].e;
+    expect(t.event).toBe("broadcast");
+    // A request with no pick-up location goes straight to everyone.
+    const id2 = (await as("authenticated", C, () => db.query<{ id: string }>(`select public.create_trip_request($1::jsonb) as id`, [JSON.stringify({
+      country: "gd", kind: "taxi", from: "Grenada", to: "Grenada", pickup: "Somewhere", dropoff: "Elsewhere", passengers: 1, contact_phone: "+447835028032" })]))).rows[0].id;
+    expect((await as("authenticated", C, () => db.query<{ e: any }>(`select public.start_dispatch($1) as e`, [id2]))).rows[0].e.event).toBe("broadcast");
+  });
+});
+
+describe("updates are safe to run twice", () => {
+  it("re-running the latest database updates doesn't fail", async () => {
+    const { readFileSync } = await import("node:fs");
+    for (const f of ["20261027000023_family_and_safety.sql", "20261028000024_partners_estimates_whatsapp.sql", "20261029000025_request_reach.sql", "20261030000026_dispatch.sql"]) {
+      await db.exec(readFileSync(`supabase/migrations/${f}`, "utf8"));
+    }
+    const fns = await db.query<{ n: string }>(`select count(*)::text n from pg_proc where proname = 'start_dispatch'`);
+    expect(fns.rows[0].n).toBe("1");
+  });
+});

@@ -106,7 +106,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
             <BusinessGrid>
               {results.map((b, i) => (
                 <li key={b.id}>
-                  <BusinessCard business={b} country={code} timeZone={country.timeZone} priority={i < 3} />
+                  <BusinessCard business={b} country={code} timeZone={country.timeZone} priority={i < 3} browsing={slug} />
                 </li>
               ))}
             </BusinessGrid>

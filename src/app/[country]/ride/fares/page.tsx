@@ -24,23 +24,18 @@ export default async function Fares({ params }: { params: Promise<{ country: str
           <section key={t.id} aria-labelledby={`${t.id}-h`}>
             <h2 id={`${t.id}-h`} className="text-2xl font-semibold">From {t.origin}</h2>
             <p className="mt-1 text-sm">{t.basis}.{t.note ? ` ${t.note}` : ""}</p>
-            <div className="mt-4 overflow-x-auto rounded-2xl ring-1 ring-line/60">
-              <table className="w-full min-w-[30rem] bg-raised text-left text-[0.95rem]">
-                <thead className="bg-sunken text-sm text-ink">
-                  <tr><th className="px-4 py-2.5 font-semibold">To</th><th className="px-4 py-2.5 text-right font-semibold">EC$</th><th className="px-4 py-2.5 text-right font-semibold">US$</th>{t.rows.some((r) => r.afterXcd) && <th className="px-4 py-2.5 text-right font-semibold">After hours EC$</th>}</tr>
-                </thead>
-                <tbody className="divide-y divide-line">
-                  {t.rows.map((r) => (
-                    <tr key={r.places}>
-                      <td className="px-4 py-2.5 text-ink">{r.places}</td>
-                      <td className="px-4 py-2.5 text-right font-semibold text-ink">{r.xcd}</td>
-                      <td className="px-4 py-2.5 text-right">{r.usd}</td>
-                      {t.rows.some((x) => x.afterXcd) && <td className="px-4 py-2.5 text-right">{r.afterXcd ?? ""}</td>}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            {/* A list, not a wide table: the destination and its price are always on screen together. */}
+            <ul className="mt-4 divide-y divide-line overflow-hidden rounded-2xl bg-raised ring-1 ring-line/60">
+              {t.rows.map((r) => (
+                <li key={r.places} className="flex items-start gap-4 px-4 py-3">
+                  <span className="min-w-0 flex-1 text-ink">{r.places}</span>
+                  <span className="shrink-0 text-right">
+                    <span className="block text-lg font-bold text-ink">EC${r.xcd}</span>
+                    <span className="block text-xs">US${r.usd}{r.afterXcd ? ` · after hours EC$${r.afterXcd}` : ""}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
             <p className="mt-2 text-xs">
               Source: {t.sourceUrl ? <a href={t.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-link underline">{t.source}</a> : t.source}, {t.sourceDate}.
             </p>

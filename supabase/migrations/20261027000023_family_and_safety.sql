@@ -18,7 +18,9 @@ create table if not exists public.trusted_contacts (
 );
 alter table public.family_members enable row level security;
 alter table public.trusted_contacts enable row level security;
+drop policy if exists "own family" on public.family_members;
 create policy "own family" on public.family_members for all using (owner_id = auth.uid()) with check (owner_id = auth.uid());
+drop policy if exists "own trusted contacts" on public.trusted_contacts;
 create policy "own trusted contacts" on public.trusted_contacts for all using (owner_id = auth.uid()) with check (owner_id = auth.uid());
 create index if not exists family_members_owner_idx on public.family_members (owner_id);
 create index if not exists trusted_contacts_owner_idx on public.trusted_contacts (owner_id);
@@ -35,6 +37,7 @@ create table if not exists public.trip_pins (
   attempts smallint not null default 0
 );
 alter table public.trip_pins enable row level security;
+drop policy if exists "customer sees their PIN" on public.trip_pins;
 create policy "customer sees their PIN" on public.trip_pins for select
   using (exists (select 1 from public.trip_requests r where r.id = request_id and r.customer_id = auth.uid()));
 

@@ -13,6 +13,9 @@ create table if not exists public.passkeys (
 );
 create index if not exists passkeys_user_idx on public.passkeys (user_id);
 alter table public.passkeys enable row level security;
+drop policy if exists "people see their own passkeys" on public.passkeys;
 create policy "people see their own passkeys" on public.passkeys for select using (user_id = auth.uid());
+drop policy if exists "people add their own passkeys" on public.passkeys;
 create policy "people add their own passkeys" on public.passkeys for insert with check (user_id = auth.uid());
+drop policy if exists "people remove their own passkeys" on public.passkeys;
 create policy "people remove their own passkeys" on public.passkeys for delete using (user_id = auth.uid());

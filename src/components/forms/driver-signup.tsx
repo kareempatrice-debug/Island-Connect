@@ -139,6 +139,10 @@ export function DriverSignup({ country, islands, defaultName }: { country: strin
         {uploadError && <p role="alert" className="mt-3 rounded-xl bg-danger/10 px-4 py-3 text-sm font-medium text-danger">{uploadError}</p>}
       </section>
 
+      <label className="flex items-start gap-3 rounded-2xl bg-raised p-4 ring-1 ring-line/60">
+        <input type="checkbox" name="whatsappAlerts" defaultChecked className="mt-1 h-5 w-5 accent-[rgb(var(--primary))]" />
+        <span className="text-sm"><strong className="text-ink">Send me new trip requests on WhatsApp.</strong> You can turn this off any time in your Trips tab.</span>
+      </label>
       {state.error && <p role="alert" className="rounded-xl bg-danger/10 px-4 py-3 text-sm font-medium text-danger">{state.error}</p>}
       {(() => {
         const missing = DOCS.filter(([k]) => !docs[k]).length;

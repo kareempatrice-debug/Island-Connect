@@ -1,4 +1,5 @@
 import { confirmPickupAction } from "@/app/family-actions";
+import { setWhatsAppAlertsAction } from "@/app/trip-actions";
 import { acceptFixedFareAction, completeTripAction, sendQuoteAction } from "@/app/trip-actions";
 import { OperatorApply } from "@/components/forms/operator-apply";
 import { OperatorTrips } from "@/components/trips/operator-trips";
@@ -54,15 +55,23 @@ export async function TripsTab({ ids, isOwner, sp }: { ids: { businessId: string
           <input type="hidden" name="request" value={r.id} /><input type="hidden" name="businessId" value={ids.businessId} />
           <input type="hidden" name="country" value={ids.country} /><input type="hidden" name="slug" value={ids.slug} />
           <label className="block"><span className="mb-1 block text-xs font-semibold text-ink">Price (EC$)</span>
-            <input name="amount" type="number" min="1" step="0.01" required defaultValue={my?.amount_xcd ?? ""} className={`${input} w-32`} /></label>
+            <input name="amount" type="number" min="1" step="0.01" required defaultValue={my?.amount_xcd ?? (r.estimate_low_xcd ? Math.round((Number(r.estimate_low_xcd) + Number(r.estimate_high_xcd)) / 2 / 5) * 5 : "")} className={`${input} w-32`} /></label>
           <label className="block min-w-0 flex-1"><span className="mb-1 block text-xs font-semibold text-ink">What’s included</span>
-            <input name="includes" maxLength={500} placeholder="e.g. Door to door, luggage, waiting time" className={`${input} w-full`} /></label>
+            <input name="includes" maxLength={500} placeholder="Optional, e.g. luggage and waiting time" className={`${input} w-full`} /></label>
           <label className="block"><span className="mb-1 block text-xs font-semibold text-ink">Valid for</span>
             <select name="hours" defaultValue="24" className={input}><option value="2">2 hours</option><option value="12">12 hours</option><option value="24">1 day</option><option value="72">3 days</option><option value="168">1 week</option></select></label>
-          <button className="h-11 rounded-full bg-primary px-5 font-semibold text-primary-ink">{my ? "Update quote" : "Send quote"}</button>
+          <button className="h-11 rounded-full bg-primary px-5 font-semibold text-primary-ink">{my ? "Update price" : "Send price"}</button>
         </form>
       )}
       chatHref={(r) => `/${ids.country}/trips/${r.id}/chat`}
+      alertsSetting={
+        <form action={setWhatsAppAlertsAction} className="flex flex-wrap items-center gap-3 rounded-2xl bg-raised p-4 ring-1 ring-line/60">
+          <input type="hidden" name="businessId" value={ids.businessId} /><input type="hidden" name="country" value={ids.country} /><input type="hidden" name="slug" value={ids.slug} />
+          <input type="hidden" name="on" value={op.whatsapp_alerts ? "off" : "on"} />
+          <p className="min-w-0 flex-1 text-sm"><strong className="text-ink">WhatsApp alerts {op.whatsapp_alerts ? "on" : "off"}.</strong> {op.whatsapp_alerts ? "New trip requests also arrive on your listing’s WhatsApp number." : "Get new trip requests on your listing’s WhatsApp number as well."}</p>
+          <button className={`h-10 rounded-full px-4 text-sm font-semibold ${op.whatsapp_alerts ? "border border-line text-ink" : "bg-[#25D366] text-[#0B2E1B]"}`}>{op.whatsapp_alerts ? "Turn off" : "Turn on"}</button>
+        </form>
+      }
       confirmPickup={(r) => (
         <form action={confirmPickupAction} className="mt-3 flex items-center gap-2">
           <input type="hidden" name="request" value={r.id} /><input type="hidden" name="country" value={ids.country} /><input type="hidden" name="slug" value={ids.slug} />
@@ -75,7 +84,7 @@ export async function TripsTab({ ids, isOwner, sp }: { ids: { businessId: string
         <form action={acceptFixedFareAction}>
           <input type="hidden" name="request" value={r.id} /><input type="hidden" name="businessId" value={ids.businessId} />
           <input type="hidden" name="country" value={ids.country} /><input type="hidden" name="slug" value={ids.slug} />
-          <button className="h-11 rounded-full bg-primary px-5 font-semibold text-primary-ink">Accept trip</button>
+          <button className="h-12 rounded-full bg-primary px-6 text-base font-bold text-primary-ink">Accept trip</button>
         </form>
       )}
       complete={(r) => (
