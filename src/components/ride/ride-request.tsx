@@ -28,6 +28,7 @@ export interface RideOperator {
 }
 
 interface Place { label: string; address?: string; lat?: number; lng?: number; landmarkId?: string }
+export interface Vehicle2 { lat: number; lng: number; heading: number | null; van: boolean }
 type Field = "pickup" | "dropoff";
 type Vehicle = "car" | "van";
 
@@ -38,7 +39,15 @@ const field = "h-12 w-full min-w-0 rounded-xl border border-line bg-raised px-3.
 
 export function RideRequest({
   countryCode, countryName, islands, landmarks, coastlines, routes, operators, googleKey, signedIn, startAtAirport, initialVehicle = "car", requestInApp,
+  liveVehicles = false, sampleVehicles, family = [], initialWhen = "now", prefill,
 }: {
+  family?: { name: string; phone_e164: string | null; kind: "adult" | "senior" | "teen" }[];
+  initialWhen?: "now" | "later";
+  prefill?: { from?: { label: string; lat?: number; lng?: number }; to?: { label: string; lat?: number; lng?: number } };
+  /** Show approved drivers who are online as cars on the map. */
+  liveVehicles?: boolean;
+  /** Fixed sample cars, for the preview only. */
+  sampleVehicles?: Vehicle2[];
   countryCode: string; countryName: string;
   islands: { slug: string; name: string }[];
   landmarks: Landmark[];
@@ -57,14 +66,14 @@ export function RideRequest({
   const asPlace = (l: Landmark): Place => ({ label: l.name, lat: l.lat, lng: l.lng, landmarkId: l.id });
 
   const [useGoogle, setUseGoogle] = useState(Boolean(googleKey));
-  const [pickup, setPickup] = useState<Place | null>(startAtAirport && airport ? asPlace(airport) : null);
-  const [dropoff, setDropoff] = useState<Place | null>(null);
+  const [pickup, setPickup] = useState<Place | null>(prefill?.from ?? (startAtAirport && airport ? asPlace(airport) : null));
+  const [dropoff, setDropoff] = useState<Place | null>(prefill?.to ?? null);
   const [searching, setSearching] = useState<Field | null>(null);
   const [pinFor, setPinFor] = useState<Field | null>(null);
   const [route, setRoute] = useState<(RouteResult & { estimate?: boolean }) | null>(null);
   const [vehicle, setVehicle] = useState<Vehicle>(initialVehicle);
   const [passengers, setPassengers] = useState(initialVehicle === "van" ? 5 : 1);
-  const [when, setWhen] = useState<"now" | "later">("now");
+  const [when, setWhen] = useState<"now" | "later">(initialWhen);
   const [at, setAt] = useState("");
   const [forOther, setForOther] = useState(false);
   const [riderName, setRiderName] = useState("");
@@ -73,10 +82,27 @@ export function RideRequest({
   const [note, setNote] = useState("");
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState(countryCode === "vc" ? "+1784" : "+1473");
-  const [panel, setPanel] = useState<"when" | "who" | null>(null);
+  const [panel, setPanel] = useState<"when" | "who" | null>(initialWhen === "later" ? "when" : null);
+  const [riderKind, setRiderKind] = useState<"adult" | "senior" | "teen">("adult");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showDirect, setShowDirect] = useState(false);
+  const [cars, setCars] = useState<Vehicle2[]>(sampleVehicles ?? []);
+
+  // ---------- Cars nearby (approximate positions of drivers who are online) ----------
+  useEffect(() => {
+    if (!liveVehicles) return;
+    let alive = true;
+    const load = async () => {
+      if (document.visibilityState !== "visible") return;
+      const { supabaseBrowser } = await import("@/lib/supabase/browser");
+      const { data } = await supabaseBrowser().rpc("nearby_vehicles", { p_country: countryCode });
+      if (alive && Array.isArray(data)) setCars(data as Vehicle2[]);
+    };
+    load();
+    const t = setInterval(load, 20000);
+    return () => { alive = false; clearInterval(t); };
+  }, [liveVehicles, countryCode]);
 
   // ---------- Route ----------
   useEffect(() => {
@@ -163,6 +189,7 @@ export function RideRequest({
       pickup_lat: pickup.lat ?? null, pickup_lng: pickup.lng ?? null, dropoff_lat: dropoff.lat ?? null, dropoff_lng: dropoff.lng ?? null,
       distance_km: route?.km ?? null, duration_min: route?.min ?? null,
       rider_name: forOther ? riderName.trim() : null, rider_phone: forOther ? riderPhone : null, rider_code: riderCode,
+      rider_kind: forOther ? (family.find((m) => m.name === riderName.trim())?.kind ?? riderKind) : null,
       contact_phone: phone, contact_code: code,
     });
     setBusy(false);
@@ -181,14 +208,20 @@ export function RideRequest({
       <div className="relative h-[32vh] min-h-56 bg-sunken lg:sticky lg:top-24 lg:order-2 lg:h-[calc(100dvh-7rem)] lg:overflow-hidden lg:rounded-[1.75rem]">
         {useGoogle && googleKey ? (
           <GoogleRideMap apiKey={googleKey} center={centre} pickup={pickup?.lat != null ? (pickup as any) : null} dropoff={dropoff?.lat != null ? (dropoff as any) : null}
-            path={route?.path?.length ? route.path : null} pinMode={Boolean(pinFor)} onTap={placeFromTap} onFail={() => setUseGoogle(false)} />
+            path={route?.path?.length ? route.path : null} pinMode={Boolean(pinFor)} onTap={placeFromTap} onFail={() => setUseGoogle(false)} vehicles={cars} />
         ) : main && coastlines[main.slug] ? (
           <RideMap coastline={coastlines[landmarks.find((l) => l.id === (pickup?.landmarkId ?? dropoff?.landmarkId))?.island ?? main.slug] ?? coastlines[main.slug]}
             landmarks={landmarks.filter((l) => l.island === (landmarks.find((x) => x.id === (pickup?.landmarkId ?? dropoff?.landmarkId))?.island ?? main.slug))}
             pickup={landmarks.find((l) => l.id === pickup?.landmarkId) ?? null} destination={landmarks.find((l) => l.id === dropoff?.landmarkId) ?? null}
             road={route?.path?.length ? route.path.map((p) => [p.lng, p.lat] as [number, number]) : null}
+            vehicles={cars}
             onPick={(l: Landmark) => (pickup ? setDropoff(asPlace(l)) : setPickup(asPlace(l)))} />
         ) : null}
+        {cars.length > 0 && !pinFor && (
+          <div className="absolute left-3 top-3 z-10 inline-flex items-center gap-1.5 rounded-full bg-raised/95 px-3 py-1.5 text-sm font-semibold text-ink shadow-card">
+            <Car className="h-4 w-4 text-primary" aria-hidden="true" />{cars.length} {cars.length === 1 ? "car" : "cars"} nearby
+          </div>
+        )}
         {pinFor && (
           <div className="absolute inset-x-3 top-3 z-10 flex items-center justify-between gap-3 rounded-2xl bg-deep px-4 py-3 text-white shadow-lift">
             <span className="text-sm font-semibold">Tap the map to set your {pinFor === "pickup" ? "pick-up" : "destination"}</span>
@@ -252,6 +285,17 @@ export function RideRequest({
                     className={`h-11 rounded-xl font-semibold ${forOther === o ? "bg-deep text-white" : "bg-sunken text-ink"}`}>{o ? "Someone else" : "Me"}</button>
                 ))}
               </div>
+              {forOther && family.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {family.map((m) => (
+                    <button key={m.name} type="button" aria-pressed={riderName === m.name}
+                      onClick={() => { setRiderName(m.name); setRiderKind(m.kind); if (m.phone_e164) { setRiderCode("other"); setRiderPhone(m.phone_e164); } }}
+                      className={`h-9 rounded-full px-3.5 text-sm font-semibold ${riderName === m.name ? "bg-deep text-white" : "bg-sunken text-ink"}`}>
+                      {m.name}{m.kind !== "adult" ? ` · ${m.kind === "teen" ? "Teen" : "Senior"}` : ""}
+                    </button>
+                  ))}
+                </div>
+              )}
               {forOther && (
                 <>
                   <label className="block"><span className="mb-1 block text-sm font-semibold text-ink">Their name</span>
@@ -264,7 +308,7 @@ export function RideRequest({
                       <input value={riderPhone} onChange={(e) => setRiderPhone(e.target.value.slice(0, 24))} inputMode="tel" className={field} placeholder="Their number" aria-label="Their number" />
                     </div>
                   </div>
-                  <p className="text-xs">The driver gets their name and number once your trip is booked. You’ll get the updates.</p>
+                  <p className="text-xs">The driver gets their name and number once your trip is booked. You’ll get the updates{riderKind === "teen" ? ", and the driver must confirm pick-up with your trip’s PIN" : ""}. <Link href={`/${countryCode}/account/family`} className="font-semibold text-link underline">Family profile</Link></p>
                 </>
               )}
             </div>

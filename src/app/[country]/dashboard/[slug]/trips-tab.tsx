@@ -1,3 +1,4 @@
+import { confirmPickupAction } from "@/app/family-actions";
 import { acceptFixedFareAction, completeTripAction, sendQuoteAction } from "@/app/trip-actions";
 import { OperatorApply } from "@/components/forms/operator-apply";
 import { OperatorTrips } from "@/components/trips/operator-trips";
@@ -9,6 +10,7 @@ export async function TripsTab({ ids, isOwner, sp }: { ids: { businessId: string
   const card = "rounded-2xl bg-raised p-5 ring-1 ring-line/60";
   const notice = sp.error ? <p role="alert" className="rounded-xl bg-danger/10 px-4 py-3 text-sm font-medium text-danger">{sp.error}</p>
     : sp.quoted ? <p role="status" className="rounded-xl bg-success/10 px-4 py-3 text-sm font-medium text-success">Quote sent. The customer has been emailed.</p>
+    : sp.pickedup ? <p role="status" className="rounded-xl bg-success/10 px-4 py-3 text-sm font-medium text-success">Pick-up confirmed. Have a safe trip.</p>
     : sp.accepted ? <p role="status" className="rounded-xl bg-success/10 px-4 py-3 text-sm font-medium text-success">Trip accepted. The customer has been told; message them below to confirm the pickup.</p>
     : sp.completed ? <p role="status" className="rounded-xl bg-success/10 px-4 py-3 text-sm font-medium text-success">Trip marked as completed.</p> : null;
 
@@ -39,7 +41,7 @@ export async function TripsTab({ ids, isOwner, sp }: { ids: { businessId: string
   // Approved: open requests this business can take (Row Level Security does the matching), plus its own quotes and trips.
   const [{ data: open }, { data: mine }, { data: ledger }] = await Promise.all([
     supabase.from("trip_requests").select("*, trip_quotes!trip_quotes_request_id_fkey ( business_id, amount_xcd, status )").eq("status", "open").order("created_at", { ascending: false }).limit(50),
-    supabase.from("trip_quotes").select("id, amount_xcd, status, includes, trip_requests!trip_quotes_request_id_fkey ( id, kind, pickup, dropoff, from_place, to_place, travel_at, passengers, details, status, rider_name, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, distance_km, duration_min, trip_contacts ( phone_e164, rider_phone_e164 ) )").eq("business_id", ids.businessId).in("status", ["accepted"]).order("created_at", { ascending: false }).limit(50),
+    supabase.from("trip_quotes").select("id, amount_xcd, status, includes, trip_requests!trip_quotes_request_id_fkey ( id, kind, pickup, dropoff, from_place, to_place, travel_at, passengers, details, status, rider_name, rider_kind, picked_up_at, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, distance_km, duration_min, trip_contacts ( phone_e164, rider_phone_e164 ) )").eq("business_id", ids.businessId).in("status", ["accepted"]).order("created_at", { ascending: false }).limit(50),
     supabase.from("commission_ledger").select("fare_xcd, commission_xcd").eq("business_id", ids.businessId),
   ]);
   const totals = (ledger ?? []).reduce((a, r) => ({ n: a.n + 1, fares: a.fares + Number(r.fare_xcd), commission: a.commission + Number(r.commission_xcd) }), { n: 0, fares: 0, commission: 0 });
@@ -61,6 +63,14 @@ export async function TripsTab({ ids, isOwner, sp }: { ids: { businessId: string
         </form>
       )}
       chatHref={(r) => `/${ids.country}/trips/${r.id}/chat`}
+      confirmPickup={(r) => (
+        <form action={confirmPickupAction} className="mt-3 flex items-center gap-2">
+          <input type="hidden" name="request" value={r.id} /><input type="hidden" name="country" value={ids.country} /><input type="hidden" name="slug" value={ids.slug} />
+          <label className="sr-only" htmlFor={`pin-${r.id}`}>Passenger’s PIN</label>
+          <input id={`pin-${r.id}`} name="pin" inputMode="numeric" pattern="[0-9]{4}" maxLength={4} required placeholder="PIN" className="h-10 w-24 rounded-lg border border-line bg-raised px-3 text-center tracking-[0.3em]" />
+          <button className="h-10 rounded-full bg-primary px-4 text-sm font-semibold text-primary-ink">Confirm pick-up</button>
+        </form>
+      )}
       acceptFixed={(r) => (
         <form action={acceptFixedFareAction}>
           <input type="hidden" name="request" value={r.id} /><input type="hidden" name="businessId" value={ids.businessId} />

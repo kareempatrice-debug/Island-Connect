@@ -2,19 +2,22 @@ import Link from "next/link";
 import { directionsLink } from "@/lib/geo";
 import type { ReactNode } from "react";
 import { PushSetup } from "@/components/push-setup";
+import { GoOnline } from "./go-online";
 import { TRIP_KIND_LABEL, TRIP_STATUS_LABEL, fmtWhen, fmtXcd } from "@/lib/trips";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* An approved operator's Trips tab: open requests to price, bookings, and completed-trip totals. */
-export function OperatorTrips({ kinds, open, mine, totals, businessId, notice, quoteForm, complete, acceptFixed, chatHref }: {
+export function OperatorTrips({ kinds, open, mine, totals, businessId, notice, quoteForm, complete, acceptFixed, chatHref, confirmPickup }: {
   kinds: string[]; open: any[]; mine: any[]; totals: { n: number; fares: number; commission: number }; businessId: string;
   notice?: ReactNode; quoteForm: (r: any, my: any) => ReactNode; complete: (r: any) => ReactNode;
   acceptFixed: (r: any) => ReactNode; chatHref: (r: any) => string;
+  confirmPickup?: (r: any) => ReactNode;
 }) {
   const card = "rounded-2xl bg-raised p-5 ring-1 ring-line/60";
   return (
     <div className="space-y-8">
       {notice}
+      {kinds.some((k) => ["taxi", "airport", "group"].includes(k)) && <GoOnline businessId={businessId} />}
       <PushSetup what="new trip requests" />
       <section aria-labelledby="open-h">
         <h2 id="open-h" className="text-xl font-semibold">Requests waiting for a price</h2>
@@ -64,6 +67,11 @@ export function OperatorTrips({ kinds, open, mine, totals, businessId, notice, q
                     </div>
                     <p className="shrink-0 font-semibold text-ink">{fmtXcd(q.amount_xcd)}</p>
                   </div>
+                  {r.rider_kind && r.rider_kind !== "adult" && (
+                    <p className="mt-2 inline-block rounded-full bg-gold/25 px-3 py-1 text-xs font-semibold text-ink">{r.rider_kind === "teen" ? "Teenage passenger: confirm the PIN before setting off" : "Senior passenger: please help with bags and doors"}</p>
+                  )}
+                  {r.status === "booked" && !r.picked_up_at && confirmPickup?.(r)}
+                  {r.picked_up_at && <p className="mt-2 text-sm font-semibold text-success">Pick-up confirmed with PIN</p>}
                   {r.rider_name && r.status === "booked" && (
                     <p className="mt-2 text-sm">Passenger: <strong className="text-ink">{r.rider_name}</strong>{riderPhone && <> · <a href={`https://wa.me/${riderPhone.replace(/^\+/, "")}`} className="font-semibold text-link underline">WhatsApp</a> or <a href={`tel:${riderPhone}`} className="font-semibold text-link underline">call {riderPhone}</a></>}</p>
                   )}

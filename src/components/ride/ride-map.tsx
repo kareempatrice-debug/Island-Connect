@@ -32,7 +32,9 @@ export function RideMap({
   destination,
   onPick,
   road,
+  vehicles = [],
 }: {
+  vehicles?: { lat: number; lng: number; heading: number | null; van: boolean }[];
   road?: [number, number][] | null;
   coastline: [number, number][];
   landmarks: Landmark[];
@@ -99,6 +101,12 @@ export function RideMap({
       ) : route ? (
         <path d={route} fill="none" className="stroke-ink" strokeWidth={u * 0.9} strokeLinecap="round" strokeDasharray={`0.1 ${u * 2.2}`} />
       ) : null}
+      {vehicles.map((v, i) => (
+        <g key={`car-${i}`} transform={`translate(${x(v.lng).toFixed(1)} ${y(v.lat).toFixed(1)}) rotate(${v.heading ?? 0}) scale(${(u * 0.32).toFixed(3)})`} aria-hidden="true">
+          <rect x={-5} y={-10} width={10} height={20} rx={3} fill={v.van ? "#F4B846" : "#172B32"} stroke="#fff" strokeWidth={1.2} />
+          <rect x={-3.6} y={-6.5} width={7.2} height={4} rx={1} fill="#9FC9CC" />
+        </g>
+      ))}
       {landmarks.map((l) => {
         const isPick = pickup?.id === l.id;
         const isDest = destination?.id === l.id;

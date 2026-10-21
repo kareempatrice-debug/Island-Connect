@@ -40,7 +40,7 @@ export function InsightsPanel({ data, range }: { data: any; range: number }) {
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Page views" value={sum(s, "views")} previous={Number(prev.views ?? 0)} />
-        <Stat label="New accounts" value={sum(s, "signups")} previous={Number(prev.signups ?? 0)} />
+        <Link href="/admin/members" className="block rounded-2xl hover:ring-2 hover:ring-primary/40"><Stat label="New accounts (see who)" value={sum(s, "signups")} previous={Number(prev.signups ?? 0)} /></Link>
         <Stat label="Trip requests" value={sum(s, "requests")} previous={Number(prev.requests ?? 0)} />
         <Stat label="Trips booked" value={sum(s, "booked")} previous={Number(prev.booked ?? 0)} />
         <Stat label="Trips completed" value={sum(s, "completed")} hint={`Fares ${fmtXcd(sum(s, "fares"))}`} />

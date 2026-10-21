@@ -6,13 +6,15 @@ import { loadGoogleMaps } from "./google-maps";
 type P = { lat: number; lng: number } | null;
 
 /* The ride map, drawn by Google: pickup and destination pins, the driving route, and tap-to-pick. */
-export function GoogleRideMap({ apiKey, center, pickup, dropoff, path, pinMode, onTap, onFail }: {
+export function GoogleRideMap({ apiKey, center, pickup, dropoff, path, pinMode, onTap, onFail, vehicles = [] }: {
+  vehicles?: { lat: number; lng: number; heading: number | null; van: boolean }[];
   apiKey: string; center: { lat: number; lng: number }; pickup: P; dropoff: P; path: { lat: number; lng: number }[] | null;
   pinMode: boolean; onTap: (p: { lat: number; lng: number }) => void; onFail: () => void;
 }) {
   const el = useRef<HTMLDivElement>(null);
   const map = useRef<any>(null);
   const layers = useRef<any[]>([]);
+  const carLayer = useRef<any[]>([]);
   const tapRef = useRef(onTap);
   tapRef.current = onTap;
   const pinRef = useRef(pinMode);
@@ -61,6 +63,18 @@ export function GoogleRideMap({ apiKey, center, pickup, dropoff, path, pinMode, 
       map.current.setZoom(14);
     }
   }, [pickup, dropoff, path]);
+
+  // Cars nearby, drawn as small top-down car shapes pointing the way they are heading.
+  useEffect(() => {
+    const g = (window as any).google;
+    if (!map.current || !g) return;
+    carLayer.current.forEach((m) => m.setMap(null));
+    carLayer.current = vehicles.map((v) => new g.maps.Marker({
+      map: map.current, position: { lat: v.lat, lng: v.lng }, clickable: false, zIndex: 1,
+      icon: { path: "M -5 -9 Q -5 -11 -3 -11 L 3 -11 Q 5 -11 5 -9 L 5 9 Q 5 11 3 11 L -3 11 Q -5 11 -5 9 Z M -4 -7 L 4 -7 L 3 -3 L -3 -3 Z",
+        fillColor: v.van ? "#F4B846" : "#172B32", fillOpacity: 1, strokeColor: "#ffffff", strokeWeight: 1.5, scale: 1.1, rotation: v.heading ?? 0 },
+    }));
+  }, [vehicles]);
 
   return <div ref={el} className={`h-full w-full ${pinMode ? "cursor-crosshair" : ""}`} role="application" aria-label="Map" />;
 }

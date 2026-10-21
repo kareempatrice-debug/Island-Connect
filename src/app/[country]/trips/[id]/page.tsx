@@ -7,6 +7,7 @@ import { requireViewer } from "@/lib/auth";
 import { isSupabaseConfigured } from "@/lib/data";
 import { supabaseForRequest } from "@/lib/supabase/server";
 import { PushSetup } from "@/components/push-setup";
+import { TripSafety } from "@/components/trips/trip-safety";
 import { TripDetail, type QuoteView, type TripView } from "@/components/trips/trip-detail";
 
 export const metadata: Metadata = { title: "Your trip", robots: { index: false } };
@@ -24,9 +25,19 @@ export default async function Trip({ params, searchParams }: { params: Promise<{
     .maybeSingle();
   if (!t || t.customer_id !== viewer.id) notFound();
   const now = Date.now();
+  const [{ data: pinRow }, { data: contacts }] = await Promise.all([
+    supabase.from("trip_pins").select("pin").eq("request_id", t.id).maybeSingle(),
+    supabase.from("trusted_contacts").select("name, phone_e164").order("created_at"),
+  ]);
+  const site = (process.env.NEXT_PUBLIC_SITE_URL ?? "").replace(/\/$/, "");
+  const active = ["open", "booked"].includes(t.status);
   return (
     <Container className="max-w-3xl py-8 sm:py-12">
       {t.status === "open" && <div className="mb-6"><PushSetup what="new quotes" /></div>}
+      {active && (
+        <TripSafety pin={pinRow?.pin ?? null} shareUrl={t.share_token ? `${site}/share/${t.share_token}` : null} contacts={contacts ?? []}
+          riderName={t.rider_name ?? null} booked={t.status === "booked"} pickedUp={Boolean(t.picked_up_at)} />
+      )}
       <TripDetail
         country={country}
         chatHref={`/${country}/trips/${t.id}/chat`}

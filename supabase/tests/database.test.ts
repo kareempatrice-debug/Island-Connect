@@ -11,7 +11,7 @@ let db: PGlite;
 
 const AUTH_STUB = `
   create schema auth;
-  create table auth.users (id uuid primary key, email text, raw_user_meta_data jsonb default '{}'::jsonb, created_at timestamptz not null default now());
+  create table auth.users (id uuid primary key, email text, raw_user_meta_data jsonb default '{}'::jsonb, created_at timestamptz not null default now(), email_confirmed_at timestamptz, last_sign_in_at timestamptz);
   create function auth.uid() returns uuid language sql stable as $$
     select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
   create role anon nologin;
@@ -731,5 +731,65 @@ describe("passkeys", () => {
     await expect(as("authenticated", OWNER, () => db.query(`insert into public.passkeys (user_id, credential_id, public_key) values ($1, 'cred-stranger-000000001', 'pk')`, [STRANGER]))).rejects.toThrow();
     expect((await as("authenticated", STRANGER, () => db.query(`select 1 from public.passkeys`))).rows).toHaveLength(0);
     expect((await as("authenticated", OWNER, () => db.query(`select 1 from public.passkeys`))).rows).toHaveLength(1);
+  });
+});
+
+describe("admin members list", () => {
+  it("shows admins who has joined, newest first, with search; nobody else can see it", async () => {
+    await expect(as("authenticated", OWNER, () => db.query(`select * from public.admin_list_members()`))).rejects.toThrow(/administrators/);
+    const all = await as("authenticated", ADMIN, () => db.query<{ email: string; total: string }>(`select * from public.admin_list_members(null, 50, 0)`));
+    expect(all.rows.length).toBeGreaterThan(1);
+    const one = await as("authenticated", ADMIN, () => db.query<{ email: string }>(`select * from public.admin_list_members('rider@', 50, 0)`));
+    expect(one.rows.map((r) => r.email)).toEqual(["rider@example.com"]);
+  });
+});
+
+describe("cars on the map", () => {
+  it("shows approved online drivers approximately and anonymously, and hides them when offline or stale", async () => {
+    const biz = (await db.query<{ business_id: string }>(`select business_id from public.operator_profiles where status = 'approved' limit 1`)).rows[0].business_id;
+    await db.query(`update public.operator_profiles set kinds = array['taxi']::public.trip_kind[] where business_id = $1`, [biz]);
+    const member = (await db.query<{ user_id: string }>(`select user_id from public.business_members where business_id = $1 limit 1`, [biz])).rows[0].user_id;
+    await expect(as("authenticated", "00000000-0000-0000-0000-000000000099", () => db.query(`select public.set_presence($1, 12.05, -61.75)`, [biz]))).rejects.toThrow(/own business/);
+    await as("authenticated", member, () => db.query(`select public.set_presence($1, 12.051234, -61.751234, 90)`, [biz]));
+    const cc = (await db.query<{ country_code: string }>(`select country_code from public.driver_presence where business_id = $1`, [biz])).rows[0].country_code;
+    const seen = await as("anon", null, () => db.query<{ lat: number; lng: number }>(`select * from public.nearby_vehicles($1)`, [cc]));
+    expect(seen.rows).toHaveLength(1);
+    expect(Math.abs(seen.rows[0].lat - 12.051234)).toBeLessThan(0.001);
+    expect(seen.rows[0].lat).not.toBe(12.051234);
+    expect(Object.keys(seen.rows[0])).toEqual(["lat", "lng", "heading", "van"]);
+    expect((await as("anon", null, () => db.query(`select * from public.driver_presence`))).rows).toHaveLength(0); // exact positions never readable
+    await db.query(`update public.driver_presence set updated_at = now() - interval '10 minutes' where business_id = $1`, [biz]);
+    expect((await as("anon", null, () => db.query(`select * from public.nearby_vehicles($1)`, [cc]))).rows).toHaveLength(0);
+    await as("authenticated", member, () => db.query(`select public.go_offline($1)`, [biz]));
+    expect((await db.query(`select 1 from public.driver_presence where business_id = $1`, [biz])).rows).toHaveLength(0);
+  });
+});
+
+describe("family, trip sharing and pick-up PINs", () => {
+  it("keeps family and contacts private, shares a trip safely and checks the PIN", async () => {
+    const C = "00000000-0000-0000-0000-000000000050";
+    await db.exec(`insert into auth.users (id, email) values ('${C}', 'family@example.com') on conflict do nothing`);
+    await as("authenticated", C, () => db.query(`insert into public.family_members (owner_id, name, kind) values ($1, 'Amara', 'teen')`, [C]));
+    expect((await as("authenticated", STRANGER, () => db.query(`select 1 from public.family_members`))).rows).toHaveLength(0);
+    const biz = (await db.query<{ business_id: string }>(`select business_id from public.operator_profiles where status = 'approved' limit 1`)).rows[0].business_id;
+    await db.query(`update public.operator_profiles set kinds = array['taxi','airport']::public.trip_kind[] where business_id = $1`, [biz]);
+    const member = (await db.query<{ user_id: string }>(`select user_id from public.business_members where business_id = $1 limit 1`, [biz])).rows[0].user_id;
+    const id = (await as("authenticated", C, () => db.query<{ id: string }>(`select public.create_trip_request($1::jsonb) as id`, [JSON.stringify({
+      country: "gd", kind: "airport", from: "Grenada", to: "Grenada", pickup: "School gate", dropoff: "Home", passengers: 1,
+      rider_name: "Amara Patrice", rider_phone: "+14734405555", contact_phone: "+447835028032", fixed_fare_xcd: 40, fare_source: "GTA" })]))).rows[0].id;
+    await as("authenticated", C, () => db.query(`select public.set_rider_kind($1, 'teen')`, [id]));
+    const pin = (await as("authenticated", C, () => db.query<{ pin: string }>(`select pin from public.trip_pins where request_id = $1`, [id]))).rows[0].pin;
+    expect(pin).toMatch(/^\d{4}$/);
+    expect((await as("authenticated", member, () => db.query(`select pin from public.trip_pins where request_id = $1`, [id]))).rows).toHaveLength(0);
+    await as("authenticated", member, () => db.query(`select public.accept_fixed_fare($1, $2)`, [id, biz]));
+    const wrong = pin === "0000" ? "1111" : "0000";
+    await expect(as("authenticated", member, () => db.query(`select public.confirm_pickup($1, $2)`, [id, wrong]))).rejects.toThrow(/doesn’t match/);
+    await as("authenticated", member, () => db.query(`select public.confirm_pickup($1, $2)`, [id, pin]));
+    const token = (await db.query<{ share_token: string }>(`select share_token from public.trip_requests where id = $1`, [id])).rows[0].share_token;
+    const shared = (await as("anon", null, () => db.query<{ s: any }>(`select public.shared_trip($1) as s`, [token]))).rows[0].s;
+    expect(shared).toMatchObject({ pickup: "School gate", rider: "Amara", status: "booked" });
+    expect(shared.picked_up_at).toBeTruthy();
+    expect(JSON.stringify(shared)).not.toContain("+1473");
+    expect((await as("anon", null, () => db.query<{ s: any }>(`select public.shared_trip('nottherealtoken0000000000000000') as s`))).rows[0].s).toBeNull();
   });
 });

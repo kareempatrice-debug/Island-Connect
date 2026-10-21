@@ -10,6 +10,7 @@ import { BusinessCover, BusinessLogo } from "@/components/business-cover";
 import { OpenStatus } from "@/components/open-status";
 import { Container } from "@/components/ui";
 import { businessCountries, data, getCountry, isSupabaseConfigured } from "@/lib/data";
+import { WhatsAppIcon } from "@/components/whatsapp-icon";
 import { PAYMENT_LABELS, formatPhone, localClock, mapsLink, priceLabel, weeklyHours, whatsappLink } from "@/lib/format";
 
 type Props = { params: Promise<{ country: string; slug: string }> };
@@ -323,6 +324,13 @@ export default async function BusinessPage({ params }: Props) {
               <Link href={mainAction.href} className="flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-primary font-semibold text-primary-ink">
                 <mainAction.Icon className="h-5 w-5" aria-hidden="true" /> {mainAction.label}
               </Link>
+            )}
+            {business.whatsapp && mainAction.channel !== "whatsapp" && (
+              <ContactLink slug={business.slug} channel="whatsapp" country={code} href={whatsappLink(business.whatsapp, `Hello, I found ${business.name} on Island Connect.`)}
+                target="_blank" rel="noopener noreferrer"
+                className="flex h-12 w-12 items-center justify-center rounded-full bg-[#25D366]" aria-label={`WhatsApp ${business.name}`}>
+                <WhatsAppIcon className="h-6 w-6 text-[#0B2E1B]" />
+              </ContactLink>
             )}
             {business.phone && mainAction.channel !== "phone" && (
               <ContactLink slug={business.slug} channel="phone" country={code} href={`tel:${business.phone}`} className="flex h-12 w-12 items-center justify-center rounded-full border border-line" aria-label={`Call ${business.name}`}>
