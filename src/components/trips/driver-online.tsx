@@ -64,7 +64,7 @@ export function DriverOnline({ businessId }: { businessId: string }) {
   }, [key, start]);
 
   return (
-    <div className="relative">
+    <div className="relative" data-driver-online="">
       <button type="button" onClick={() => (online ? stop() : start())} aria-pressed={online}
         className={`inline-flex h-10 items-center gap-2 rounded-full px-3.5 text-sm font-semibold ${online ? "bg-success text-white" : "border border-white/25 text-white"}`}>
         <span className={`h-2.5 w-2.5 rounded-full ${online ? "animate-pulse bg-white" : "bg-white/40"}`} aria-hidden="true" />

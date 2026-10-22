@@ -39,7 +39,7 @@ export default async function AdminListings({ searchParams }: { searchParams: Pr
         <label className="sr-only" htmlFor="q">Search by name</label>
         <input id="q" name="q" defaultValue={q} placeholder="Search by business name" className={`${input} w-full min-w-0 sm:w-auto sm:flex-1`} />
         <select name="country" defaultValue={country} aria-label="Country" className={input}>
-          <option value="">Both countries</option><option value="gd">Grenada</option><option value="vc">SVG</option>
+          <option value="">Both countries</option><option value="vc">SVG</option><option value="gd">Grenada</option>
         </select>
         <select name="status" defaultValue={status} aria-label="Status" className={input}>
           <option value="">Any status</option><option value="published">Live</option><option value="suspended">Hidden</option><option value="pending_review">In review</option>

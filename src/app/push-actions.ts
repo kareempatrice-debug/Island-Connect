@@ -23,3 +23,15 @@ export async function removePushSubscriptionAction(endpoint: string): Promise<vo
   const supabase = await supabaseForRequest();
   await supabase.from("push_subscriptions").delete().eq("endpoint", String(endpoint).slice(0, 1000));
 }
+
+/* Sends a test notification to all of this person's devices, so they can see it working. */
+export async function sendTestPushAction(): Promise<{ ok?: boolean; error?: string }> {
+  const { getViewer } = await import("@/lib/auth");
+  const { pushConfigured, pushToUsers } = await import("@/lib/push");
+  const viewer = await getViewer();
+  if (!viewer) return { error: "Please sign in again." };
+  if (!pushConfigured()) return { error: "Notifications aren’t switched on for the site yet." };
+  const site = (process.env.NEXT_PUBLIC_SITE_URL ?? "").replace(/\/$/, "");
+  await pushToUsers([viewer.id], { title: "Notifications are working", body: "Ride updates, offers and messages will appear like this.", url: `${site}/?choose=1`, tag: "test" });
+  return { ok: true };
+}

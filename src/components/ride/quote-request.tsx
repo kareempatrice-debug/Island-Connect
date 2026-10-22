@@ -118,7 +118,7 @@ export function QuoteRequest({
     kind === "boat" ? `Passengers: ${passengers}` : `Load: ${cargo}. ${load}`,
     kind !== "boat" && loadingHelp ? "Needs help loading and unloading." : "",
     `Date: ${dateText}`,
-    crossBorder ? "This crosses between Grenada and St Vincent and the Grenadines, so please include customs requirements." : "",
+    crossBorder ? "This crosses between St Vincent and the Grenadines and Grenada, so please include customs requirements." : "",
     "Please send your price and what it includes.",
   ]
     .filter(Boolean)

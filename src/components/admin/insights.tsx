@@ -28,7 +28,7 @@ export function InsightsPanel({ data, range }: { data: any; range: number }) {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 id="insights-h" className="text-3xl font-semibold">Dashboard</h1>
-          <p className="text-sm">Last {range} days, compared with the {range} days before. Times are Grenada and St Vincent time.</p>
+          <p className="text-sm">Last {range} days, compared with the {range} days before. Times are St Vincent and Grenada time.</p>
         </div>
         <nav aria-label="Period" className="flex rounded-full bg-sunken p-1 text-sm font-semibold">
           {[7, 30, 90, 365].map((r) => (

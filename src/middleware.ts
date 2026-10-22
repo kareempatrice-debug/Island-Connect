@@ -6,10 +6,12 @@ import { SUPABASE_PUBLIC_KEY, SUPABASE_URL } from "@/lib/supabase/env";
  * Keeps a signed-in person's session fresh. This runs before every page, so it must never
  * hold a page up:
  *  - visitors who aren't signed in (most people) skip it entirely, with no network call;
- *  - for signed-in people the refresh gets at most 2.5 seconds, then the page loads anyway.
- * A slow moment at the database therefore can't make the whole site fail.
+ *  - for signed-in people, the token is checked locally where possible, and refreshed only when it
+ *    has expired. A refresh must be allowed to finish: if the page moved on half-way, the browser
+ *    would keep a used-up refresh token and the person would appear signed out (the bug where the
+ *    ride screen asked a signed-in person to sign in). So it gets up to 8 seconds.
  */
-const REFRESH_LIMIT_MS = 2500;
+const REFRESH_LIMIT_MS = 8000;
 
 export async function middleware(request: NextRequest) {
   const url = SUPABASE_URL;
@@ -30,7 +32,7 @@ export async function middleware(request: NextRequest) {
       },
     });
     await Promise.race([
-      supabase.auth.getUser(),
+      supabase.auth.getClaims(),
       new Promise((resolve) => setTimeout(resolve, REFRESH_LIMIT_MS)),
     ]);
   } catch {

@@ -40,7 +40,7 @@ export function SiteFooter({ country, countries }: { country: Country; countries
         <div>
           <Wordmark onDark />
           <p className="mt-4 max-w-xs text-sm">
-            A marketplace for Grenada and St. Vincent and the Grenadines. You are browsing {country.name}.
+            A marketplace for St. Vincent and the Grenadines and Grenada. You are browsing {country.name}.
           </p>
         </div>
         {groups.map((g) => (

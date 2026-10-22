@@ -31,7 +31,7 @@ export function TripDetail({ country, t, quotes, notice, accept, cancel, now, ba
         <dt>From</dt><dd className="font-semibold text-ink">{t.pickup}, {t.from_place}</dd>
         <dt>To</dt><dd className="font-semibold text-ink">{t.dropoff}, {t.to_place}</dd>
         {t.details && <><dt>Details</dt><dd className="text-ink">{t.details}</dd></>}
-        {t.cross_border && <><dt>Border</dt><dd className="text-ink">Crosses between Grenada and SVG: customs apply</dd></>}
+        {t.cross_border && <><dt>Border</dt><dd className="text-ink">Crosses between SVG and Grenada: customs apply</dd></>}
       </dl>
 
       {accepted && (

@@ -3,6 +3,7 @@ import { isSupabaseConfigured } from "@/lib/data";
 import type { Metadata } from "next";
 import { RideRequest, type RideOperator } from "@/components/ride/ride-request";
 import { getViewer } from "@/lib/auth";
+import { cancelTripAction } from "@/app/trip-actions";
 import { supabaseForRequest } from "@/lib/supabase/server";
 import { coastlines } from "@/data/coastlines";
 import { landmarks } from "@/data/landmarks";
@@ -49,12 +50,20 @@ export default async function RidePage({
 
   let family: { name: string; phone_e164: string | null; kind: "adult" | "senior" | "teen" }[] = [];
   let savedPhone: string | null = null;
+  let activeTrip: { id: string; status: string; pickup: string; dropoff: string; cancel: React.ReactNode } | null = null;
   if (viewer) {
     const supabase = await supabaseForRequest();
-    const [{ data: fam }, { data: last }] = await Promise.all([
+    const [{ data: fam }, { data: last }, { data: act }] = await Promise.all([
       supabase.from("family_members").select("name, phone_e164, kind").order("created_at"),
       supabase.from("trip_requests").select("trip_contacts ( phone_e164 )").eq("customer_id", viewer.id).order("created_at", { ascending: false }).limit(1),
+      supabase.from("trip_requests").select("id, status, pickup, dropoff").eq("customer_id", viewer.id).eq("country_code", code)
+        .in("status", ["open", "booked"]).gte("created_at", new Date(Date.now() - 2 * 86400_000).toISOString()).order("created_at", { ascending: false }).limit(1),
     ]);
+    const a = act?.[0];
+    if (a) activeTrip = { ...a, cancel: (
+      <form action={cancelTripAction}><input type="hidden" name="id" value={a.id} /><input type="hidden" name="country" value={code} />
+        <button className="h-10 px-2 text-sm font-semibold text-white/85 underline">Cancel request</button></form>
+    ) };
     family = (fam ?? []) as typeof family;
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
     const c = (last?.[0] as any)?.trip_contacts;
@@ -87,6 +96,7 @@ export default async function RidePage({
         liveVehicles={isSupabaseConfigured}
         family={family}
         savedPhone={savedPhone}
+        activeTrip={activeTrip}
         initialWhen={sp.when === "later" ? "later" : "now"}
         prefill={prefill}
         requestInApp={isSupabaseConfigured ? createTripRequestAction : undefined}

@@ -40,7 +40,10 @@ function cached(src: DataSource): DataSource {
 export const data: DataSource = isSupabaseConfigured ? cached(supabaseSource) : demoSource;
 
 /** Countries are read on almost every request, so de-duplicate within a render. */
-export const getCountries = cache(() => data.getCountries());
+/* St Vincent and the Grenadines first, then Grenada, everywhere the two are listed together. */
+const COUNTRY_ORDER: Record<string, number> = { vc: 0, gd: 1 };
+export const getCountries = cache(async () =>
+  [...(await data.getCountries())].sort((a, b) => (COUNTRY_ORDER[a.code] ?? 9) - (COUNTRY_ORDER[b.code] ?? 9)));
 
 export const getCountry = cache(async (code: string) => {
   const all = await getCountries();

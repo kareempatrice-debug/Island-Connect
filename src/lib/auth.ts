@@ -13,17 +13,20 @@ export interface Viewer {
 /** The signed-in person, or null. Always null in demo mode. */
 async function loadViewer(): Promise<Viewer | null> {
   const supabase = await supabaseForRequest();
-  const { data } = await supabase.auth.getUser();
-  if (!data.user) return null;
-  const { data: profile } = await supabase.from("profiles").select("full_name, role").eq("id", data.user.id).maybeSingle();
-  return { id: data.user.id, email: data.user.email ?? null, name: profile?.full_name ?? null, role: profile?.role ?? "customer" };
+  // getClaims checks the sign-in token's signature locally (fast) where the project uses signing keys,
+  // and falls back to asking Supabase otherwise. Either way it's verified, not just read from a cookie.
+  const { data } = await supabase.auth.getClaims();
+  const claims = data?.claims as { sub?: string; email?: string } | undefined;
+  if (!claims?.sub) return null;
+  const { data: profile } = await supabase.from("profiles").select("full_name, role").eq("id", claims.sub).maybeSingle();
+  return { id: claims.sub, email: claims.email ?? null, name: profile?.full_name ?? null, role: profile?.role ?? "customer" };
 }
 
-/** The signed-in person, if any. Gives up after 4 seconds so a slow moment never stops a page loading. */
+/** The signed-in person, if any. Gives up after 8 seconds so a slow moment never stops a page loading. */
 export const getViewer = cache(async (): Promise<Viewer | null> => {
   if (!isSupabaseConfigured) return null;
   try {
-    return await Promise.race([loadViewer(), new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000))]);
+    return await Promise.race([loadViewer(), new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000))]);
   } catch {
     return null;
   }

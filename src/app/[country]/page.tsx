@@ -54,13 +54,13 @@ export default async function CountryHome({ params }: { params: Promise<{ countr
   const experiences = [
     code === "vc"
       ? { title: "Explore St. Vincent", text: "From Kingstown to the leeward coast", href: "/vc/explore", photo: "st-vincent-leeward" }
-      : { title: "Explore Grenada", text: "Beaches, bays and the spice island interior", href: "/gd/explore", photo: "grenada-beach" },
+      : { title: "Explore Grenada", text: "Beaches, bays and the spice island interior", href: "/gd/explore", photo: "grenada-resort-aerial" },
     code === "vc"
       ? { title: "Discover the Grenadines", text: "Bequia, Mustique, Canouan, Mayreau and Union Island", href: "/vc/explore?district=grenadines", photo: "mayreau-salt-whistle-bay" }
-      : { title: "Carriacou and Petite Martinique", text: "Grenada’s sister islands in the Grenadines", href: "/gd/explore?island=carriacou", photo: "carriacou" },
+      : { title: "Carriacou and Petite Martinique", text: "Grenada’s sister islands in the Grenadines", href: "/gd/explore?island=carriacou", photo: "carriacou-beach" },
     code === "vc"
       ? { title: "Tours and experiences", text: "Sailing, diving and days on the water", href: "/vc/services/tours", photo: "tobago-cays-sunset" }
-      : { title: "Tours and experiences", text: "Hikes, boat trips and guided days out", href: "/gd/services/tours", photo: "sauteurs-bay" },
+      : { title: "Tours and experiences", text: "Hikes, boat trips and guided days out", href: "/gd/services/tours", photo: "grenada-waterfall" },
     ...other.map((o) =>
       o.code === "vc"
         ? { title: "Next door: St. Vincent and the Grenadines", text: "Browse listings across the border", href: "/vc", photo: "mayreau-salt-whistle-bay" }
@@ -92,16 +92,6 @@ export default async function CountryHome({ params }: { params: Promise<{ countr
             >
               <CarFront className="h-4 w-4" aria-hidden="true" /> Get a ride
             </Link>
-            <span className="ml-1">Popular:</span>
-            {POPULAR.map((q) => (
-              <Link
-                key={q}
-                href={`/${code}/explore?q=${encodeURIComponent(q)}`}
-                className="rounded-full bg-white/10 px-3 py-1.5 font-medium text-white ring-1 ring-white/20 backdrop-blur transition hover:bg-white/20"
-              >
-                {q}
-              </Link>
-            ))}
           </div>
         </Container>
       </section>
@@ -127,6 +117,16 @@ export default async function CountryHome({ params }: { params: Promise<{ countr
             );
           })}
         </ul>
+        {/* Popular searches: a quiet line under the shortcuts, away from the hero. */}
+        <div className="mt-4 flex items-center gap-2 overflow-x-auto pb-1 text-sm [scrollbar-width:none] sm:flex-wrap [&::-webkit-scrollbar]:hidden">
+          <span className="shrink-0 text-muted">Popular searches</span>
+          {POPULAR.map((q) => (
+            <Link key={q} href={`/${code}/explore?q=${encodeURIComponent(q)}`}
+              className="shrink-0 rounded-full bg-sunken px-3 py-1.5 font-medium text-ink transition hover:bg-line/60">
+              {q}
+            </Link>
+          ))}
+        </div>
       </Container>
 
       {/* Featured */}
@@ -174,7 +174,14 @@ export default async function CountryHome({ params }: { params: Promise<{ countr
               href={`/${code}/services/restaurants`}
               className="group relative flex h-full min-h-[13rem] overflow-hidden rounded-panel bg-coral"
             >
-              <UtensilsCrossed className="absolute -right-6 -top-6 h-44 w-44 text-white/15" strokeWidth={1.25} aria-hidden="true" />
+              {code === "gd" ? (
+                <>
+                  <PlacePhoto photoKey="grenada-restaurant" sizes="(min-width: 1024px) 25vw, 50vw" className="transition duration-500 ease-out group-hover:scale-[1.03]" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" aria-hidden="true" />
+                </>
+              ) : (
+                <UtensilsCrossed className="absolute -right-6 -top-6 h-44 w-44 text-white/15" strokeWidth={1.25} aria-hidden="true" />
+              )}
               <div className="relative mt-auto p-5">
                 <h3 className="text-xl font-semibold text-white">Food and dining</h3>
                 <p className="mt-1 text-sm text-white/90">Restaurants, cafés and bars</p>

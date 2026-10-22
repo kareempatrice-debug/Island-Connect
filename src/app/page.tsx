@@ -59,8 +59,8 @@ export default async function Welcome({ searchParams }: { searchParams: Promise<
           <p className="text-[0.8rem] font-semibold tracking-[0.2em] text-link">WELCOME TO ISLAND CONNECT</p>
           <h1 className="mt-3 text-[2.6rem] font-semibold leading-[1.02] sm:text-7xl">Your islands. Everything connected.</h1>
           <p className="mt-5 max-w-2xl text-lg sm:text-xl">
-            Discover local businesses, find the services you need and explore everything Grenada and St Vincent and the
-            Grenadines have to offer.
+            Discover local businesses, find the services you need and explore everything St Vincent and the Grenadines and
+            Grenada have to offer.
           </p>
           <p className="mt-6 font-semibold text-ink">Choose your destination and start exploring.</p>
         </header>

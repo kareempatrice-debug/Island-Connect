@@ -27,16 +27,20 @@ function safeSiteUrl(): URL {
 export const metadata: Metadata = {
   metadataBase: safeSiteUrl(),
   title: { default: "Island Connect", template: "%s · Island Connect" },
-  description: "Find and contact local businesses, services and experiences in Grenada and St. Vincent and the Grenadines.",
+  description: "Find and contact local businesses, services and experiences in St. Vincent and the Grenadines and Grenada.",
   applicationName: "Island Connect",
-  icons: { icon: "/icon.svg", apple: "/icon-192.png" },
+  icons: { icon: [{ url: "/favicon-48.png", sizes: "48x48", type: "image/png" }, { url: "/icon-192.png", sizes: "192x192", type: "image/png" }], apple: "/apple-touch-icon.png" },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#063E44",
+  // The bar colour follows the phone's light or dark setting.
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#063E44" },
+    { media: "(prefers-color-scheme: dark)", color: "#0B1A1E" },
+  ],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

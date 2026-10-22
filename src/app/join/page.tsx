@@ -29,7 +29,7 @@ export default async function Join({ searchParams }: { searchParams: Promise<{ n
           <Link href="/?choose=1" className="text-sm font-semibold text-link hover:underline">Back</Link>
         </div>
         <h1 className="mt-8 text-4xl font-bold leading-tight">{sp.mode === "sign-in" ? "Welcome back" : "Join Island Connect"}</h1>
-        <p className="mt-2">One free account for Grenada and St Vincent and the Grenadines.</p>
+        <p className="mt-2">One free account for St Vincent and the Grenadines and Grenada.</p>
         {sp.error === "link" && <p role="alert" className="mt-4 rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">That link has expired or was already used. Request a new one.</p>}
         <div className="mt-8 rounded-panel bg-raised p-5 shadow-card ring-1 ring-line/60 sm:p-6">
           <AuthForm

@@ -1,6 +1,7 @@
 "use client";
 
 import { Bell, BellOff, Loader2 } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { removePushSubscriptionAction, savePushSubscriptionAction } from "@/app/push-actions";
 
@@ -77,7 +78,7 @@ export function PushSetup({ what }: { what: string }) {
     return (
       <div className={box}>
         <BellOff className="h-5 w-5 text-muted" aria-hidden="true" />
-        <p className="min-w-0 flex-1 text-sm">Notifications are blocked for Island Connect on this device. Allow them in your phone or browser settings to get {what} instantly.</p>
+        <p className="min-w-0 flex-1 text-sm">Notifications are blocked for Island Connect on this device. <Link href="/gd/account#notifications" className="font-semibold text-link underline">See how to turn them on</Link>.</p>
       </div>
     );
   }

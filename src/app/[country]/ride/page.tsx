@@ -41,6 +41,16 @@ export default async function RideHub({ params }: { params: Promise<{ country: s
         <h1 className="text-3xl font-bold">Ride</h1>
         <p className="mt-1 text-sm">{country.name}: taxis, boats and trucking.</p>
 
+        {upcoming && ["open", "booked"].includes(upcoming.status) && (
+          <Link href={`/${code}/trips/${upcoming.id}`} className="mt-5 block rounded-2xl bg-deep p-4 text-white">
+            <span className="flex items-center gap-2 font-semibold">
+              {upcoming.status === "open" && <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-gold" aria-hidden="true" />}
+              {upcoming.status === "open" ? "Your ride request is waiting for a driver" : "Your driver is confirmed"}
+            </span>
+            <span className="mt-0.5 block truncate text-sm text-white/80">{upcoming.pickup} to {upcoming.dropoff} · {fmtWhen(upcoming.travel_at)}</span>
+            <span className="mt-2 inline-block text-sm font-semibold text-gold">View request →</span>
+          </Link>
+        )}
         <Link href={`/${code}/ride/taxi`} className="mt-5 flex h-14 items-center gap-3 rounded-full bg-sunken px-5 text-lg font-semibold text-ink">
           <Search className="h-5 w-5" aria-hidden="true" /> Where to?
           <span className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-raised px-3 py-1.5 text-sm shadow-card"><CalendarClock className="h-4 w-4" aria-hidden="true" />Now</span>

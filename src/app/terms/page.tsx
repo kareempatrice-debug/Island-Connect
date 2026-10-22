@@ -12,7 +12,7 @@ export default function Terms() {
     >
       <section>
         <h2>What Island Connect is</h2>
-        <p>Island Connect is a directory and marketplace that helps people in Grenada and St Vincent and the Grenadines find local businesses, services, transport and information. We put customers and businesses in touch with each other. We do not provide the services listed on the site, we do not employ the businesses or drivers listed, and we are not a party to any agreement you make with them.</p>
+        <p>Island Connect is a directory and marketplace that helps people in St Vincent and the Grenadines and Grenada find local businesses, services, transport and information. We put customers and businesses in touch with each other. We do not provide the services listed on the site, we do not employ the businesses or drivers listed, and we are not a party to any agreement you make with them.</p>
       </section>
 
       <section>
@@ -27,7 +27,7 @@ export default function Terms() {
 
       <section>
         <h2>Rides, transport and freight</h2>
-        <p>Ride and quote requests are sent by you, through WhatsApp or by phone, to the operator you choose. Any trip, delivery or shipment is an agreement between you and that operator. Fares shown as “set fares” come from the published source named alongside them; all other prices are set by the operator and must be agreed with them before the journey. Nothing is booked until you and the operator agree. For freight or travel between Grenada and St Vincent and the Grenadines, customs, immigration, duties and paperwork are the responsibility of you and the operator.</p>
+        <p>Ride and quote requests are sent by you, through WhatsApp or by phone, to the operator you choose. Any trip, delivery or shipment is an agreement between you and that operator. Fares shown as “set fares” come from the published source named alongside them; all other prices are set by the operator and must be agreed with them before the journey. Nothing is booked until you and the operator agree. For freight or travel between St Vincent and the Grenadines and Grenada, customs, immigration, duties and paperwork are the responsibility of you and the operator.</p>
       </section>
 
       <section>

@@ -4,7 +4,7 @@
 import { ArrowLeft, CalendarClock, Car, ChevronDown, Crosshair, LocateFixed, MapPin, MessageCircle, MessagesSquare, Phone, Search, UserRound, Users, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import type { TripPayload } from "@/app/trip-actions";
 import { fareAmount, officialFare, officialFareForText } from "@/data/fares";
 import type { Landmark } from "@/data/landmarks";
@@ -40,8 +40,10 @@ const field = "h-12 w-full min-w-0 rounded-xl border border-line bg-raised px-3.
 
 export function RideRequest({
   countryCode, countryName, islands, landmarks, coastlines, routes, operators, googleKey, signedIn, startAtAirport, initialVehicle = "car", requestInApp,
-  liveVehicles = false, sampleVehicles, family = [], initialWhen = "now", prefill, savedPhone,
+  liveVehicles = false, sampleVehicles, family = [], initialWhen = "now", prefill, savedPhone, activeTrip,
 }: {
+  /** A ride the customer has already requested, so it stays one tap away until it's answered or cancelled. */
+  activeTrip?: { id: string; status: string; pickup: string; dropoff: string; cancel: ReactNode } | null;
   /** The number used on the customer's last trip, so they don't retype it every time. */
   savedPhone?: string | null;
   family?: { name: string; phone_e164: string | null; kind: "adult" | "senior" | "teen" }[];
@@ -91,6 +93,14 @@ export function RideRequest({
   const [error, setError] = useState<string | null>(null);
   const [showDirect, setShowDirect] = useState(false);
   const [cars, setCars] = useState<Vehicle2[]>(sampleVehicles ?? []);
+  // Belt and braces: if the page thought you were signed out but this phone has a session, trust it
+  // (the booking itself is still checked on the server).
+  const [hasSession, setHasSession] = useState(signedIn);
+  useEffect(() => {
+    if (signedIn || !liveVehicles) return;
+    import("@/lib/supabase/browser").then(({ supabaseBrowser }) => supabaseBrowser().auth.getSession())
+      .then(({ data }) => { if (data.session) setHasSession(true); }).catch(() => undefined);
+  }, [signedIn, liveVehicles]);
 
   // ---------- Cars nearby (approximate positions of drivers who are online) ----------
   useEffect(() => {
@@ -142,6 +152,11 @@ export function RideRequest({
   const price = fare ? fareAmount(fare, passengers) : null;
   // No published fare: show a range from the distance, so customers know roughly what to expect.
   const estimate = !fare && vehicle === "car" ? estimateFare(countryCode, route?.km, passengers) : null;
+  // Like Uber: how far away the nearest available car is, at about 30 km/h on island roads.
+  const pickupPt = pickup?.lat != null && pickup?.lng != null ? { lat: pickup.lat, lng: pickup.lng } : null;
+  const nearestMin = pickupPt && cars.length
+    ? Math.max(1, Math.round(Math.min(...cars.filter((c) => !c.van).map((c) => haversineKm(pickupPt, c) * 1.3)) / 30 * 60) + 1)
+    : null;
 
   // ---------- Places on the map ----------
   const islandOf = (p: Place | null) => {
@@ -210,7 +225,7 @@ export function RideRequest({
   return (
     <div className="lg:grid lg:min-h-[calc(100dvh-4rem)] lg:grid-cols-[minmax(0,26rem)_1fr] lg:gap-6 lg:p-6">
       {/* Map */}
-      <div className="relative h-[32vh] min-h-56 bg-sunken lg:sticky lg:top-24 lg:order-2 lg:h-[calc(100dvh-7rem)] lg:overflow-hidden lg:rounded-[1.75rem]">
+      <div className={`relative ${ready ? "h-[44vh]" : "h-[32vh]"} min-h-56 bg-sunken transition-[height] duration-300 lg:sticky lg:top-24 lg:order-2 lg:h-[calc(100dvh-7rem)] lg:overflow-hidden lg:rounded-[1.75rem]`}>
         {useGoogle && googleKey ? (
           <GoogleRideMap apiKey={googleKey} center={centre} pickup={pickup?.lat != null ? (pickup as any) : null} dropoff={dropoff?.lat != null ? (dropoff as any) : null}
             path={route?.path?.length ? route.path : null} pinMode={Boolean(pinFor)} onTap={placeFromTap} onFail={() => setUseGoogle(false)} vehicles={cars} />
@@ -239,7 +254,20 @@ export function RideRequest({
       <div className={`relative z-10 -mt-6 lg:order-1 lg:mt-0 ${sheet}`}>
         <div className="mx-auto h-1.5 w-10 rounded-full bg-line pt-0 lg:hidden" style={{ marginTop: 10 }} aria-hidden="true" />
         <div className="space-y-4 p-5">
-          <h1 className="text-2xl font-bold">{ready ? "Choose your ride" : "Where to?"}</h1>
+          {activeTrip && (
+            <div className="rounded-2xl bg-deep p-4 text-white">
+              <p className="flex items-center gap-2 font-semibold">
+                {activeTrip.status === "open" && <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-gold" aria-hidden="true" />}
+                {activeTrip.status === "open" ? "Your ride request is waiting for a driver" : "Your driver is confirmed"}
+              </p>
+              <p className="mt-0.5 truncate text-sm text-white/80">{activeTrip.pickup} to {activeTrip.dropoff}</p>
+              <div className="mt-3 flex items-center gap-3">
+                <a href={`/${countryCode}/trips/${activeTrip.id}`} className="inline-flex h-10 items-center rounded-full bg-gold px-4 text-sm font-semibold text-[#172B32]">View request</a>
+                {activeTrip.status === "open" && activeTrip.cancel}
+              </div>
+            </div>
+          )}
+          <h1 className="text-2xl font-bold">{ready ? "Choose a trip" : activeTrip ? "Book another ride" : "Where to?"}</h1>
 
           {/* Pickup and destination */}
           <div className="relative rounded-2xl bg-sunken p-1.5">
@@ -345,7 +373,7 @@ export function RideRequest({
                   <button key={v} type="button" onClick={() => { setVehicle(v); setPassengers(v === "van" ? Math.max(5, passengers) : Math.min(4, passengers)); }} aria-pressed={on}
                     className={`flex w-full items-center gap-4 rounded-2xl p-4 text-left ${on ? "bg-primary/10 ring-2 ring-primary" : "bg-sunken"}`}>
                     <Icon className="h-8 w-8 shrink-0 text-ink" aria-hidden="true" />
-                    <span className="min-w-0 flex-1"><span className="block font-semibold text-ink">{name}</span><span className="block text-sm">{sub}</span></span>
+                    <span className="min-w-0 flex-1"><span className="block font-semibold text-ink">{name}</span><span className="block text-sm">{sub}{v === "car" && nearestMin != null && Number.isFinite(nearestMin) ? ` · ${nearestMin} min away` : ""}</span></span>
                     <span className="text-right">
                       {p != null ? <><span className="block text-lg font-bold text-ink">EC${p}</span><span className="block text-xs text-success">Official fare</span></>
                         : v === "car" && estimate ? <><span className="block text-lg font-bold text-ink">EC${estimate.low}–{estimate.high}</span><span className="block text-xs">Estimate</span></>
@@ -369,7 +397,7 @@ export function RideRequest({
                 <input value={note} onChange={(e) => setNote(e.target.value.slice(0, 300))} className={field} placeholder="Note for the driver (optional): gate colour, luggage, flight number" /></label>
 
               {requestInApp ? (
-                !signedIn ? (
+                !hasSession ? (
                   <div className="rounded-2xl bg-deep p-4 text-white">
                     <p className="font-semibold">Sign in to request this ride</p>
                     <p className="mt-1 text-sm text-white/80">It takes a minute, and your trip details stay here.</p>

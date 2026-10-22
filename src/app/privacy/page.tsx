@@ -8,7 +8,7 @@ export default function Privacy() {
   return (
     <LegalPage
       title="Privacy policy"
-      intro={<p>This policy explains what information Island Connect collects when you use islandconnect.cc, why we collect it, who we share it with and what you can ask us to do with it. Island Connect is a directory and marketplace for Grenada and St Vincent and the Grenadines. We don’t sell personal information and we don’t show advertising.</p>}
+      intro={<p>This policy explains what information Island Connect collects when you use islandconnect.cc, why we collect it, who we share it with and what you can ask us to do with it. Island Connect is a directory and marketplace for St Vincent and the Grenadines and Grenada. We don’t sell personal information and we don’t show advertising.</p>}
     >
       <section>
         <h2>Who we are</h2>
@@ -56,7 +56,7 @@ export default function Privacy() {
           <li><strong>Netlify:</strong> hosting for the website.</li>
           <li><strong>Resend:</strong> sending our emails.</li>
         </ul>
-        <p>These providers store data on servers outside Grenada and St Vincent and the Grenadines, including in the United States. When you choose to contact a business by WhatsApp, that conversation is handled by WhatsApp under its own privacy policy, not ours.</p>
+        <p>These providers store data on servers outside St Vincent and the Grenadines and Grenada, including in the United States. When you choose to contact a business by WhatsApp, that conversation is handled by WhatsApp under its own privacy policy, not ours.</p>
         <p>We will disclose information if the law requires it, for example in response to a valid order from a court or the police in Grenada or St Vincent and the Grenadines.</p>
       </section>
 

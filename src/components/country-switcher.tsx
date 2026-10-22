@@ -80,6 +80,7 @@ export function CountrySwitcher({ current, countries, account }: { current: Opti
                 </Link>
                 <Link href={`/${current.code}/trips`} className="block rounded-xl px-3 py-2.5 pl-9 text-sm text-ink hover:bg-sunken">Your trips</Link>
                 <Link href={`/${current.code}/messages`} className="block rounded-xl px-3 py-2.5 pl-9 text-sm text-ink hover:bg-sunken">Messages</Link>
+                <Link href={`/${current.code}/account#notifications`} className="block rounded-xl px-3 py-2.5 pl-9 text-sm text-ink hover:bg-sunken">Notifications</Link>
                 {account.isAdmin && <Link href="/admin" className="block rounded-xl px-3 py-2.5 pl-9 text-sm text-ink hover:bg-sunken">Admin</Link>}
                 <form action={signOutAction}>
                   <input type="hidden" name="next" value="/?choose=1" />

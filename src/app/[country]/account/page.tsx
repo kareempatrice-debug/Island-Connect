@@ -5,6 +5,7 @@ import { signOutAction } from "@/app/auth-actions";
 import { NeedsDatabase } from "@/components/demo-notice";
 import { DeleteAccountForm } from "@/components/forms/account-forms";
 import { PasskeySetup } from "@/components/forms/passkey";
+import { NotificationSettings } from "@/components/notification-settings";
 import { removePasskeyAction } from "@/app/passkey-actions";
 import { Container, btn } from "@/components/ui";
 import { requireViewer } from "@/lib/auth";
@@ -118,6 +119,7 @@ export default async function Account({
       <section className="mt-12" aria-labelledby="settings-heading">
         <h2 id="settings-heading" className="text-2xl font-semibold">Account settings</h2>
         <div className="mt-4 space-y-3">
+          <div id="notifications" className="scroll-mt-24"><NotificationSettings isDriver={(memberships ?? []).length > 0} /></div>
           <PasskeySetup devices={passkeys ?? []} remove={removePasskeyAction} />
           <Link href="/join?mode=reset" className="flex items-center justify-between rounded-2xl bg-raised p-4 font-semibold text-ink ring-1 ring-line/60">Change my password <span aria-hidden="true">→</span></Link>
           <DeleteAccountForm />

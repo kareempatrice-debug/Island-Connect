@@ -48,7 +48,8 @@ export default async function CountryLayout({ children, params }: Props) {
             <Link
               href={`/${country.code}/explore`}
               aria-label="Search"
-              className="flex h-10 w-10 items-center justify-center rounded-full text-white ring-1 ring-white/20 transition hover:bg-white/10"
+              // Drivers see the Online switch here instead; search stays one tap away under Explore.
+              className="flex h-10 w-10 items-center justify-center rounded-full text-white ring-1 ring-white/20 transition hover:bg-white/10 [div:has(>[data-driver-online])>&]:hidden"
             >
               <Search className="h-[1.15rem] w-[1.15rem]" aria-hidden="true" />
             </Link>

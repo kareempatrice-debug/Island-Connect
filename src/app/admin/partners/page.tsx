@@ -34,7 +34,7 @@ export default async function Partners({ searchParams }: { searchParams: Promise
         <form action={createPartnerAction} className="mt-4 grid gap-3 sm:grid-cols-2">
           <input name="name" required placeholder="Name, e.g. Spice Island Villas" className={`${field} sm:col-span-2`} />
           <select name="kind" className={field} defaultValue="villa">{Object.entries(KIND).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
-          <select name="country" className={field}><option value="gd">Grenada</option><option value="vc">St Vincent and the Grenadines</option></select>
+          <select name="country" className={field}><option value="vc">St Vincent and the Grenadines</option><option value="gd">Grenada</option></select>
           <select name="landing" className={`${field} sm:col-span-2`} defaultValue="ride">{Object.entries(LANDING).map(([k, v]) => <option key={k} value={k}>Scanning opens: {v}</option>)}</select>
           <input name="contact" placeholder="Contact person, phone or email (optional)" className={`${field} sm:col-span-2`} />
           <button className="h-11 rounded-lg bg-primary px-5 font-semibold text-primary-ink sm:w-fit">Create link and QR code</button>
