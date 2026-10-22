@@ -13,6 +13,10 @@ import { isSupabaseConfigured } from "@/lib/data";
 import { formatPhone, priceLabel } from "@/lib/format";
 import { supabaseForRequest } from "@/lib/supabase/server";
 
+// Personal or search-driven: always built fresh for each visitor, never shared.
+export const dynamic = "force-dynamic";
+
+
 export const metadata: Metadata = { title: "Business dashboard", robots: { index: false } };
 
 const TABS = [["overview", "Overview"], ["enquiries", "Messages"], ["profile", "Profile"], ["photos", "Photos"], ["trips", "Trips"], ["services", "Services"], ["hours", "Hours"]] as const;

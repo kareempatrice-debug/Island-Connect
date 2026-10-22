@@ -17,6 +17,10 @@ import { AutoRefresh } from "@/components/trips/auto-refresh";
 import { TripProgress } from "@/components/trips/trip-progress";
 import { TripDetail, type QuoteView, type TripView } from "@/components/trips/trip-detail";
 
+// Personal or search-driven: always built fresh for each visitor, never shared.
+export const dynamic = "force-dynamic";
+
+
 export const metadata: Metadata = { title: "Your trip", robots: { index: false } };
 
 export default async function Trip({ params, searchParams }: { params: Promise<{ country: string; id: string }>; searchParams: Promise<{ error?: string; booked?: string }> }) {

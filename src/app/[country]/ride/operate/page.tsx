@@ -4,6 +4,10 @@ import { Bell, CheckCircle2, FileCheck2, MessagesSquare, Wallet, Zap } from "luc
 import { Container, btn } from "@/components/ui";
 import { getCountry } from "@/lib/data";
 
+// Served ready-made from Netlify and refreshed at most every 5 minutes (or straight away when a listing changes).
+export const revalidate = 300;
+
+
 export const metadata: Metadata = { title: "Drive, sail or haul with Island Connect" };
 
 export default async function Operate({ params }: { params: Promise<{ country: string }> }) {

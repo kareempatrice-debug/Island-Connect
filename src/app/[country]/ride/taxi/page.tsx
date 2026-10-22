@@ -10,6 +10,10 @@ import { landmarks } from "@/data/landmarks";
 import roadRoutes from "@/data/road-routes.json";
 import { data, getCountry } from "@/lib/data";
 
+// Personal or search-driven: always built fresh for each visitor, never shared.
+export const dynamic = "force-dynamic";
+
+
 export const metadata: Metadata = { title: "Book a taxi" };
 
 export default async function RidePage({

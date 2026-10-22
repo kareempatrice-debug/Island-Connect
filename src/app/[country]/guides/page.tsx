@@ -7,6 +7,10 @@ import { countryImagery, fallbackImagery } from "@/data/photos";
 import { data, getCountry } from "@/lib/data";
 import { guideSections } from "@/lib/guides";
 
+// Served ready-made from Netlify and refreshed at most every 5 minutes (or straight away when a listing changes).
+export const revalidate = 300;
+
+
 export const metadata: Metadata = { title: "Guides" };
 
 export default async function Guides({ params }: { params: Promise<{ country: string }> }) {

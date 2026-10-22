@@ -9,6 +9,12 @@ import { countryImagery, fallbackImagery } from "@/data/photos";
 import { data, getCountry } from "@/lib/data";
 import { getGuideSection } from "@/lib/guides";
 
+// Served ready-made from Netlify and refreshed at most every 5 minutes (or straight away when a listing changes).
+export const revalidate = 300;
+// Prepared the first time someone visits, then served ready-made.
+export function generateStaticParams() { return []; }
+
+
 type Props = { params: Promise<{ country: string; section: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

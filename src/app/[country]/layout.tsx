@@ -3,17 +3,19 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { Search } from "lucide-react";
-import { CountrySwitcher } from "@/components/country-switcher";
 import { BottomNav, DesktopNav } from "@/components/nav";
 import { RememberCountry } from "@/components/remember-country";
 import { SiteFooter } from "@/components/site-footer";
 import { Wordmark } from "@/components/wordmark";
 import { data, getCountries, getCountry, isSupabaseConfigured } from "@/lib/data";
-import { getViewer } from "@/lib/auth";
-import { RideStatusStrip } from "@/components/trips/ride-status-strip";
-import { DriverOnlineSlot } from "@/components/trips/driver-online-slot";
+import { HeaderOnline, HeaderStrip, HeaderSwitcher, SessionProvider } from "@/components/session";
 
 type Props = { children: React.ReactNode; params: Promise<{ country: string }> };
+
+// The two countries are known in advance, so their pages can be prepared ahead of visitors.
+export function generateStaticParams() {
+  return [{ country: "vc" }, { country: "gd" }];
+}
 
 export async function generateMetadata({ params }: Omit<Props, "children">): Promise<Metadata> {
   const country = await getCountry((await params).country);
@@ -22,11 +24,14 @@ export async function generateMetadata({ params }: Omit<Props, "children">): Pro
 
 export default async function CountryLayout({ children, params }: Props) {
   const { country: code } = await params;
-  const [country, countries, viewer] = await Promise.all([getCountry(code), getCountries(), isSupabaseConfigured ? getViewer() : Promise.resolve(null)]);
+  // No sign-in check here: pages are served ready-made, and the signed-in parts of the header
+  // (account menu, Online switch, ride status) load just after, from /api/session.
+  const [country, countries] = await Promise.all([getCountry(code), getCountries()]);
   if (!country) notFound();
   const options = countries.map(({ code, name, shortName }) => ({ code, name, shortName }));
 
   return (
+    <SessionProvider>
     <div className="pb-nav min-h-dvh">
       <RememberCountry code={country.code} />
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-full focus:bg-gold focus:px-4 focus:py-2 focus:text-[#1E2933]">
@@ -44,7 +49,7 @@ export default async function CountryLayout({ children, params }: Props) {
           </Link>
           <DesktopNav country={country.code} />
           <div className="flex items-center gap-2">
-            {isSupabaseConfigured && viewer && <Suspense fallback={null}><DriverOnlineSlot /></Suspense>}
+            <HeaderOnline />
             <Link
               href={`/${country.code}/explore`}
               aria-label="Search"
@@ -54,18 +59,17 @@ export default async function CountryLayout({ children, params }: Props) {
               <Search className="h-[1.15rem] w-[1.15rem]" aria-hidden="true" />
             </Link>
             <Suspense fallback={<span className="h-10 w-28 rounded-full bg-white/10" />}>
-              <CountrySwitcher current={options.find((o) => o.code === country.code)!} countries={options}
-                account={isSupabaseConfigured ? { signedIn: Boolean(viewer), name: viewer?.name ?? null, isAdmin: viewer?.role === "admin" }
-                  : process.env.PREVIEW_SAMPLE_ACCOUNT ? { signedIn: true, name: "Sample admin", isAdmin: true } : undefined} />
+              <HeaderSwitcher current={options.find((o) => o.code === country.code)!} countries={options}
+                enabled={isSupabaseConfigured || Boolean(process.env.PREVIEW_SAMPLE_ACCOUNT)} />
             </Suspense>
           </div>
         </div>
-        {/* Streams in after the page, so it never slows anything down. */}
-        {isSupabaseConfigured && viewer && <Suspense fallback={null}><RideStatusStrip country={country.code} /></Suspense>}
+        <HeaderStrip country={country.code} />
       </header>
       <div id="main">{children}</div>
       <SiteFooter country={country} countries={countries} />
       <BottomNav country={country.code} />
     </div>
+    </SessionProvider>
   );
 }

@@ -3,6 +3,10 @@ import Link from "next/link";
 import { Container } from "@/components/ui";
 import { getCountries, getCountry } from "@/lib/data";
 
+// Served ready-made from Netlify and refreshed at most every 5 minutes (or straight away when a listing changes).
+export const revalidate = 300;
+
+
 export const metadata: Metadata = { title: "About" };
 
 export default async function About({ params }: { params: Promise<{ country: string }> }) {

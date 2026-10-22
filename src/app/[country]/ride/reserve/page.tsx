@@ -5,6 +5,10 @@ import { PlacePhoto } from "@/components/photo";
 import { Container } from "@/components/ui";
 import { countryImagery } from "@/data/photos";
 
+// Served ready-made from Netlify and refreshed at most every 5 minutes (or straight away when a listing changes).
+export const revalidate = 300;
+
+
 export const metadata: Metadata = { title: "Reserve a ride" };
 
 export default async function Reserve({ params }: { params: Promise<{ country: string }> }) {

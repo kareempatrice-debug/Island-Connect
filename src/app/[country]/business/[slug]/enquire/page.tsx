@@ -6,6 +6,10 @@ import { Container } from "@/components/ui";
 import { requireViewer } from "@/lib/auth";
 import { data, isSupabaseConfigured } from "@/lib/data";
 
+// Personal or search-driven: always built fresh for each visitor, never shared.
+export const dynamic = "force-dynamic";
+
+
 export const metadata: Metadata = { title: "Send a message", robots: { index: false } };
 
 export default async function Enquire({ params, searchParams }: { params: Promise<{ country: string; slug: string }>; searchParams: Promise<{ subject?: string; message?: string }> }) {

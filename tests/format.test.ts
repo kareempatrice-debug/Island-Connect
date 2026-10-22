@@ -169,3 +169,22 @@ describe("place with island", () => {
     expect(placeWithIsland("Hillsborough jetty, Carriacou", "Carriacou")).toBe("Hillsborough jetty, Carriacou");
   });
 });
+
+import { officialFare as ofLm, officialFareForText as ofText } from "@/data/fares";
+import { landmarks as LMS } from "@/data/landmarks";
+describe("Carriacou fares", () => {
+  const lm = (id: string) => LMS.find((l) => l.id === id)!;
+  it("prices the popular Carriacou routes from the list", () => {
+    expect(ofLm(lm("hillsborough"), lm("lauriston-airport"))?.row.xcd).toBe(25);
+    expect(ofLm(lm("hillsborough"), lm("windward-carriacou"))?.row.xcd).toBe(45);
+    expect(ofLm(lm("lauriston-airport"), lm("tyrrel-bay"))?.row.xcd).toBe(45);
+    expect(ofText("gd", "Hillsborough, Carriacou", "Bogles, Carriacou")?.row.xcd).toBe(30);
+    expect(ofText("gd", "Tyrrel Bay, Carriacou", "Petite Carenage, Carriacou")?.row.xcd).toBe(65);
+    expect(ofText("gd", "Lauriston Airport, Carriacou", "Dover Government School, Dover, Carriacou")?.row.xcd).toBe(50);
+  });
+  it("leaves price ranges to drivers, and never mixes up the islands", () => {
+    expect(ofText("gd", "Hillsborough", "L'Esterre, Carriacou")).toBeNull();
+    expect(ofText("gd", "Maurice Bishop International Airport", "Belmont, St George's")?.row.xcd).toBe(50);
+    expect(ofText("gd", "Lauriston Airport, Carriacou", "Belmont, Carriacou")?.row.xcd).toBe(45);
+  });
+});

@@ -10,6 +10,10 @@ import { parseFilters } from "@/lib/filters";
 import { PAGE_SIZE, ShowMore, pageFrom } from "@/components/pager";
 import type { SearchFilters } from "@/lib/types";
 
+// Personal or search-driven: always built fresh for each visitor, never shared.
+export const dynamic = "force-dynamic";
+
+
 type Props = {
   params: Promise<{ country: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;

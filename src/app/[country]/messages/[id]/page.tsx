@@ -7,6 +7,10 @@ import { Container } from "@/components/ui";
 import { requireViewer } from "@/lib/auth";
 import { supabaseForRequest } from "@/lib/supabase/server";
 
+// Personal or search-driven: always built fresh for each visitor, never shared.
+export const dynamic = "force-dynamic";
+
+
 export const metadata: Metadata = { title: "Conversation", robots: { index: false } };
 
 export default async function Thread({ params }: { params: Promise<{ country: string; id: string }> }) {

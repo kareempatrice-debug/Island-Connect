@@ -4,6 +4,10 @@ import { CalendarCheck, CheckCircle2, CircleDashed, FileText, MessageSquare, Sto
 import { Container, btn } from "@/components/ui";
 import { getCountry, isSupabaseConfigured } from "@/lib/data";
 
+// Served ready-made from Netlify and refreshed at most every 5 minutes (or straight away when a listing changes).
+export const revalidate = 300;
+
+
 export const metadata: Metadata = { title: "Listing your business" };
 
 const STAGES = [

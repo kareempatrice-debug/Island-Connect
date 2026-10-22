@@ -5,6 +5,10 @@ import { Container } from "@/components/ui";
 import { requireViewer } from "@/lib/auth";
 import { data, getCountry, isSupabaseConfigured } from "@/lib/data";
 
+// Personal or search-driven: always built fresh for each visitor, never shared.
+export const dynamic = "force-dynamic";
+
+
 export const metadata: Metadata = { title: "Register your business", robots: { index: false } };
 
 export default async function Register({ params }: { params: Promise<{ country: string }> }) {

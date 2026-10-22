@@ -10,6 +10,10 @@ import { countryImagery, fallbackImagery } from "@/data/photos";
 import { data, getCountries, getCountry } from "@/lib/data";
 import { guideSections } from "@/lib/guides";
 
+// Served ready-made from Netlify and refreshed at most every 5 minutes (or straight away when a listing changes).
+export const revalidate = 300;
+
+
 const QUICK = [
   { slug: "transport", label: "Ride", href: "ride" },
   { slug: "restaurants", label: "Restaurants" },

@@ -9,6 +9,10 @@ import { categoryVisual, coverStyle } from "@/components/visuals";
 import { data, getCountry } from "@/lib/data";
 import { PAGE_SIZE, ShowMore, pageFrom } from "@/components/pager";
 
+// Personal or search-driven: always built fresh for each visitor, never shared.
+export const dynamic = "force-dynamic";
+
+
 type Props = { params: Promise<{ country: string; category: string }>; searchParams: Promise<{ page?: string }> };
 
 export async function generateMetadata({ params }: Omit<Props, "searchParams">): Promise<Metadata> {

@@ -9,6 +9,10 @@ import { isSupabaseConfigured } from "@/lib/data";
 import { CALLING_CODES } from "@/lib/phone";
 import { supabaseForRequest } from "@/lib/supabase/server";
 
+// Personal or search-driven: always built fresh for each visitor, never shared.
+export const dynamic = "force-dynamic";
+
+
 export const metadata: Metadata = { title: "Family and safety", robots: { index: false } };
 
 const KIND: Record<string, string> = { adult: "Adult", senior: "Senior", teen: "Teenager" };

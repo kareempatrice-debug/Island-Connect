@@ -9,6 +9,10 @@ import { getCountry, isSupabaseConfigured } from "@/lib/data";
 import { supabaseForRequest } from "@/lib/supabase/server";
 import { fmtWhen } from "@/lib/trips";
 
+// Personal or search-driven: always built fresh for each visitor, never shared.
+export const dynamic = "force-dynamic";
+
+
 export const metadata: Metadata = { title: "Ride and transport" };
 
 /* eslint-disable @typescript-eslint/no-explicit-any */

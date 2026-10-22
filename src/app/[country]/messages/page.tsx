@@ -6,6 +6,10 @@ import { requireViewer } from "@/lib/auth";
 import { isSupabaseConfigured } from "@/lib/data";
 import { supabaseForRequest } from "@/lib/supabase/server";
 
+// Personal or search-driven: always built fresh for each visitor, never shared.
+export const dynamic = "force-dynamic";
+
+
 export const metadata: Metadata = { title: "Messages", robots: { index: false } };
 
 export default async function Messages({ params }: { params: Promise<{ country: string }> }) {

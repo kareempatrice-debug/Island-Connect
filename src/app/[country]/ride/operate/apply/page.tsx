@@ -7,6 +7,10 @@ import { Container } from "@/components/ui";
 import { getViewer } from "@/lib/auth";
 import { data, isSupabaseConfigured } from "@/lib/data";
 
+// Personal or search-driven: always built fresh for each visitor, never shared.
+export const dynamic = "force-dynamic";
+
+
 export const metadata: Metadata = { title: "Apply to drive or operate", robots: { index: false } };
 
 export default async function Apply({ params }: { params: Promise<{ country: string }> }) {

@@ -4,14 +4,111 @@
  *  - Grenada: Grenada Airport Taxi Association rates from Maurice Bishop International Airport,
  *    as published by the Grenada Tourism Authority (puregrenada.com), checked 20 October 2026.
  *  - SVG: Cabinet decision 1744 of 17 August 2022 (Memorandum of 23 August 2022), effective 1 September 2022.
+ *  - Carriacou: taxi price list supplied to Island Connect (dated 20 August 2026), from Hillsborough,
+ *    Harvey Vale (Tyrrel Bay) port and Lauriston Airport.
  */
-export interface FareRow { places: string; xcd: number; usd: number; afterXcd?: number }
+export interface FareRow {
+  places: string; xcd: number; usd?: number; afterXcd?: number;
+  /** A range on the list (e.g. EC$30 / 35): shown, but not used as a fixed price; drivers quote instead. */
+  maxXcd?: number;
+  note?: string;
+}
 export interface FareTable {
   id: string; country: string; origin: string; originLandmark: string;
   basis: string; rows: FareRow[]; source: string; sourceUrl?: string; sourceDate: string; note?: string;
+  /** For tables that only apply on one island of the country (Carriacou). */
+  island?: string;
 }
 
 export const fareTables: FareTable[] = [
+  {
+    id: "cq-hillsborough", country: "gd", island: "carriacou", origin: "Hillsborough", originLandmark: "hillsborough",
+    basis: "As listed. Confirm with your driver whether the fare is per taxi or per person", source: "Carriacou taxi price list, supplied to Island Connect", sourceDate: "list dated 20 August 2026",
+    rows: [
+      { places: "Lauriston Airport", xcd: 25 },
+      { places: "Brunswick", xcd: 20 },
+      { places: "Six Roads", xcd: 25 },
+      { places: "Belle Vue", xcd: 40 },
+      { places: "Belmont", xcd: 40 },
+      { places: "Harvey Vale (Tyrrel Bay)", xcd: 40 },
+      { places: "Hermitage", xcd: 50 },
+      { places: "L’Esterre", xcd: 30, maxXcd: 35, note: "EC$30 or 35 depending on where in L’Esterre" },
+      { places: "Lauriston", xcd: 30 },
+      { places: "Bogles", xcd: 30 },
+      { places: "Prospect", xcd: 40 },
+      { places: "Limlair", xcd: 50 },
+      { places: "Craigston", xcd: 35 },
+      { places: "Belvedere", xcd: 35 },
+      { places: "Dover", xcd: 40 },
+      { places: "Bayaleau", xcd: 50 },
+      { places: "Windward", xcd: 45 },
+      { places: "Petite Carenage", xcd: 55 },
+      { places: "Cherry Hill", xcd: 30 },
+      { places: "Belair", xcd: 30 },
+      { places: "Mt. Royal", xcd: 35 },
+      { places: "Mt. Pleasant", xcd: 40 },
+      { places: "Grand Bay", xcd: 45 },
+      { places: "Point (Mt. Pleasant)", xcd: 45 },
+    ],
+  },
+  {
+    id: "cq-airport", country: "gd", island: "carriacou", origin: "Lauriston Airport", originLandmark: "lauriston-airport",
+    basis: "As listed. Confirm with your driver whether the fare is per taxi or per person", source: "Carriacou taxi price list, supplied to Island Connect", sourceDate: "list dated 20 August 2026",
+    rows: [
+      { places: "Hillsborough", xcd: 25 },
+      { places: "Brunswick", xcd: 25 },
+      { places: "Six Roads", xcd: 30 },
+      { places: "Lauriston", xcd: 30 },
+      { places: "Harvey Vale (Tyrrel Bay)", xcd: 45 },
+      { places: "Belmont", xcd: 45 },
+      { places: "Hermitage", xcd: 50 },
+      { places: "Belle Vue", xcd: 45 },
+      { places: "L’Esterre", xcd: 35 },
+      { places: "Mt. Royal", xcd: 40 },
+      { places: "Mt. Pleasant", xcd: 50 },
+      { places: "Grand Bay", xcd: 55 },
+      { places: "Point (Mt. Pleasant)", xcd: 55 },
+      { places: "Cherry Hill", xcd: 35 },
+      { places: "Belair", xcd: 40 },
+      { places: "Craigston", xcd: 40, note: "Inside Craigston" },
+      { places: "Prospect", xcd: 50 },
+      { places: "Bogles", xcd: 40 },
+      { places: "Belvedere", xcd: 40 },
+      { places: "Dover", xcd: 50 },
+      { places: "Limlair", xcd: 50 },
+      { places: "Windward", xcd: 55 },
+      { places: "Petite Carenage", xcd: 60 },
+    ],
+  },
+  {
+    id: "cq-harvey-vale", country: "gd", island: "carriacou", origin: "Harvey Vale (Tyrrel Bay) port", originLandmark: "tyrrel-bay",
+    basis: "As listed. Confirm with your driver whether the fare is per taxi or per person", source: "Carriacou taxi price list, supplied to Island Connect", sourceDate: "list dated 20 August 2026",
+    rows: [
+      { places: "Hillsborough", xcd: 40 },
+      { places: "Harvey Vale", xcd: 20 },
+      { places: "Belmont", xcd: 20 },
+      { places: "Hermitage", xcd: 20 },
+      { places: "Belle Vue", xcd: 25 },
+      { places: "Six Roads", xcd: 35 },
+      { places: "L’Esterre", xcd: 20, maxXcd: 25, note: "EC$20 or 25 depending on where in L’Esterre" },
+      { places: "Lauriston", xcd: 30 },
+      { places: "Brunswick", xcd: 35 },
+      { places: "Belair", xcd: 50 },
+      { places: "Bogles", xcd: 50 },
+      { places: "Craigston", xcd: 50 },
+      { places: "Prospect", xcd: 60 },
+      { places: "Cherry Hill", xcd: 50 },
+      { places: "Dover", xcd: 55 },
+      { places: "Belvedere", xcd: 50 },
+      { places: "Limlair, Bayaleau", xcd: 60 },
+      { places: "Windward", xcd: 60 },
+      { places: "Petite Carenage", xcd: 65 },
+      { places: "Mt. Royal", xcd: 50 },
+      { places: "Mt. Pleasant", xcd: 60 },
+      { places: "Grand Bay", xcd: 60 },
+      { places: "Point", xcd: 60 },
+    ],
+  },
   {
     id: "gd-airport", country: "gd", origin: "Maurice Bishop International Airport", originLandmark: "gnd-airport",
     basis: "Per taxi", source: "Grenada Airport Taxi Association, published by the Grenada Tourism Authority",
@@ -130,7 +227,7 @@ export function officialFare(a: { id: string; name: string }, b: { id: string; n
     const other = a.id === t.originLandmark ? b : b.id === t.originLandmark ? a : null;
     if (!other) continue;
     const target = norm(other.name);
-    const row = t.rows.find((r) => r.places.split(/,| to | and /).map(norm).some((p) => p && (p === target || target.startsWith(p) || p.startsWith(target))));
+    const row = t.rows.find((r) => !r.maxXcd && r.places.split(/,| to | and |\(|\)/).map(norm).some((p) => p && (p === target || target.startsWith(p) || p.startsWith(target))));
     if (row) return { table: t, row };
   }
   return null;
@@ -146,6 +243,9 @@ export function fareAmount(f: { table: FareTable; row: FareRow }, passengers: nu
 
 /* ---------- Matching free-typed or Google places to the official tables ---------- */
 const ORIGIN_ALIASES: Record<string, string[]> = {
+  "cq-hillsborough": ["hillsborough"],
+  "cq-harvey-vale": ["harvey vale port", "tyrrel bay", "harvey vale"],
+  "cq-airport": ["lauriston airport", "carriacou airport", "lauriston point"],
   "gd-airport": ["maurice bishop", "point salines", "mbia", "gnd airport", "grenada airport", "airport"],
   "vc-airport": ["argyle international", "argyle airport", "argyle", "svd", "airport"],
   "vc-kingstown": ["kingstown"],
@@ -162,7 +262,8 @@ const placeTokens = (row: FareRow) =>
  */
 export function officialFareForText(country: string, a: string, b: string): { table: FareTable; row: FareRow } | null {
   const A = clean(a), B = clean(b);
-  for (const t of fareTables.filter((x) => x.country === country)) {
+  const onCarriacou = /carriacou|hillsborough|tyrrel bay|harvey vale|lauriston|l.?esterre|windward|bogles|belair|petite carenage|mt\.? royal|mount royal/i.test(`${a} ${b}`);
+  for (const t of fareTables.filter((x) => x.country === country && (x.island === "carriacou" ? onCarriacou : !(onCarriacou && x.id === "gd-airport")))) {
     const aliases = ORIGIN_ALIASES[t.id] ?? [];
     const isOrigin = (s: string) => aliases.some((al) => s.includes(` ${al} `) || s.includes(` ${al}`));
     const otherRaw = isOrigin(A) ? b : isOrigin(B) ? a : null;
@@ -174,7 +275,7 @@ export function officialFareForText(country: string, a: string, b: string): { ta
       let best: { row: FareRow; len: number } | null = null;
       for (const row of t.rows) {
         for (const tok of placeTokens(row)) {
-          if (target.includes(` ${tok} `) && (!best || tok.length > best.len)) best = { row, len: tok.length };
+          if (!row.maxXcd && target.includes(` ${tok} `) && (!best || tok.length > best.len)) best = { row, len: tok.length };
         }
       }
       if (best) return { table: t, row: best.row };

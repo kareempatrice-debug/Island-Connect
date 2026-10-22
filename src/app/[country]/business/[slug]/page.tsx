@@ -13,6 +13,12 @@ import { businessCountries, data, getCountry, isSupabaseConfigured } from "@/lib
 import { WhatsAppIcon } from "@/components/whatsapp-icon";
 import { PAYMENT_LABELS, formatPhone, localClock, mapsLink, priceLabel, weeklyHours, whatsappLink } from "@/lib/format";
 
+// Served ready-made from Netlify and refreshed at most every 5 minutes (or straight away when a listing changes).
+export const revalidate = 300;
+// Prepared the first time someone visits, then served ready-made.
+export function generateStaticParams() { return []; }
+
+
 type Props = { params: Promise<{ country: string; slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

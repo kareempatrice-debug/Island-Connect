@@ -8,6 +8,10 @@ import { Container } from "@/components/ui";
 import { businessCountries, data, getCountries, getCountry } from "@/lib/data";
 import { QUOTE_CATEGORIES, QUOTE_TITLES, type QuoteKind } from "@/lib/transport";
 
+// Personal or search-driven: always built fresh for each visitor, never shared.
+export const dynamic = "force-dynamic";
+
+
 export const metadata: Metadata = { title: "Request a quote" };
 
 export default async function QuotePage({

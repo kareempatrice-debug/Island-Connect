@@ -6,6 +6,10 @@ import { Chip, Container } from "@/components/ui";
 import { categoryVisual, coverStyle } from "@/components/visuals";
 import { data, getCountry } from "@/lib/data";
 
+// Personal or search-driven: always built fresh for each visitor, never shared.
+export const dynamic = "force-dynamic";
+
+
 export const metadata: Metadata = { title: "Services" };
 
 const POPULAR = ["airport-transfers", "electricians", "plumbers", "builders-contractors", "tours", "restaurants", "lawyers", "accountants", "car-rental", "salons-barbers"];
