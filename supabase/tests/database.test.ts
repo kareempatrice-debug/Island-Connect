@@ -927,3 +927,17 @@ describe("live map", () => {
   });
 });
 function readFileSyncOnce(p: string) { return require("node:fs").readFileSync(p, "utf8"); }
+
+describe("live trip sharing", () => {
+  it("shares the driver's first name, car and plate, and the trip's points, but never phone numbers", async () => {
+    const { readFileSync } = await import("node:fs");
+    await db.exec(readFileSync("supabase/migrations/20261101000028_live_trip_sharing.sql", "utf8"));
+    const trip = (await db.query<{ id: string; share_token: string; business_id: string }>(`select r.id, r.share_token, q.business_id from public.trip_requests r join public.trip_quotes q on q.id = r.accepted_quote_id where r.status = 'booked' and r.share_token is not null limit 1`)).rows[0];
+    const member = (await db.query<{ user_id: string }>(`select user_id from public.business_members where business_id = $1 limit 1`, [trip.business_id])).rows[0].user_id;
+    await expect(as("authenticated", "00000000-0000-0000-0000-000000000099", () => db.query(`select public.set_vehicle_details($1, 'Glean', 'Toyota', 'Corolla', 'Silver', 'pb 1234')`, [trip.business_id]))).rejects.toThrow(/own business/);
+    await as("authenticated", member, () => db.query(`select public.set_vehicle_details($1, 'Glean Thomas', 'Toyota', 'Corolla', 'Silver', 'pb 1234')`, [trip.business_id]));
+    const s = (await as("anon", null, () => db.query<{ s: any }>(`select public.shared_trip($1) as s`, [trip.share_token]))).rows[0].s;
+    expect(s).toMatchObject({ driver: "Glean", vehicle: "Silver Toyota Corolla", plate: "PB 1234" });
+    expect(JSON.stringify(s)).not.toMatch(/\+\d{7,}/);
+  });
+});

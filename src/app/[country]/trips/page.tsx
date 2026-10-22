@@ -1,3 +1,4 @@
+import { cleanPlace } from "@/lib/place-text";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CalendarClock, CarFront, Ship, Truck } from "lucide-react";
@@ -46,7 +47,7 @@ export default async function Trips({ params }: { params: Promise<{ country: str
               <li key={t.id}>
                 <Link href={`/${t.country_code}/trips/${t.id}`} className="block rounded-2xl bg-raised p-4 ring-1 ring-line/60">
                   <span className="text-xs font-semibold uppercase tracking-wide text-primary">{TRIP_STATUS_LABEL[t.status]}{t.status === "open" && offers ? ` · ${offers} quote${offers > 1 ? "s" : ""}` : ""}</span>
-                  <span className="mt-1 block font-semibold text-ink">{t.pickup} to {t.dropoff}</span>
+                  <span className="mt-1 block font-semibold text-ink">{cleanPlace(t.pickup)} to {cleanPlace(t.dropoff)}</span>
                   <span className="block text-sm">{fmtWhen(t.travel_at)}</span>
                 </Link>
               </li>

@@ -1,3 +1,4 @@
+import { cleanPlace } from "@/lib/place-text";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CalendarClock, CarFront, ChevronRight, Search, Ship, ShieldCheck, Truck, Users } from "lucide-react";
@@ -47,7 +48,7 @@ export default async function RideHub({ params }: { params: Promise<{ country: s
               {upcoming.status === "open" && <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-gold" aria-hidden="true" />}
               {upcoming.status === "open" ? "Your ride request is waiting for a driver" : "Your driver is confirmed"}
             </span>
-            <span className="mt-0.5 block truncate text-sm text-white/80">{upcoming.pickup} to {upcoming.dropoff} · {fmtWhen(upcoming.travel_at)}</span>
+            <span className="mt-0.5 block truncate text-sm text-white/80">{cleanPlace(upcoming.pickup)} to {cleanPlace(upcoming.dropoff)} · {fmtWhen(upcoming.travel_at)}</span>
             <span className="mt-2 inline-block text-sm font-semibold text-gold">View request →</span>
           </Link>
         )}
@@ -75,7 +76,7 @@ export default async function RideHub({ params }: { params: Promise<{ country: s
             {upcoming ? (
               <Link href={`/${code}/trips/${upcoming.id}`} className="mt-3 block rounded-2xl bg-raised p-4 ring-1 ring-line/60">
                 <span className="text-xs font-semibold uppercase tracking-wide text-primary">{upcoming.status === "booked" ? "Booked" : "Waiting for a driver"}</span>
-                <span className="mt-1 block font-semibold text-ink">{upcoming.pickup} to {upcoming.dropoff}</span>
+                <span className="mt-1 block font-semibold text-ink">{cleanPlace(upcoming.pickup)} to {cleanPlace(upcoming.dropoff)}</span>
                 <span className="block text-sm">{fmtWhen(upcoming.travel_at)}</span>
               </Link>
             ) : (

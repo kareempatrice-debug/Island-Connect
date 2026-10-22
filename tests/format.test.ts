@@ -150,3 +150,22 @@ describe("fare estimates", () => {
     expect(estimateFare("xx", 10)).toBeNull();
   });
 });
+
+import { cleanPlace } from "@/lib/place-text";
+
+describe("place text", () => {
+  it("removes plus codes and tidies commas", () => {
+    expect(cleanPlace("Dover Government School, GH49+3GH, Bogles, Grenada")).toBe("Dover Government School, Bogles, Grenada");
+    expect(cleanPlace("FG59+4G8, Argyle, Grenada")).toBe("Argyle, Grenada");
+    expect(cleanPlace("Grand Anse Beach")).toBe("Grand Anse Beach");
+    expect(cleanPlace("Lot 22+ Main Road")).toBe("Lot 22+ Main Road");
+  });
+});
+
+import { placeWithIsland } from "@/lib/place-text";
+describe("place with island", () => {
+  it("adds the island once, without the country or plus code", () => {
+    expect(placeWithIsland("Dover Government School, GH49+3GH, Bogles, Grenada", "Carriacou")).toBe("Dover Government School, Bogles, Carriacou");
+    expect(placeWithIsland("Hillsborough jetty, Carriacou", "Carriacou")).toBe("Hillsborough jetty, Carriacou");
+  });
+});

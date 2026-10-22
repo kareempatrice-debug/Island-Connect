@@ -1,3 +1,4 @@
+import { placeWithIsland } from "@/lib/place-text";
 import { createClient } from "@supabase/supabase-js";
 import { buildAlert, buildNotice, type AlertKind } from "./email";
 import { SUPABASE_URL } from "./supabase/env";
@@ -136,7 +137,7 @@ export async function notifyOperatorsOfRequest(requestId: string) {
           ? `This trip has an official fare of EC$${Number(r.fixed_fare_xcd).toFixed(2)}. The first approved driver to accept gets it.`
           : r.estimate_low_xcd ? `The customer was shown an estimate of EC$${Number(r.estimate_low_xcd).toFixed(0)} to ${Number(r.estimate_high_xcd).toFixed(0)}. Reply with your price from your dashboard.`
           : "A customer is asking for a price. The first good quote usually wins, so reply from your dashboard.",
-        lines: [["From", `${r.pickup}, ${r.from_place}`], ["To", `${r.dropoff}, ${r.to_place}`], ["When", when(r.travel_at)], ...(r.passengers ? [["Passengers", String(r.passengers)] as [string, string]] : [])],
+        lines: [["From", placeWithIsland(r.pickup, r.from_place)], ["To", placeWithIsland(r.dropoff, r.to_place)], ["When", when(r.travel_at)], ...(r.passengers ? [["Passengers", String(r.passengers)] as [string, string]] : [])],
         link: `${site()}${path}`,
         cta: r.fixed_fare_xcd ? "Accept the trip" : "Send a quote",
       });
@@ -188,7 +189,7 @@ export async function notifyOperatorOfBooking(quoteId: string) {
       subject: `Booked: ${r.pickup} to ${r.dropoff}`,
       heading: "Your quote was accepted",
       lead: "The trip is booked with you. Contact the customer through your dashboard to confirm the details.",
-      lines: [["Price", `EC$${Number(q.amount_xcd).toFixed(2)}`], ["From", `${r.pickup}, ${r.from_place}`], ["To", `${r.dropoff}, ${r.to_place}`], ["When", when(r.travel_at)]],
+      lines: [["Price", `EC$${Number(q.amount_xcd).toFixed(2)}`], ["From", placeWithIsland(r.pickup, r.from_place)], ["To", placeWithIsland(r.dropoff, r.to_place)], ["When", when(r.travel_at)]],
       link: `${site()}/${r.country_code}/dashboard/${(q.businesses as any)?.slug}?tab=trips`,
       cta: "Open your trips",
     });

@@ -9,6 +9,7 @@ import type { TripPayload } from "@/app/trip-actions";
 import { fareAmount, officialFare, officialFareForText } from "@/data/fares";
 import type { Landmark } from "@/data/landmarks";
 import { estimateFare } from "@/lib/estimate";
+import { cleanPlace } from "@/lib/place-text";
 import { haversineKm } from "@/lib/geo";
 import { CALLING_CODES } from "@/lib/phone";
 import { googleRoute, loadGoogleMaps, type RouteResult } from "./google-maps";
@@ -33,7 +34,9 @@ export interface Vehicle2 { lat: number; lng: number; heading: number | null; va
 type Field = "pickup" | "dropoff";
 type Vehicle = "car" | "van";
 
-const AIRPORT = /airport|maurice bishop|point salines|argyle/i;
+// An airport trip means a real airport: a place we know is an airport, or "airport" in its name.
+// (Not "Argyle" or "Point Salines" alone: Argyle is also a village on Carriacou.)
+const AIRPORT = /\bairport\b|maurice bishop/i;
 const sheet = "rounded-t-[1.75rem] bg-raised shadow-lift ring-1 ring-line/60 lg:rounded-[1.75rem]";
 const chip = "inline-flex h-10 items-center gap-2 rounded-full bg-sunken px-4 text-sm font-semibold text-ink";
 const field = "h-12 w-full min-w-0 rounded-xl border border-line bg-raised px-3.5 text-ink focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/15";
@@ -201,7 +204,7 @@ export function RideRequest({
       if (best) {
         const parts = best.formatted_address.split(",").map((s: string) => s.trim());
         label = parts[0].match(/^[A-Z0-9]{4}\+/) ? `Near ${parts[1] ?? countryName}` : parts[0];
-        address = best.formatted_address;
+        address = cleanPlace(best.formatted_address);
       }
     } catch { /* keep "Pinned location" */ }
     const p = { label, address, ...pt };
@@ -209,7 +212,8 @@ export function RideRequest({
   }
 
   // ---------- Request ----------
-  const kind = vehicle === "van" ? "group" : [pickup, dropoff].some((p) => p && AIRPORT.test(`${p.label} ${p.address ?? ""}`)) ? "airport" : "taxi";
+  const isAirport = (p: Place | null) => Boolean(p && (landmarks.find((l) => l.id === p.landmarkId)?.kind === "airport" || AIRPORT.test(p.label)));
+  const kind = vehicle === "van" ? "group" : [pickup, dropoff].some(isAirport) ? "airport" : "taxi";
   async function send() {
     if (!pickup || !dropoff || !requestInApp) return;
     if (when === "later" && !at) return setError("Choose the date and time for your pick-up.");
@@ -278,7 +282,7 @@ export function RideRequest({
                 {activeTrip.status === "open" && <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-gold" aria-hidden="true" />}
                 {activeTrip.status === "open" ? "Your ride request is waiting for a driver" : "Your driver is confirmed"}
               </p>
-              <p className="mt-0.5 truncate text-sm text-white/80">{activeTrip.pickup} to {activeTrip.dropoff}</p>
+              <p className="mt-0.5 truncate text-sm text-white/80">{cleanPlace(activeTrip.pickup)} to {cleanPlace(activeTrip.dropoff)}</p>
               <div className="mt-3 flex items-center gap-3">
                 <a href={`/${countryCode}/trips/${activeTrip.id}`} className="inline-flex h-10 items-center rounded-full bg-gold px-4 text-sm font-semibold text-[#172B32]">View request</a>
                 {activeTrip.status === "open" && activeTrip.cancel}
@@ -528,7 +532,7 @@ function PlaceSearch({ field, countryCode, googleKey, landmarks, centre, pickup,
       const place = r.pred.toPlace();
       await place.fetchFields({ fields: ["displayName", "formattedAddress", "location"] });
       token.current = null;
-      onPick({ label: place.displayName ?? r.main, address: place.formattedAddress ?? r.secondary, lat: place.location.lat(), lng: place.location.lng() });
+      onPick({ label: cleanPlace(place.displayName ?? r.main), address: cleanPlace(place.formattedAddress ?? r.secondary), lat: place.location.lat(), lng: place.location.lng() });
     } catch {
       onPick({ label: r.main, address: r.secondary });
     }
@@ -546,7 +550,7 @@ function PlaceSearch({ field, countryCode, googleKey, landmarks, centre, pickup,
           const { Geocoder } = await g.maps.importLibrary("geocoding");
           const res = await new Geocoder().geocode({ location: pt });
           const found: string | undefined = res.results?.[0]?.formatted_address;
-          if (found) { address = found; label = `Current location (${found.split(",")[0]})`; }
+          if (found) { address = cleanPlace(found); label = `Current location (${address.split(",")[0] || "here"})`; }
         } else {
           const near = [...landmarks].sort((x, y) => haversineKm(pt, x) - haversineKm(pt, y))[0];
           if (near && haversineKm(pt, near) < 5) label = `Current location, near ${near.name}`;

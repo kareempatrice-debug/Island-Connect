@@ -1,5 +1,5 @@
 import { confirmPickupAction } from "@/app/family-actions";
-import { setWhatsAppAlertsAction } from "@/app/trip-actions";
+import { setVehicleAction, setWhatsAppAlertsAction } from "@/app/trip-actions";
 import { acceptFixedFareAction, completeTripAction, sendQuoteAction } from "@/app/trip-actions";
 import { OperatorApply } from "@/components/forms/operator-apply";
 import { OperatorTrips } from "@/components/trips/operator-trips";
@@ -11,6 +11,7 @@ export async function TripsTab({ ids, isOwner, sp }: { ids: { businessId: string
   const card = "rounded-2xl bg-raised p-5 ring-1 ring-line/60";
   const notice = sp.error ? <p role="alert" className="rounded-xl bg-danger/10 px-4 py-3 text-sm font-medium text-danger">{sp.error}</p>
     : sp.quoted ? <p role="status" className="rounded-xl bg-success/10 px-4 py-3 text-sm font-medium text-success">Quote sent. The customer has been emailed.</p>
+    : sp.vehicle ? <p role="status" className="rounded-xl bg-success/10 px-4 py-3 text-sm font-medium text-success">Vehicle details saved.</p>
     : sp.pickedup ? <p role="status" className="rounded-xl bg-success/10 px-4 py-3 text-sm font-medium text-success">Pick-up confirmed. Have a safe trip.</p>
     : sp.accepted ? <p role="status" className="rounded-xl bg-success/10 px-4 py-3 text-sm font-medium text-success">Trip accepted. The customer has been told; message them below to confirm the pickup.</p>
     : sp.completed ? <p role="status" className="rounded-xl bg-success/10 px-4 py-3 text-sm font-medium text-success">Trip marked as completed.</p> : null;
@@ -64,14 +65,27 @@ export async function TripsTab({ ids, isOwner, sp }: { ids: { businessId: string
         </form>
       )}
       chatHref={(r) => `/${ids.country}/trips/${r.id}/chat`}
-      alertsSetting={
+      alertsSetting={<>
+        <form action={setVehicleAction} className="rounded-2xl bg-raised p-4 ring-1 ring-line/60">
+          <input type="hidden" name="businessId" value={ids.businessId} /><input type="hidden" name="country" value={ids.country} /><input type="hidden" name="slug" value={ids.slug} />
+          <p className="font-semibold text-ink">Your vehicle</p>
+          <p className="text-sm">Customers, and anyone they share their trip with, see your first name, car and number plate, so they can find the right car. Never your phone number.</p>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <input name="driver" defaultValue={op.driver_name ?? ""} maxLength={40} placeholder="Your first name" className="col-span-2 h-11 rounded-lg border border-line bg-raised px-3" />
+            <input name="colour" defaultValue={op.vehicle_colour ?? ""} maxLength={30} placeholder="Colour, e.g. Silver" className="h-11 rounded-lg border border-line bg-raised px-3" />
+            <input name="make" defaultValue={op.vehicle_make ?? ""} maxLength={40} placeholder="Make, e.g. Toyota" className="h-11 rounded-lg border border-line bg-raised px-3" />
+            <input name="model" defaultValue={op.vehicle_model ?? ""} maxLength={40} placeholder="Model, e.g. Corolla" className="h-11 rounded-lg border border-line bg-raised px-3" />
+            <input name="plate" defaultValue={op.vehicle_plate ?? ""} maxLength={15} placeholder="Number plate" className="h-11 rounded-lg border border-line bg-raised px-3 uppercase" />
+          </div>
+          <button className="mt-3 h-11 rounded-full bg-primary px-5 font-semibold text-primary-ink">Save vehicle</button>
+        </form>
         <form action={setWhatsAppAlertsAction} className="flex flex-wrap items-center gap-3 rounded-2xl bg-raised p-4 ring-1 ring-line/60">
           <input type="hidden" name="businessId" value={ids.businessId} /><input type="hidden" name="country" value={ids.country} /><input type="hidden" name="slug" value={ids.slug} />
           <input type="hidden" name="on" value={op.whatsapp_alerts ? "off" : "on"} />
           <p className="min-w-0 flex-1 text-sm"><strong className="text-ink">WhatsApp alerts {op.whatsapp_alerts ? "on" : "off"}.</strong> {op.whatsapp_alerts ? "New trip requests also arrive on your listing’s WhatsApp number." : "Get new trip requests on your listing’s WhatsApp number as well."}</p>
           <button className={`h-10 rounded-full px-4 text-sm font-semibold ${op.whatsapp_alerts ? "border border-line text-ink" : "bg-[#25D366] text-[#0B2E1B]"}`}>{op.whatsapp_alerts ? "Turn off" : "Turn on"}</button>
         </form>
-      }
+      </>}
       confirmPickup={(r) => (
         <form action={confirmPickupAction} className="mt-3 flex items-center gap-2">
           <input type="hidden" name="request" value={r.id} /><input type="hidden" name="country" value={ids.country} /><input type="hidden" name="slug" value={ids.slug} />

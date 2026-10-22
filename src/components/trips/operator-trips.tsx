@@ -1,3 +1,4 @@
+import { placeWithIsland } from "@/lib/place-text";
 import Link from "next/link";
 import { directionsLink } from "@/lib/geo";
 import type { ReactNode } from "react";
@@ -34,7 +35,7 @@ export function OperatorTrips({ kinds, open, mine, totals, businessId, notice, q
               const my = (r.trip_quotes ?? []).find((q: any) => q.business_id === businessId);
               return (
                 <li key={r.id} className={card}>
-                  <p className="font-semibold text-ink">{r.pickup}, {r.from_place} → {r.dropoff}, {r.to_place}</p>
+                  <p className="font-semibold text-ink">{placeWithIsland(r.pickup, r.from_place)} → {placeWithIsland(r.dropoff, r.to_place)}</p>
                   <p className="text-sm">{TRIP_KIND_LABEL[r.kind]} · {fmtWhen(r.travel_at)}{r.passengers ? ` · ${r.passengers} passengers` : ""}{r.distance_km ? ` · ${r.distance_km} km, about ${r.duration_min} min` : ""}{r.cross_border ? " · crosses the border" : ""}</p>
                   {r.rider_name && <p className="mt-1 text-sm text-ink">Booked for <strong>{r.rider_name}</strong></p>}
                   {!r.fixed_fare_xcd && r.estimate_low_xcd && <p className="mt-1 text-sm">Customer was shown an estimate of <strong className="text-ink">EC${Number(r.estimate_low_xcd).toFixed(0)} to {Number(r.estimate_high_xcd).toFixed(0)}</strong></p>}

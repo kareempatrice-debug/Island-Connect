@@ -9,6 +9,7 @@ import type { FormState } from "@/app/auth-actions";
 import { getViewer, requireAdmin } from "@/lib/auth";
 import { toE164International } from "@/lib/phone";
 import { estimateFare } from "@/lib/estimate";
+import { cleanPlace } from "@/lib/place-text";
 import { cookies } from "next/headers";
 import { fareAmount, officialFare, officialFareForText } from "@/data/fares";
 import { landmarks } from "@/data/landmarks";
@@ -88,6 +89,8 @@ export async function createTripRequestAction(input: TripPayload): Promise<{ url
   // No official fare: record the estimate the customer saw, so the driver knows what they expect.
   const est = !fixed && (d.kind === "taxi" || d.kind === "airport") ? estimateFare(d.country, d.distance_km, d.passengers ?? 1) : null;
   const partner = (await cookies()).get("ic_partner")?.value ?? null;
+  trip.pickup = cleanPlace(trip.pickup) || trip.pickup;
+  trip.dropoff = cleanPlace(trip.dropoff) || trip.dropoff;
   const { data, error } = await supabase.rpc("create_trip_request", { p: { ...trip, travel_at: d.travel_at || null, contact_phone: phone, rider_phone: riderPhone, ...(fixed ?? {}),
     ...(est ? { estimate_low_xcd: est.low, estimate_high_xcd: est.high } : {}), partner_code: partner } });
   if (!error && riderKind && d.rider_name) await supabase.rpc("set_rider_kind", { p_request: data, p_kind: riderKind });
@@ -355,4 +358,16 @@ export async function respondToOfferAction(offerId: string, accept: boolean): Pr
   }
   after(() => handleDispatchEvent(data, o.request_id));
   return { url: `/${country}/dashboard/${o.businesses?.slug}?tab=trips` };
+}
+
+
+/* The driver's first name and car, shown to their customer and on shared trips. */
+export async function setVehicleAction(form: FormData) {
+  const d = z.object({ businessId: z.string().uuid(), country: z.string().regex(/^[a-z]{2}$/), slug: z.string().regex(/^[a-z0-9-]{1,80}$/),
+    driver: z.string().max(40), make: z.string().max(40), model: z.string().max(40), colour: z.string().max(30), plate: z.string().max(15) }).parse(Object.fromEntries(form));
+  const supabase = await supabaseForRequest();
+  const { error } = await supabase.rpc("set_vehicle_details", { p_business: d.businessId, p_driver: d.driver, p_make: d.make, p_model: d.model, p_colour: d.colour, p_plate: d.plate });
+  const back = `/${d.country}/dashboard/${d.slug}?tab=trips`;
+  revalidatePath(back);
+  redirect(`${back}&${error ? `error=${encodeURIComponent(error.message)}` : "vehicle=1"}`);
 }

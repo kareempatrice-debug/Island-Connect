@@ -44,6 +44,8 @@ export default async function Trip({ params, searchParams }: { params: Promise<{
     supabase.rpc("dispatch_info", { p_request: t.id }),
     t.status === "booked" ? supabase.rpc("my_driver_position", { p_request: t.id }) : Promise.resolve({ data: null }),
   ]);
+  // The driver's first name, car and number plate (the same details shared trips show).
+  const shared = t.status === "booked" && t.share_token ? ((await supabase.rpc("shared_trip", { p_token: t.share_token })).data as { driver: string; vehicle: string | null; plate: string | null } | null) : null;
   // Map for a booked ride: the island the pick-up is on, and the driver's live position.
   const near = t.pickup_lat != null ? landmarks.filter((l) => l.countryCode === t.country_code)
     .map((l) => ({ l, d: Math.hypot(l.lat - t.pickup_lat, l.lng - t.pickup_lng) })).sort((a, b) => a.d - b.d)[0]?.l : null;
@@ -58,7 +60,8 @@ export default async function Trip({ params, searchParams }: { params: Promise<{
       {showMap && (
         <DriverMap googleKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || null} pickup={{ label: t.pickup, lat: t.pickup_lat, lng: t.pickup_lng }}
           driver={driverPos as { lat: number; lng: number; heading: number | null; km: number | null; at: string } | null}
-          coastline={coastlines[near!.island] ?? []} landmarks={landmarks.filter((l) => l.island === near!.island)} />
+          coastline={coastlines[near!.island] ?? []} landmarks={landmarks.filter((l) => l.island === near!.island)}
+          car={shared ? { driver: shared.driver, vehicle: shared.vehicle, plate: shared.plate } : null} />
       )}
       {t.status === "open" && <div className="mb-6"><PushSetup what="new quotes" /></div>}
       {active && (

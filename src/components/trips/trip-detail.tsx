@@ -1,3 +1,4 @@
+import { cleanPlace, placeWithIsland } from "@/lib/place-text";
 import Link from "next/link";
 import { MessageCircle, MessagesSquare, Phone } from "lucide-react";
 import type { ReactNode } from "react";
@@ -22,14 +23,14 @@ export function TripDetail({ country, t, quotes, notice, accept, cancel, now, ba
   return (
     <>
       <Link href={backHref ?? `/${country}/trips`} className="text-sm font-semibold text-link hover:underline">Your trips</Link>
-      <h1 className="mt-2 text-3xl font-semibold">{t.pickup} to {t.dropoff}</h1>
+      <h1 className="mt-2 text-3xl font-semibold">{cleanPlace(t.pickup)} to {cleanPlace(t.dropoff)}</h1>
       <p className="mt-1">{TRIP_KIND_LABEL[t.kind]} · {fmtWhen(t.travel_at)}{t.passengers ? ` · ${t.passengers} passenger${t.passengers > 1 ? "s" : ""}` : ""}</p>
       <p className="mt-3 inline-block rounded-full bg-sunken px-3 py-1 text-sm font-semibold text-ink">{TRIP_STATUS_LABEL[t.status]}</p>
       {notice}
 
       <dl className="mt-6 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 rounded-2xl bg-raised p-4 text-[0.95rem] ring-1 ring-line/60">
-        <dt>From</dt><dd className="font-semibold text-ink">{t.pickup}, {t.from_place}</dd>
-        <dt>To</dt><dd className="font-semibold text-ink">{t.dropoff}, {t.to_place}</dd>
+        <dt>From</dt><dd className="font-semibold text-ink">{placeWithIsland(t.pickup, t.from_place)}</dd>
+        <dt>To</dt><dd className="font-semibold text-ink">{placeWithIsland(t.dropoff, t.to_place)}</dd>
         {t.details && <><dt>Details</dt><dd className="text-ink">{t.details}</dd></>}
         {t.cross_border && <><dt>Border</dt><dd className="text-ink">Crosses between SVG and Grenada: customs apply</dd></>}
       </dl>
