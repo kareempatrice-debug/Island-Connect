@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /*
  * Loads Google Maps in the browser, once. Needs NEXT_PUBLIC_GOOGLE_MAPS_API_KEY, a browser key
- * restricted to islandconnect.cc in Google Cloud (it is meant to be public, like all map keys).
+ * restricted to islandconnect.cc in Google Cloud (it is meant to be public, like all map keys),
+ * and optionally NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID for the map's style and automatic dark mode.
  * APIs used: Maps JavaScript, Places (New), Routes and Geocoding.
  */
 let loading: Promise<any> | null = null;

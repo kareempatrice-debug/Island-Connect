@@ -25,9 +25,14 @@ export function GoogleRideMap({ apiKey, center, pickup, dropoff, path, pinMode, 
     loadGoogleMaps(apiKey).then(async (g) => {
       if (!alive || !el.current) return;
       const { Map } = await g.maps.importLibrary("maps");
+      // With a Map ID, the map's look comes from Google Cloud (Map Styles) and it follows the phone's
+      // light or dark setting. Without one, a built-in style hides business pins.
+      const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID;
       map.current = new Map(el.current, {
         center, zoom: 12, disableDefaultUI: true, zoomControl: true, clickableIcons: false, gestureHandling: "greedy",
-        styles: [{ featureType: "poi.business", stylers: [{ visibility: "off" }] }],
+        ...(mapId
+          ? { mapId, colorScheme: g.maps.ColorScheme?.FOLLOW_SYSTEM ?? "FOLLOW_SYSTEM" }
+          : { styles: [{ featureType: "poi.business", stylers: [{ visibility: "off" }] }] }),
       });
       map.current.addListener("click", (e: any) => {
         if (pinRef.current && e.latLng) tapRef.current({ lat: e.latLng.lat(), lng: e.latLng.lng() });

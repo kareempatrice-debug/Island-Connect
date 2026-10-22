@@ -28,7 +28,8 @@ To check what is switched on, open **https://islandconnect.cc/api/health** at an
    - Key: `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`
    - Value: your `AIza…` key
    - Leave **Contains secret values** unticked (map keys are designed to be visible; the website restriction protects it).
-9. Trigger a deploy. The health page should show `"googleMaps": "on"`.
+9. Optional but recommended: in **Google Cloud → Google Maps Platform → Map management**, create a **Map ID** (JavaScript, Vector) and add it in Netlify as `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID`. It controls the map's style and lets it follow the phone's light or dark setting.
+10. Trigger a deploy. The health page should show `"googleMaps": "on, with Map ID"`.
 
 **If the map doesn't appear**
 

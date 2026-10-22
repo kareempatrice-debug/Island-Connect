@@ -45,7 +45,9 @@ export async function GET() {
     process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY ? (secret ? "on" : "missing SUPABASE_SECRET_KEY") : "off (add the two VAPID keys to switch on)";
   report.whatsappAlerts = process.env.WHATSAPP_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID ? "on" : "off (add WHATSAPP_TOKEN and WHATSAPP_PHONE_NUMBER_ID to switch on)";
   report.errorMonitoring = process.env.NEXT_PUBLIC_SENTRY_DSN ? "on" : "off (add NEXT_PUBLIC_SENTRY_DSN to switch on)";
-  report.googleMaps = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ? "on" : "off (add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to switch on)";
+  report.googleMaps = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+    ? `on${process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID ? ", with Map ID" : " (no Map ID: add NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID for styling and dark mode)"}`
+    : "off (add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to switch on)";
   // For uptime checkers: "status" is "up" only when the site can reach its database.
   const up = typeof report.database === "string" && report.database.startsWith("ok");
   report.status = up ? "up" : "down";

@@ -169,7 +169,25 @@ export function RideRequest({
     }
     return main?.name ?? countryName;
   };
-  const centre = airport ?? landmarks[0] ?? { lat: 12.05, lng: -61.75 };
+  // Which island the trip is on: the chosen place's island, or the island of the nearest known place
+  // to its coordinates (so "Use my location" on Carriacou or Bequia shows that island), or the
+  // island picked with the chips, or the main island.
+  const islandSlugOf = (pl: Place | null): string | null => {
+    if (!pl) return null;
+    const lm = pl.landmarkId ? landmarks.find((l) => l.id === pl.landmarkId) : null;
+    if (lm) return lm.island;
+    if (pl.lat == null || pl.lng == null) return null;
+    let best: Landmark | null = null, d = Infinity;
+    for (const l of landmarks) { const k = haversineKm({ lat: pl.lat, lng: pl.lng }, l); if (k < d) { d = k; best = l; } }
+    return best && d < 15 ? best.island : null;
+  };
+  const [islandPick, setIslandPick] = useState<string>(main?.slug ?? "");
+  const activeIsland = islandSlugOf(pickup) ?? islandSlugOf(dropoff) ?? islandPick ?? main?.slug ?? "";
+  const islandLandmarks = landmarks.filter((l) => l.island === activeIsland);
+  const rideIslands = islands.filter((i) => landmarks.some((l) => l.island === i.slug) && coastlines[i.slug]);
+  // Cars on this island only (so Carriacou doesn't show Grenada's drivers as "nearby").
+  const carsHere = cars.filter((c) => islandLandmarks.some((l) => haversineKm(c, l) < 15));
+  const centre = (activeIsland === main?.slug ? airport : null) ?? islandLandmarks[0] ?? airport ?? landmarks[0] ?? { lat: 12.05, lng: -61.75 };
 
   async function placeFromTap(pt: { lat: number; lng: number }) {
     const field = pinFor;
@@ -230,16 +248,16 @@ export function RideRequest({
           <GoogleRideMap apiKey={googleKey} center={centre} pickup={pickup?.lat != null ? (pickup as any) : null} dropoff={dropoff?.lat != null ? (dropoff as any) : null}
             path={route?.path?.length ? route.path : null} pinMode={Boolean(pinFor)} onTap={placeFromTap} onFail={() => setUseGoogle(false)} vehicles={cars} />
         ) : main && coastlines[main.slug] ? (
-          <RideMap coastline={coastlines[landmarks.find((l) => l.id === (pickup?.landmarkId ?? dropoff?.landmarkId))?.island ?? main.slug] ?? coastlines[main.slug]}
-            landmarks={landmarks.filter((l) => l.island === (landmarks.find((x) => x.id === (pickup?.landmarkId ?? dropoff?.landmarkId))?.island ?? main.slug))}
+          <RideMap key={activeIsland} coastline={coastlines[activeIsland] ?? coastlines[main.slug]}
+            landmarks={islandLandmarks.length ? islandLandmarks : landmarks.filter((l) => l.island === main.slug)}
             pickup={landmarks.find((l) => l.id === pickup?.landmarkId) ?? null} destination={landmarks.find((l) => l.id === dropoff?.landmarkId) ?? null}
             road={route?.path?.length ? route.path.map((p) => [p.lng, p.lat] as [number, number]) : null}
             vehicles={cars}
             onPick={(l: Landmark) => (pickup ? setDropoff(asPlace(l)) : setPickup(asPlace(l)))} />
         ) : null}
-        {cars.length > 0 && !pinFor && (
+        {carsHere.length > 0 && !pinFor && (
           <div className="absolute left-3 top-3 z-10 inline-flex items-center gap-1.5 rounded-full bg-raised/95 px-3 py-1.5 text-sm font-semibold text-ink shadow-card">
-            <Car className="h-4 w-4 text-primary" aria-hidden="true" />{cars.length} {cars.length === 1 ? "car" : "cars"} nearby
+            <Car className="h-4 w-4 text-primary" aria-hidden="true" />{carsHere.length} {carsHere.length === 1 ? "car" : "cars"} nearby
           </div>
         )}
         {pinFor && (
@@ -350,9 +368,17 @@ export function RideRequest({
           {/* Popular places: one tidy row that scrolls sideways */}
           {!ready && (
             <div>
+              {rideIslands.length > 1 && !pickup && !dropoff && (
+                <div className="mb-3 flex gap-2" role="group" aria-label="Island">
+                  {rideIslands.map((i) => (
+                    <button key={i.slug} type="button" onClick={() => setIslandPick(i.slug)} aria-pressed={activeIsland === i.slug}
+                      className={`h-9 rounded-full px-4 text-sm font-semibold ${activeIsland === i.slug ? "bg-deep text-white" : "bg-sunken text-ink"}`}>{i.name}</button>
+                  ))}
+                </div>
+              )}
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">Popular places</p>
               <div className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                {landmarks.filter((l) => l.island === main?.slug).slice(0, 8).map((l) => (
+                {islandLandmarks.slice(0, 8).map((l) => (
                   <button key={l.id} type="button" onClick={() => (pickup ? setDropoff(asPlace(l)) : setPickup(asPlace(l)))}
                     className="inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-sunken px-3.5 text-sm font-medium text-ink hover:bg-line/60">
                     <MapPin className="h-3.5 w-3.5 text-primary" aria-hidden="true" />{l.kind === "airport" ? "Airport" : l.name.replace(/ town centre$/i, "").replace(/ Beach$/i, "")}
