@@ -14,6 +14,7 @@ export interface Session {
   trip?: { id: string; status: string; picked_up_at: string | null; country_code: string } | null;
   offer?: { id: string; price: number; km: number | null } | null; waiting?: number; opSlug?: string | null;
   rate?: { kind: "trip"; ref: string; business: string; driver: string | null; dropoff: string; country: string } | null;
+  docsAlert?: { level: "offline" | "soon"; text: string } | null;
 }
 const Ctx = createContext<Session | null>(null);
 
@@ -79,12 +80,19 @@ function RatePopup({ rate }: { rate: NonNullable<Session["rate"]> }) {
 export function HeaderStrip({ country }: { country: string }) {
   const s = useSession();
   if (!s?.signedIn) return null;
-  if (s.rate && !s.trip && !s.offer && !s.waiting) return <RatePopup rate={s.rate} />;
+  const docs = s.docsAlert && s.opSlug ? (
+    <StripLink href={`/${country}/dashboard/${s.opSlug}?tab=trips`} className={`flex items-center justify-between gap-3 px-5 py-2.5 text-sm font-semibold ${s.docsAlert.level === "offline" ? "bg-danger text-white" : "bg-gold/90 text-[#172B32]"}`}>
+      <span>{s.docsAlert.text}</span><span>Update →</span>
+    </StripLink>
+  ) : null;
+  if (s.rate && !s.trip && !s.offer && !s.waiting) return <>{docs}<RatePopup rate={s.rate} /></>;
+  if (docs && !s.trip && !s.offer && !s.waiting) return docs;
   const base = "flex items-center justify-between gap-3 px-5 py-2.5 text-sm font-semibold";
   const { trip, offer, waiting, opSlug } = s;
   if (!trip && !offer && !waiting) return null;
   return (
     <div>
+      {docs}
       {s.rate && <RatePopup rate={s.rate} />}
       {offer && (
         <Link href={`/${country}/offers/${offer.id}`} className={`${base} animate-pulse bg-gold text-[#172B32]`}>

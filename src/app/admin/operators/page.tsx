@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { approveOperatorAction, declineOperatorAction } from "@/app/trip-actions";
+import { reviewDocumentAction } from "../actions";
+import { DOC_LABELS } from "@/lib/operator-docs";
 import { supabaseForRequest } from "@/lib/supabase/server";
 import { TRIP_KIND_LABEL, fmtWhen, fmtXcd } from "@/lib/trips";
 
@@ -26,6 +28,14 @@ export default async function Operators({ searchParams }: { searchParams: Promis
   const reach = new Map<string, { business_name: string; reached: boolean; reason: string }[]>(
     await Promise.all((openReqs ?? []).slice(0, 20).map(async (r: any) => [r.id, ((await supabase.rpc("admin_request_reach", { p_request: r.id })).data ?? []) as any[]] as const)));
   const approved = (ops ?? []).filter((o: any) => o.status === "approved");
+  // Compliance for each approved operator, and every document waiting to be checked.
+  const [compl, { data: pendingDocs }] = await Promise.all([
+    Promise.all(approved.map(async (o: any) => [o.business_id, (await supabase.rpc("operator_compliance", { p_business: o.business_id })).data] as const)),
+    supabase.from("operator_documents").select("id, business_id, doc_type, path, expires_on, created_at, businesses ( name )").eq("status", "pending").order("created_at").limit(100),
+  ]);
+  const compliance = new Map<string, any>(compl);
+  const { data: pendingSigned } = (pendingDocs ?? []).length ? await supabase.storage.from("operator-documents").createSignedUrls((pendingDocs ?? []).map((d: any) => d.path), 3600) : { data: [] as any[] };
+  const pendingUrl = new Map((pendingSigned ?? []).map((x: any) => [x.path, x.signedUrl]));
   const month = new Date().toISOString().slice(0, 7);
   const thisMonth = (ledger ?? []).filter((l: any) => l.created_at.startsWith(month));
   const sum = (rows: any[], k: string) => rows.reduce((a, r) => a + Number(r[k]), 0);
@@ -100,6 +110,30 @@ export default async function Operators({ searchParams }: { searchParams: Promis
         )}
       </section>
 
+      <section aria-labelledby="docs-h">
+        <h2 id="docs-h" className="scroll-mt-24 text-xl font-semibold">Documents to check ({(pendingDocs ?? []).length})</h2>
+        <p className="mt-1 text-sm">Check each is the <strong>hire</strong> version (H plate, taxi or PSV permit, hire-and-reward insurance, tourism licence), the name and photo match, and the expiry date is right. Correct the date if needed before approving.</p>
+        <ul className="mt-3 space-y-2">
+          {(pendingDocs ?? []).map((d: any) => (
+            <li key={d.id} className={card}>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="min-w-0"><span className="block font-semibold text-ink">{d.businesses?.name}: {DOC_LABELS[d.doc_type]?.title ?? d.doc_type}</span>
+                  <span className="block text-sm">Expires {d.expires_on ?? "not given"} · uploaded {fmtWhen(d.created_at)}</span></span>
+                <a href={pendingUrl.get(d.path) ?? "#"} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-link underline">Open document</a>
+              </div>
+              <form action={reviewDocumentAction} className="mt-3 flex flex-wrap items-center gap-2">
+                <input type="hidden" name="id" value={d.id} />
+                <label className="text-sm">Expiry <input type="date" name="expires" defaultValue={d.expires_on ?? ""} className="ml-1 h-9 rounded-lg border border-line bg-raised px-2" /></label>
+                <input name="note" maxLength={300} placeholder="Note if rejecting" className="h-9 min-w-0 flex-1 rounded-lg border border-line bg-raised px-2 text-sm" />
+                <button name="decision" value="approve" className="h-9 rounded-full bg-primary px-4 text-sm font-semibold text-primary-ink">Approve</button>
+                <button name="decision" value="reject" className="h-9 rounded-full border border-line px-4 text-sm font-semibold text-danger">Reject</button>
+              </form>
+            </li>
+          ))}
+          {!(pendingDocs ?? []).length && <li className="text-sm">Nothing waiting.</li>}
+        </ul>
+      </section>
+
       <section aria-labelledby="approved-h">
         <h2 id="approved-h" className="scroll-mt-24 text-xl font-semibold">Approved operators ({approved.length})</h2>
         <ul className="mt-3 divide-y divide-line rounded-2xl bg-raised ring-1 ring-line/60">
@@ -108,6 +142,22 @@ export default async function Operators({ searchParams }: { searchParams: Promis
               <span className="min-w-0">
                 <Link href={`/admin/listings/${o.business_id}#operator`} className="font-semibold text-ink hover:underline">{o.businesses?.name}</Link>
                 <span className="block text-sm">{(o.businesses?.business_locations?.[0]?.country_code ?? "").toUpperCase()} · {(o.kinds as string[]).map((k) => TRIP_KIND_LABEL[k]).join(", ")}{o.businesses?.phone_e164 ? ` · ${o.businesses.phone_e164}` : ""}</span>
+                {(() => {
+                  const c = compliance.get(o.business_id);
+                  if (!c) return null;
+                  const issues = [
+                    ...(c.expired ?? []).map((t: string) => `${DOC_LABELS[t]?.title ?? t} expired`),
+                    ...(c.missing ?? []).map((t: string) => `${DOC_LABELS[t]?.title ?? t} missing`),
+                    ...(c.pending ?? []).map((t: string) => `${DOC_LABELS[t]?.title ?? t} waiting to be checked`),
+                  ];
+                  return (
+                    <span className={`mt-1 block text-sm font-semibold ${c.good_standing ? "text-success" : "text-danger"}`}>
+                      {c.good_standing ? "In good standing" : "Offline: documents"}
+                      {c.grace_until && issues.length ? <span className="font-normal text-muted"> · documents due by {c.grace_until}</span> : null}
+                      {issues.length ? <span className="block font-normal text-muted">{issues.join(" · ")}</span> : null}
+                    </span>
+                  );
+                })()}
               </span>
               <form action={declineOperatorAction}><input type="hidden" name="id" value={o.business_id} />
                 <button className="text-sm font-semibold text-danger underline">Withdraw approval</button></form>

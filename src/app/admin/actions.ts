@@ -211,3 +211,16 @@ export async function togglePartnerAction(form: FormData) {
   revalidatePath("/admin/partners");
   redirect("/admin/partners");
 }
+
+/* ---------- Operator documents and commission settlement ---------- */
+export async function reviewDocumentAction(form: FormData) {
+  await requireAdmin();
+  const supabase = await supabaseForRequest();
+  const approve = form.get("decision") === "approve";
+  const { error } = await supabase.rpc("admin_review_document", {
+    p_document: String(form.get("id")), p_approve: approve, p_note: String(form.get("note") ?? "").slice(0, 300) || null,
+    p_expires: /^\d{4}-\d{2}-\d{2}$/.test(String(form.get("expires") ?? "")) ? String(form.get("expires")) : null,
+  });
+  revalidatePath("/admin/operators");
+  redirect(`/admin/operators?${error ? `error=${encodeURIComponent(error.message)}` : "done=1"}#docs-h`);
+}

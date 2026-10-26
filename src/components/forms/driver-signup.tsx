@@ -4,16 +4,13 @@ import { Check, FileUp, Loader2 } from "lucide-react";
 import { useActionState, useState } from "react";
 import { applyAsDriverAction } from "@/app/trip-actions";
 import { supabaseBrowser } from "@/lib/supabase/browser";
+import { DOC_LABELS, requiredDocs } from "@/lib/operator-docs";
 
 const KINDS = [
   ["taxi", "Taxi"], ["airport", "Airport transfers"], ["group", "Minivan and groups"],
   ["boat", "Boat and water taxi"], ["haulage", "Trucking and haulage"],
 ] as const;
-const DOCS = [
-  ["licence", "Driving licence and taxi or hire permit (or boat or goods licence)"],
-  ["insurance", "Insurance certificate"],
-  ["vehicle", "Vehicle or vessel registration"],
-] as const;
+// Which documents are needed depends on the work chosen (see src/lib/operator-docs.ts).
 
 const field = "h-12 w-full rounded-xl border border-line bg-raised px-3.5 text-ink focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/15";
 const label = "mb-1.5 block text-sm font-semibold text-ink";
@@ -39,6 +36,12 @@ export function DriverSignup({ country, islands, defaultName }: { country: strin
   const [state, act, pending] = useActionState(applyAsDriverAction, {});
   const [who, setWho] = useState<"individual" | "business">("individual");
   const [docs, setDocs] = useState<Record<string, string>>({});
+  const [expiry, setExpiry] = useState<Record<string, string>>({});
+  const [kinds, setKinds] = useState<string[]>(["taxi"]);
+  const needed = requiredDocs(kinds);
+  const passenger = kinds.some((k) => ["taxi", "airport", "group"].includes(k));
+  const goods = kinds.includes("haulage");
+  const today = new Date().toISOString().slice(0, 10);
   const [busy, setBusy] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [sameWhatsApp, setSameWhatsApp] = useState(true);
@@ -66,7 +69,7 @@ export function DriverSignup({ country, islands, defaultName }: { country: strin
     <form action={act} className="space-y-6">
       <input type="hidden" name="country" value={country} />
       <input type="hidden" name="providerType" value={who} />
-      {Object.values(docs).map((p) => <input key={p} type="hidden" name="documents" value={p} />)}
+      <input type="hidden" name="docs" value={JSON.stringify(needed.filter((k) => docs[k]).map((k) => ({ type: k, path: docs[k], expires_on: expiry[k] ?? "" })))} />
 
       <fieldset className="rounded-2xl bg-raised p-5 ring-1 ring-line/60">
         <legend className="sr-only">About you</legend>
@@ -108,30 +111,51 @@ export function DriverSignup({ country, islands, defaultName }: { country: strin
         <div className="grid gap-2 sm:grid-cols-2">
           {KINDS.map(([k, l]) => (
             <label key={k} className="flex items-center gap-3 rounded-xl border border-line px-3 py-3">
-              <input type="checkbox" name="kinds" value={k} defaultChecked={k === "taxi"} className="h-5 w-5 accent-[rgb(var(--primary))]" />
+              <input type="checkbox" name="kinds" value={k} checked={kinds.includes(k)}
+                onChange={(e) => setKinds((cur) => (e.target.checked ? [...cur, k] : cur.filter((x) => x !== k)))} className="h-5 w-5 accent-[rgb(var(--primary))]" />
               <span className="text-ink">{l}</span>
             </label>
           ))}
         </div>
-        <label className="mt-4 block"><span className={label}>Licence and permit numbers</span>
-          <input name="licence" required minLength={3} maxLength={500} placeholder="e.g. Licence D12345, taxi permit T678" className={field} /></label>
+        {passenger && (
+          <div className="mt-4 rounded-xl bg-gold/15 p-4 text-sm text-ink">
+            <p><strong>Passenger rides are only for licensed hire vehicles.</strong> In SVG and Grenada, anyone carrying paying passengers needs an H (hire) plate, a taxi or PSV driving permit, insurance that covers passengers for hire, and a tourism authority taxi licence. Private cars can’t be used. If you don’t have these yet, you can still join for freight or deliveries.</p>
+            <label className="mt-3 flex items-start gap-3">
+              <input type="checkbox" name="confirmPassenger" required className="mt-0.5 h-5 w-5 accent-[rgb(var(--primary))]" />
+              <span>I am 19 or older, and my vehicle and I hold all of the above</span>
+            </label>
+          </div>
+        )}
+        {goods && (
+          <label className="mt-4 flex items-start gap-3 rounded-xl bg-sunken p-4 text-sm text-ink">
+            <input type="checkbox" name="confirmGoods" required className="mt-0.5 h-5 w-5 accent-[rgb(var(--primary))]" />
+            <span>For freight: I am 21 or older with at least 12 months of regular driving, and my vehicle is licensed for its weight (over 5 tons needs a special permit)</span>
+          </label>
+        )}
+        <label className="mt-4 block"><span className={label}>{passenger ? "Taxi or PSV permit number" : "Licence or permit numbers"}</span>
+          <input name="licence" required minLength={3} maxLength={500} placeholder={passenger ? "e.g. PSV permit T678" : "e.g. Goods licence G123"} className={field} /></label>
         <label className="mt-4 block"><span className={label}>Your vehicle or boat</span>
-          <input name="vehicles" required minLength={3} maxLength={500} placeholder="e.g. Toyota Noah, 7 seats" className={field} /></label>
+          <input name="vehicles" required minLength={3} maxLength={500} placeholder={passenger ? "e.g. Toyota Noah, 7 seats, plate H1234" : "e.g. Isuzu truck, 3 tons"} className={field} /></label>
         <label className="mt-4 block"><span className={label}>Insurance</span>
-          <input name="insurance" required minLength={3} maxLength={500} placeholder="Insurer and type of cover" className={field} /></label>
+          <input name="insurance" required minLength={3} maxLength={500} placeholder={passenger ? "Insurer and policy number (hire and reward)" : "Insurer and policy number"} className={field} /></label>
       </fieldset>
 
       <section className="rounded-2xl bg-raised p-5 ring-1 ring-line/60" aria-labelledby="docs-h">
         <h2 id="docs-h" className="text-base font-semibold text-ink">Documents</h2>
-        <p className="mt-1 text-sm">All three are needed for approval. Take a clear photo of each one. Only Island Connect’s team can see them.</p>
-        <ul className="mt-3 space-y-2">
-          {DOCS.map(([k, l]) => (
-            <li key={k}>
+        <p className="mt-1 text-sm">Take a clear photo of each one and add its expiry date. Only Island Connect’s team can see them. We’ll remind you before any of them expire.</p>
+        <ul className="mt-3 space-y-3">
+          {needed.map((k) => (
+            <li key={k} className="rounded-xl border border-line p-3">
               <input id={`doc-${k}`} type="file" accept="image/*,application/pdf" className="sr-only" onChange={(e) => upload(k, e.target.files?.[0])} />
-              <label htmlFor={`doc-${k}`} className={`flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-3 ${docs[k] ? "border-success/40 bg-success/10" : "border-dashed border-line"}`}>
-                {busy === k ? <Loader2 className="h-5 w-5 animate-spin text-primary" aria-hidden="true" /> : docs[k] ? <Check className="h-5 w-5 text-success" aria-hidden="true" /> : <FileUp className="h-5 w-5 text-primary" aria-hidden="true" />}
-                <span className="min-w-0 flex-1 text-ink">{l}</span>
+              <label htmlFor={`doc-${k}`} className="flex cursor-pointer items-start gap-3">
+                {busy === k ? <Loader2 className="mt-0.5 h-5 w-5 animate-spin text-primary" aria-hidden="true" /> : docs[k] ? <Check className="mt-0.5 h-5 w-5 text-success" aria-hidden="true" /> : <FileUp className="mt-0.5 h-5 w-5 text-primary" aria-hidden="true" />}
+                <span className="min-w-0 flex-1"><span className="block font-semibold text-ink">{DOC_LABELS[k].title}</span><span className="block text-xs">{DOC_LABELS[k].hint}</span></span>
                 <span className="text-sm font-semibold text-link">{docs[k] ? "Replace" : "Add photo"}</span>
+              </label>
+              <label className="mt-2 flex items-center gap-2 pl-8 text-sm">
+                <span className="shrink-0">Expires on</span>
+                <input type="date" min={today} value={expiry[k] ?? ""} onChange={(e) => setExpiry((x) => ({ ...x, [k]: e.target.value }))}
+                  className="h-10 min-w-0 flex-1 rounded-lg border border-line bg-raised px-2 text-ink" aria-label={`${DOC_LABELS[k].title} expiry date`} />
               </label>
             </li>
           ))}
@@ -145,10 +169,10 @@ export function DriverSignup({ country, islands, defaultName }: { country: strin
       </label>
       {state.error && <p role="alert" className="rounded-xl bg-danger/10 px-4 py-3 text-sm font-medium text-danger">{state.error}</p>}
       {(() => {
-        const missing = DOCS.filter(([k]) => !docs[k]).length;
+        const missing = needed.filter((k) => !docs[k] || !expiry[k]).length;
         return (
           <button disabled={pending || Boolean(busy) || missing > 0} className="h-14 w-full rounded-full bg-primary text-[1.0625rem] font-semibold text-primary-ink disabled:opacity-50">
-            {pending ? "Sending…" : missing ? `Add ${missing === 1 ? "the last document" : `${missing} more documents`} to continue` : "Send application"}
+            {pending ? "Sending…" : missing ? `Add ${missing === 1 ? "the last document" : `${missing} more documents`} with expiry dates to continue` : "Send application"}
           </button>
         );
       })()}

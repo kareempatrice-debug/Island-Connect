@@ -1,5 +1,6 @@
 import { confirmPickupAction } from "@/app/family-actions";
 import { setVehicleAction, setWhatsAppAlertsAction } from "@/app/trip-actions";
+import { OperatorDocuments, type Compliance, type DocRow } from "@/components/trips/operator-documents";
 import { acceptFixedFareAction, completeTripAction, sendQuoteAction } from "@/app/trip-actions";
 import { OperatorApply } from "@/components/forms/operator-apply";
 import { OperatorTrips } from "@/components/trips/operator-trips";
@@ -41,16 +42,24 @@ export async function TripsTab({ ids, isOwner, sp }: { ids: { businessId: string
   if (op.status === "suspended") return <p className="rounded-xl bg-danger/10 px-4 py-3 text-danger">Trip requests are paused for this business. Contact hello@islandconnect.cc.</p>;
 
   // Approved: open requests this business can take (Row Level Security does the matching), plus its own quotes and trips.
-  const [{ data: open }, { data: mine }, { data: ledger }] = await Promise.all([
+  const [{ data: open }, { data: mine }, { data: ledger }, { data: compliance }, { data: docRows }] = await Promise.all([
     supabase.from("trip_requests").select("*, trip_quotes!trip_quotes_request_id_fkey ( business_id, amount_xcd, status )").eq("status", "open").order("created_at", { ascending: false }).limit(50),
     supabase.from("trip_quotes").select("id, amount_xcd, status, includes, trip_requests!trip_quotes_request_id_fkey ( id, kind, pickup, dropoff, from_place, to_place, travel_at, passengers, details, status, rider_name, rider_kind, picked_up_at, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, distance_km, duration_min, trip_contacts ( phone_e164, rider_phone_e164 ) )").eq("business_id", ids.businessId).in("status", ["accepted"]).order("created_at", { ascending: false }).limit(50),
     supabase.from("commission_ledger").select("fare_xcd, commission_xcd").eq("business_id", ids.businessId),
+    supabase.rpc("operator_compliance", { p_business: ids.businessId }),
+    supabase.from("operator_documents").select("doc_type, status, expires_on, note, created_at").eq("business_id", ids.businessId).order("created_at", { ascending: false }),
   ]);
+  // Latest document of each type, for "Your documents".
+  const latest = new Map<string, DocRow>();
+  for (const d of docRows ?? []) if (!latest.has(d.doc_type)) latest.set(d.doc_type, { type: d.doc_type, status: d.status, expires_on: d.expires_on, note: d.note });
+  const docsCard = compliance ? <OperatorDocuments businessId={ids.businessId} compliance={compliance as Compliance} docs={[...latest.values()]} /> : null;
+  const inGoodStanding = Boolean((compliance as Compliance | null)?.good_standing ?? true);
   const totals = (ledger ?? []).reduce((a, r) => ({ n: a.n + 1, fares: a.fares + Number(r.fare_xcd), commission: a.commission + Number(r.commission_xcd) }), { n: 0, fares: 0, commission: 0 });
   const input = "h-11 rounded-xl border border-line bg-raised px-3 text-ink";
   return (
     <OperatorTrips
-      kinds={op.kinds as string[]} open={open ?? []} mine={mine ?? []} totals={totals} businessId={ids.businessId} notice={notice}
+      kinds={op.kinds as string[]} open={inGoodStanding ? open ?? [] : []} mine={mine ?? []} totals={totals} businessId={ids.businessId}
+      notice={<>{notice}{!inGoodStanding && docsCard}</>}
       quoteForm={(r, my) => (
         <form action={sendQuoteAction} className="mt-3 flex flex-wrap items-end gap-2">
           <input type="hidden" name="request" value={r.id} /><input type="hidden" name="businessId" value={ids.businessId} />
@@ -66,6 +75,7 @@ export async function TripsTab({ ids, isOwner, sp }: { ids: { businessId: string
       )}
       chatHref={(r) => `/${ids.country}/trips/${r.id}/chat`}
       alertsSetting={<>
+        {inGoodStanding && docsCard}
         <form action={setVehicleAction} className="rounded-2xl bg-raised p-4 ring-1 ring-line/60">
           <input type="hidden" name="businessId" value={ids.businessId} /><input type="hidden" name="country" value={ids.country} /><input type="hidden" name="slug" value={ids.slug} />
           <p className="font-semibold text-ink">Your vehicle</p>

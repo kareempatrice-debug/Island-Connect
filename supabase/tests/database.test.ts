@@ -588,27 +588,30 @@ describe("one-step driver sign-up", () => {
   beforeAll(async () => {
     await db.exec(`insert into auth.users (id, email) values ('${DRIVER}', 'driver@example.com') on conflict do nothing`);
   });
-  const apply = (docs: string[]) => as("authenticated", DRIVER, () => db.query<{ r: { id: string; slug: string } }>(`select public.apply_as_driver($1::jsonb) as r`, [JSON.stringify({
+  const next = new Date(Date.now() + 200 * 86400_000).toISOString().slice(0, 10);
+  const passengerDocs = (folder: string) => ["hire_registration", "psv_permit", "hire_insurance", "tourism_licence", "photo_id"].map((type) => ({ type, path: `${folder}/${type}-1.jpg`, expires_on: next }));
+  const apply = (docs: { type: string; path: string; expires_on: string }[], confirm = true) => as("authenticated", DRIVER, () => db.query<{ r: { id: string; slug: string } }>(`select public.apply_as_driver($1::jsonb) as r`, [JSON.stringify({
     country: "gd", island: "grenada", name: "Marcus Taxi", tagline: "Taxi and airport runs", provider_type: "individual",
-    phone: "+14734401234", whatsapp: "+14734401234", kinds: ["taxi", "airport"], licence: "Driving licence D123, taxi permit T45",
-    vehicles: "Toyota Noah, 7 seats, H1234", insurance: "Comprehensive", documents: docs,
+    phone: "+14734401234", whatsapp: "+14734401234", kinds: ["taxi", "airport"], licence: "Taxi permit T45", confirm_passenger: confirm,
+    vehicles: "Toyota Noah, 7 seats, H1234", insurance: "Hire and reward, policy 123", docs,
   })]));
 
-  it("needs a licence photo in the applicant's own folder", async () => {
-    await expect(apply([])).rejects.toThrow(/licence/);
-    await expect(apply(["someone-else/licence.jpg"])).rejects.toThrow(/licence/);
+  it("needs the hire versions of every document, with expiry dates, in the applicant's own folder", async () => {
+    await expect(apply(passengerDocs(DRIVER), false)).rejects.toThrow(/licensed hire vehicle/);
+    await expect(apply([])).rejects.toThrow(/with its expiry date/);
+    await expect(apply(passengerDocs("someone-else"))).rejects.toThrow();
+    await expect(apply(passengerDocs(DRIVER).filter((d) => d.type !== "tourism_licence"))).rejects.toThrow(/tourism licence/);
   });
 
   it("creates an individual listing and an operator application together; approval publishes both", async () => {
-    await expect(apply([`${DRIVER}/licence-1.jpg`])).rejects.toThrow(/insurance/);
-    const { r } = (await apply([`${DRIVER}/licence-1.jpg`, `${DRIVER}/insurance-1.jpg`, `${DRIVER}/vehicle-1.jpg`])).rows[0];
+    const { r } = (await apply(passengerDocs(DRIVER))).rows[0];
     const b = await db.query<{ listing_status: string; provider_type: string; claim_status: string }>(`select listing_status, provider_type, claim_status from public.businesses where id = $1`, [r.id]);
     expect(b.rows[0]).toEqual({ listing_status: "pending_review", provider_type: "individual", claim_status: "claimed" });
-    const op = await db.query<{ status: string; docs: string }>(`select status, document_paths::text as docs from public.operator_profiles where business_id = $1`, [r.id]);
-    expect(op.rows[0].status).toBe("pending");
+    expect((await db.query(`select 1 from public.operator_documents where business_id = $1 and status = 'pending'`, [r.id])).rows).toHaveLength(5);
     await as("authenticated", ADMIN, () => db.query(`select public.admin_review_operator($1, true, 'Licence checked')`, [r.id]));
     const after = await db.query<{ listing_status: string }>(`select listing_status from public.businesses where id = $1`, [r.id]);
     expect(after.rows[0].listing_status).toBe("published");
+    expect((await db.query<{ ok: boolean }>(`select public.operator_in_good_standing($1) as ok`, [r.id])).rows[0].ok).toBe(true);
   });
 });
 
@@ -618,7 +621,8 @@ describe("deleting an account", () => {
     await db.exec(`insert into auth.users (id, email) values ('${GONE}', 'gone@example.com') on conflict do nothing`);
     const { r } = (await as("authenticated", GONE, () => db.query<{ r: { id: string } }>(`select public.apply_as_driver($1::jsonb) as r`, [JSON.stringify({
       country: "gd", island: "grenada", name: "Leaving Driver", tagline: "Taxi", provider_type: "individual", phone: "+14734400000",
-      kinds: ["taxi"], licence: "Licence D123", vehicles: "Toyota car", insurance: "Comprehensive", documents: [`${GONE}/licence-1.jpg`, `${GONE}/insurance-1.jpg`, `${GONE}/vehicle-1.jpg`],
+      kinds: ["taxi"], licence: "Taxi permit D123", vehicles: "Toyota car", insurance: "Hire and reward", confirm_passenger: true,
+      docs: ["hire_registration", "psv_permit", "hire_insurance", "tourism_licence", "photo_id"].map((type) => ({ type, path: `${GONE}/${type}-1.jpg`, expires_on: "2030-01-01" })),
     })]))).rows[0];
     await as("authenticated", ADMIN, () => db.query(`select public.admin_review_operator($1, true)`, [r.id]));
     // A researched listing they had claimed, and a trip they asked for as a customer.
@@ -960,5 +964,39 @@ describe("ratings and reviews", () => {
     const rid = (await db.query<{ id: string }>(`select id from public.reviews limit 1`)).rows[0].id;
     await as("authenticated", ADMIN, () => db.query(`select public.admin_set_review_status($1, 'hidden')`, [rid]));
     expect((await db.query<{ rating_count: number }>(`select rating_count from public.businesses where id = $1`, [trip.business_id])).rows[0].rating_count).toBe(0);
+  });
+});
+
+describe("licensing compliance", () => {
+  it("takes a driver offline when a document expires, and back online when the renewal is approved", async () => {
+    const DRV = "00000000-0000-0000-0000-000000000090";
+    await db.exec(`insert into auth.users (id, email) values ('${DRV}', 'comply@example.com') on conflict do nothing`);
+    const docs = ["hire_registration", "psv_permit", "hire_insurance", "tourism_licence", "photo_id"].map((type) => ({ type, path: `${DRV}/${type}.jpg`, expires_on: "2030-01-01" }));
+    const { r } = (await as("authenticated", DRV, () => db.query<{ r: { id: string } }>(`select public.apply_as_driver($1::jsonb) as r`, [JSON.stringify({
+      country: "gd", island: "grenada", name: "Comply Taxi", tagline: "Taxi", provider_type: "individual", phone: "+14734409999",
+      kinds: ["taxi"], licence: "PSV permit 9", vehicles: "Car H99", insurance: "Hire and reward", confirm_passenger: true, docs })]))).rows[0];
+    await as("authenticated", ADMIN, () => db.query(`select public.admin_review_operator($1, true)`, [r.id]));
+    const ok = async () => (await db.query<{ ok: boolean }>(`select public.operator_in_good_standing($1) as ok`, [r.id])).rows[0].ok;
+    expect(await ok()).toBe(true);
+    // Insurance lapses: offline straight away, and can't go online.
+    await db.query(`update public.operator_documents set expires_on = current_date - 1 where business_id = $1 and doc_type = 'hire_insurance'`, [r.id]);
+    expect(await ok()).toBe(false);
+    await expect(as("authenticated", DRV, () => db.query(`select public.set_presence($1, 12.05, -61.75)`, [r.id]))).rejects.toThrow(/documents are up to date/);
+    const c = (await as("authenticated", DRV, () => db.query<{ c: any }>(`select public.operator_compliance($1) as c`, [r.id]))).rows[0].c;
+    expect(c.expired).toContain("hire_insurance");
+    // Renewal uploaded and approved: back online.
+    const id = (await as("authenticated", DRV, () => db.query<{ id: string }>(`select public.add_operator_document($1, 'hire_insurance', $2, '2031-01-01') as id`, [r.id, `${DRV}/hire_insurance-2.jpg`]))).rows[0].id;
+    expect(await ok()).toBe(false);
+    await as("authenticated", ADMIN, () => db.query(`select public.admin_review_document($1, true)`, [id]));
+    expect(await ok()).toBe(true);
+  });
+  it("lets freight operators sign up without passenger hire documents", async () => {
+    const F = "00000000-0000-0000-0000-000000000091";
+    await db.exec(`insert into auth.users (id, email) values ('${F}', 'freight@example.com') on conflict do nothing`);
+    const docs = ["goods_registration", "driving_licence", "goods_insurance", "photo_id"].map((type) => ({ type, path: `${F}/${type}.jpg`, expires_on: "2030-01-01" }));
+    const res = await as("authenticated", F, () => db.query(`select public.apply_as_driver($1::jsonb) as r`, [JSON.stringify({
+      country: "vc", island: "st-vincent", name: "Freight Co", tagline: "Haulage", provider_type: "individual", phone: "+17844551234",
+      kinds: ["haulage"], licence: "Goods licence G1", vehicles: "Truck", insurance: "Commercial", confirm_goods: true, docs })]));
+    expect(res.rows).toHaveLength(1);
   });
 });

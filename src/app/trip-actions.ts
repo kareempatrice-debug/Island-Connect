@@ -268,10 +268,10 @@ export async function applyAsDriverAction(_: FormState, form: FormData): Promise
   if (!d.success) return { error: d.error.issues[0].message };
   const kinds = form.getAll("kinds").map(String).filter((k) => (KINDS as readonly string[]).includes(k));
   if (!kinds.length) return { error: "Choose at least one kind of trip" };
-  const documents = form.getAll("documents").map(String).filter((p) => p.startsWith(`${viewer.id}/`)).slice(0, 5);
-  for (const [kind, name] of [["licence", "licence and permit"], ["insurance", "insurance certificate"], ["vehicle", "vehicle registration"]] as const) {
-    if (!documents.some((p) => p.split("/")[1]?.startsWith(`${kind}-`))) return { error: `Add a photo of your ${name}.` };
-  }
+  // Documents with their expiry dates; the database checks the right set for the work chosen.
+  let docs: { type: string; path: string; expires_on: string }[] = [];
+  try { docs = JSON.parse(String(form.get("docs") ?? "[]")); } catch { docs = []; }
+  docs = docs.filter((x) => typeof x?.path === "string" && x.path.startsWith(`${viewer.id}/`)).slice(0, 12);
   let phone: string | null, whatsapp: string | null;
   try {
     const code = d.data.country === "vc" ? "+1784" : "+1473";
@@ -286,7 +286,8 @@ export async function applyAsDriverAction(_: FormState, form: FormData): Promise
   const { data, error } = await supabase.rpc("apply_as_driver", { p: {
     country: d.data.country, island: d.data.island, area: d.data.area ?? "", name: d.data.name, provider_type: d.data.providerType,
     tagline: `${label}${d.data.area ? ` from ${d.data.area}` : ""}`.slice(0, 160), phone, whatsapp, kinds,
-    licence: d.data.licence, vehicles: d.data.vehicles, insurance: d.data.insurance, documents,
+    docs, confirm_passenger: form.get("confirmPassenger") === "on", confirm_goods: form.get("confirmGoods") === "on",
+    licence: d.data.licence, vehicles: d.data.vehicles, insurance: d.data.insurance,
   } });
   if (error) return { error: error.message };
   if (form.get("whatsappAlerts")) await supabase.rpc("set_whatsapp_alerts", { p_business: (data as { id: string }).id, p_on: true });
@@ -370,4 +371,16 @@ export async function setVehicleAction(form: FormData) {
   const back = `/${d.country}/dashboard/${d.slug}?tab=trips`;
   revalidatePath(back);
   redirect(`${back}&${error ? `error=${encodeURIComponent(error.message)}` : "vehicle=1"}`);
+}
+
+/* A driver uploads a document or a renewal; Island Connect checks it before it counts. */
+export async function addOperatorDocumentAction(input: { businessId: string; type: string; path: string; expires: string | null }): Promise<{ ok?: boolean; error?: string }> {
+  const d = z.object({ businessId: z.string().uuid(), type: z.string().regex(/^[a-z_]{3,30}$/), path: z.string().max(300), expires: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable() }).safeParse(input);
+  if (!d.success) return { error: "Add the expiry date shown on the document." };
+  const supabase = await supabaseForRequest();
+  const { error } = await supabase.rpc("add_operator_document", { p_business: d.data.businessId, p_type: d.data.type, p_path: d.data.path, p_expires: d.data.expires });
+  if (error) return { error: error.message };
+  revalidatePath("/[country]/dashboard/[slug]", "page");
+  revalidatePath("/admin/operators");
+  return { ok: true };
 }

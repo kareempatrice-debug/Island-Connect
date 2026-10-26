@@ -31,7 +31,22 @@ export async function GET() {
   const driver = (ops ?? []).find((m: any) => opOf(m)?.status === "approved" && (opOf(m)?.kinds ?? []).some((k: string) => ["taxi", "airport", "group"].includes(k))) as any;
   let waiting = 0;
   let offer: any = null;
+  let docsAlert: { level: "offline" | "soon"; text: string } | null = null;
   if (op) {
+    // Remind drivers before documents expire; tell them plainly when they're offline.
+    const { data: c } = await supabase.rpc("operator_compliance", { p_business: op.business_id });
+    if (c) {
+      const comp = c as any;
+      if (!comp.good_standing) docsAlert = { level: "offline", text: "You’re offline: documents need updating" };
+      else if ((comp.expiring ?? []).length) {
+        const soonest = [...comp.expiring].sort((a: any, b: any) => a.expires_on.localeCompare(b.expires_on))[0];
+        const days = Math.ceil((new Date(`${soonest.expires_on}T23:59:59`).getTime() - Date.now()) / 86400_000);
+        docsAlert = { level: "soon", text: `A document expires in ${days} day${days === 1 ? "" : "s"}: upload the renewal` };
+      } else if (comp.grace_until && (comp.missing ?? []).length) {
+        const days = Math.ceil((new Date(`${comp.grace_until}T23:59:59`).getTime() - Date.now()) / 86400_000);
+        docsAlert = { level: "soon", text: `Add your documents within ${days} day${days === 1 ? "" : "s"} to keep getting rides` };
+      }
+    }
     const [{ data: offers }, { data: open }] = await Promise.all([
       supabase.from("trip_offers").select("id, price_xcd, distance_km").eq("status", "offered").gt("expires_at", new Date().toISOString()).limit(1),
       supabase.from("trip_requests").select("id, trip_quotes!trip_quotes_request_id_fkey ( business_id )").eq("status", "open").neq("customer_id", viewer.id).gte("created_at", since).limit(50),
@@ -46,5 +61,6 @@ export async function GET() {
     offer: offer ? { id: offer.id, price: Number(offer.price_xcd), km: offer.distance_km != null ? Number(offer.distance_km) : null } : null,
     waiting, opSlug: op?.businesses?.slug ?? null,
     rate: rate ?? null,
+    docsAlert,
   }, { headers: { "cache-control": "private, no-store" } });
 }
