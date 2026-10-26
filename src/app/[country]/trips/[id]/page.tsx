@@ -9,6 +9,7 @@ import { isSupabaseConfigured } from "@/lib/data";
 import { supabaseForRequest } from "@/lib/supabase/server";
 import { PushSetup } from "@/components/push-setup";
 import { TripSafety } from "@/components/trips/trip-safety";
+import { RateCard } from "@/components/rate-card";
 import { DriverMap } from "@/components/trips/driver-map";
 import { coastlines } from "@/data/coastlines";
 import { landmarks } from "@/data/landmarks";
@@ -48,8 +49,11 @@ export default async function Trip({ params, searchParams }: { params: Promise<{
     supabase.rpc("dispatch_info", { p_request: t.id }),
     t.status === "booked" ? supabase.rpc("my_driver_position", { p_request: t.id }) : Promise.resolve({ data: null }),
   ]);
+  // Rate the ride once it has happened (completed, or picked up).
+  const rideDone = t.status === "completed" || Boolean(t.picked_up_at);
+  const myReview = rideDone ? (await supabase.from("reviews").select("rating, comment").eq("request_id", t.id).maybeSingle()).data : null;
   // The driver's first name, car and number plate (the same details shared trips show).
-  const shared = t.status === "booked" && t.share_token ? ((await supabase.rpc("shared_trip", { p_token: t.share_token })).data as { driver: string; vehicle: string | null; plate: string | null } | null) : null;
+  const shared = ["booked", "completed"].includes(t.status) && t.share_token ? ((await supabase.rpc("shared_trip", { p_token: t.share_token })).data as { driver: string; vehicle: string | null; plate: string | null } | null) : null;
   // Map for a booked ride: the island the pick-up is on, and the driver's live position.
   const near = t.pickup_lat != null ? landmarks.filter((l) => l.countryCode === t.country_code)
     .map((l) => ({ l, d: Math.hypot(l.lat - t.pickup_lat, l.lng - t.pickup_lng) })).sort((a, b) => a.d - b.d)[0]?.l : null;
@@ -61,6 +65,13 @@ export default async function Trip({ params, searchParams }: { params: Promise<{
       {active && <AutoRefresh seconds={t.status === "open" ? 5 : 10} />}
       <TripProgress status={t.status} pickedUp={Boolean(t.picked_up_at)} reach={typeof reach === "number" ? reach : null} createdAt={t.created_at} fixed={Boolean(t.fixed_fare_xcd)}
         dispatch={dispatch as { state: string | null; tried: number; current_km: number | null } | null} />
+      {rideDone && t.accepted_quote_id && (
+        <section className="mb-6 rounded-2xl bg-raised p-5 ring-1 ring-line/60" aria-label="Rate your trip">
+          <RateCard kind="trip" refId={t.id} existing={myReview ?? null}
+            title={myReview ? "Your rating" : `How was your trip${shared?.driver ? ` with ${shared.driver}` : ""}?`}
+            subtitle={myReview ? "You can change it any time." : "Your rating helps other customers choose."} />
+        </section>
+      )}
       {showMap && (
         <DriverMap googleKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || null} pickup={{ label: t.pickup, lat: t.pickup_lat, lng: t.pickup_lng }}
           driver={driverPos as { lat: number; lng: number; heading: number | null; km: number | null; at: string } | null}

@@ -32,6 +32,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <Link href="/admin/operators" className="rounded-full px-3 py-2 text-white/85 hover:bg-white/10 hover:text-white">Operators{badge(ops)}</Link>
             <Link href="/admin/add-listing" className="rounded-full px-3 py-2 text-white/85 hover:bg-white/10 hover:text-white">Add listing</Link>
             <Link href="/admin/partners" className="rounded-full px-3 py-2 text-white/80 hover:bg-white/10 hover:text-white">Partners</Link>
+            <Link href="/admin/reviews" className="rounded-full px-3 py-2 text-white/80 hover:bg-white/10 hover:text-white">Reviews</Link>
             <Link href="/admin/members" className="rounded-full px-3 py-2 text-white/80 hover:bg-white/10 hover:text-white">Members</Link>
             <Link href="/admin/team" className="rounded-full px-3 py-2 text-white/80 hover:bg-white/10 hover:text-white">Team</Link>
             <Link href={`/${country}`} className="rounded-full px-3 py-2 text-white/60 hover:text-white">View site</Link>

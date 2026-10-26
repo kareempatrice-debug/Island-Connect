@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { getReviews } from "@/lib/reviews";
 import { notFound, redirect } from "next/navigation";
 import { CalendarCheck, Clock, CreditCard, Globe, Mail, MapPin, MessageCircle, MessageSquareText, Navigation, Phone, Star } from "lucide-react";
 import { ContactLink } from "@/components/contact-link";
@@ -37,6 +38,7 @@ function minutes(m: number) {
 export default async function BusinessPage({ params }: Props) {
   const { country: code, slug } = await params;
   const [country, business] = await Promise.all([getCountry(code), data.getBusiness(slug)]);
+  const reviews = business ? await getReviews(business.id) : [];
   if (!country || !business) notFound();
 
   const served = businessCountries(business);
@@ -248,10 +250,31 @@ export default async function BusinessPage({ params }: Props) {
 
             <section id="reviews" aria-labelledby="reviews-heading">
               <h2 id="reviews-heading" className="text-2xl font-semibold">Reviews</h2>
-              <div className="mt-4 rounded-panel border border-dashed border-line p-6">
-                <p className="font-semibold text-ink">No reviews yet</p>
-                <p className="mt-1 text-[0.95rem]">Reviews will come from customers who have booked or hired this business through Island Connect.</p>
-              </div>
+              {reviews.length === 0 ? (
+                <div className="mt-4 rounded-panel border border-dashed border-line p-6">
+                  <p className="font-semibold text-ink">No reviews yet</p>
+                  <p className="mt-1 text-[0.95rem]">Reviews come only from customers who have used this business through Island Connect.</p>
+                </div>
+              ) : (
+                <>
+                  <p className="mt-2 flex items-center gap-2 text-ink">
+                    <Star className="h-5 w-5 fill-gold text-gold" aria-hidden="true" />
+                    <strong className="text-lg">{business.ratingAvg != null ? Number(business.ratingAvg).toFixed(1) : ""}</strong>
+                    <span className="text-sm text-muted">from {business.ratingCount} review{business.ratingCount === 1 ? "" : "s"} by verified customers</span>
+                  </p>
+                  <ul className="mt-4 space-y-3">
+                    {reviews.map((r) => (
+                      <li key={r.id} className="rounded-2xl bg-raised p-4 ring-1 ring-line/60">
+                        <p className="flex items-center gap-1" aria-label={`${r.rating} out of 5 stars`}>
+                          {[1, 2, 3, 4, 5].map((n) => <Star key={n} className={`h-4 w-4 ${n <= r.rating ? "fill-gold text-gold" : "text-line"}`} aria-hidden="true" />)}
+                          <span className="ml-2 text-sm text-muted">{r.author} · {r.kind === "trip" ? "Ride" : "Service"} · {new Date(r.created_at).toLocaleDateString("en-GB", { month: "short", year: "numeric" })}</span>
+                        </p>
+                        {r.comment && <p className="mt-2 text-ink">{r.comment}</p>}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
             </section>
           </div>
 

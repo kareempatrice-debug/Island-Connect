@@ -941,3 +941,24 @@ describe("live trip sharing", () => {
     expect(JSON.stringify(s)).not.toMatch(/\+\d{7,}/);
   });
 });
+
+describe("ratings and reviews", () => {
+  it("lets real customers rate a completed ride and updates the business rating; strangers can't", async () => {
+    const trip = (await db.query<{ id: string; customer_id: string; business_id: string }>(`select r.id, r.customer_id, q.business_id from public.trip_requests r join public.trip_quotes q on q.id = r.accepted_quote_id where r.status = 'booked' limit 1`)).rows[0];
+    await expect(as("authenticated", trip.customer_id, () => db.query(`select public.submit_review('trip', $1, 5, 'Great')`, [trip.id]))).rejects.toThrow(/taken place/);
+    await db.query(`update public.trip_requests set status = 'completed' where id = $1`, [trip.id]);
+    const pending = (await as("authenticated", trip.customer_id, () => db.query<{ p: any }>(`select public.pending_rating() as p`))).rows[0].p;
+    expect(pending).toMatchObject({ kind: "trip", ref: trip.id });
+    await as("authenticated", trip.customer_id, () => db.query(`select public.submit_review('trip', $1, 4, 'Friendly driver, on time')`, [trip.id]));
+    await as("authenticated", trip.customer_id, () => db.query(`select public.submit_review('trip', $1, 5, 'Friendly driver, on time')`, [trip.id]));
+    const b = (await db.query<{ rating_avg: string; rating_count: number }>(`select rating_avg, rating_count from public.businesses where id = $1`, [trip.business_id])).rows[0];
+    expect(Number(b.rating_avg)).toBe(5); expect(b.rating_count).toBe(1);
+    await expect(as("authenticated", STRANGER, () => db.query(`select public.submit_review('trip', $1, 1, 'fake')`, [trip.id]))).rejects.toThrow();
+    const pub = await as("anon", null, () => db.query<{ rating: number; author: string }>(`select * from public.business_reviews($1)`, [trip.business_id]));
+    expect(pub.rows[0].rating).toBe(5);
+    expect((await as("authenticated", trip.customer_id, () => db.query<{ p: any }>(`select public.pending_rating() as p`))).rows[0].p?.ref).not.toBe(trip.id);
+    const rid = (await db.query<{ id: string }>(`select id from public.reviews limit 1`)).rows[0].id;
+    await as("authenticated", ADMIN, () => db.query(`select public.admin_set_review_status($1, 'hidden')`, [rid]));
+    expect((await db.query<{ rating_count: number }>(`select rating_count from public.businesses where id = $1`, [trip.business_id])).rows[0].rating_count).toBe(0);
+  });
+});

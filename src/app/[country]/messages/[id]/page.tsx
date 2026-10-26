@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { RateCard } from "@/components/rate-card";
 import { notFound } from "next/navigation";
 import { setEnquiryStatusAction } from "@/app/enquiry-actions";
 import { ReplyForm } from "@/components/forms/enquiry-forms";
@@ -27,6 +28,9 @@ export default async function Thread({ params }: { params: Promise<{ country: st
   const enquiry = e as any;
   /* eslint-enable @typescript-eslint/no-explicit-any */
   const isCustomer = enquiry.customer_id === viewer.id;
+  // Customers can rate the business once it has replied.
+  const businessReplied = (messages ?? []).some((m) => m.sender_id !== enquiry.customer_id);
+  const myReview = isCustomer && businessReplied ? (await supabase.from("reviews").select("rating, comment").eq("enquiry_id", id).maybeSingle()).data : null;
   const back = isCustomer ? `/${country}/messages` : `/${country}/dashboard/${enquiry.businesses?.slug}?tab=enquiries`;
 
   return (
@@ -52,6 +56,13 @@ export default async function Thread({ params }: { params: Promise<{ country: st
         })}
       </ol>
       <div className="mt-6"><ReplyForm enquiryId={id} country={country} /></div>
+      {isCustomer && businessReplied && (
+        <section className="mt-8 rounded-2xl bg-raised p-5 ring-1 ring-line/60" aria-label={`Rate ${enquiry.businesses?.name ?? "this business"}`}>
+          <RateCard kind="service" refId={id} existing={myReview ?? null}
+            title={myReview ? "Your rating" : `How was your experience with ${enquiry.businesses?.name ?? "this business"}?`}
+            subtitle={myReview ? "You can change it any time." : "Rate them once they’ve helped you. It helps others choose."} />
+        </section>
+      )}
       {!isCustomer && (
         <form action={setEnquiryStatusAction} className="mt-4">
           <input type="hidden" name="enquiryId" value={id} />

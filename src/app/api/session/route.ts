@@ -21,9 +21,10 @@ export async function GET() {
   if (!viewer) return none;
   const supabase = await supabaseForRequest();
   const since = new Date(Date.now() - 2 * 86400_000).toISOString();
-  const [{ data: mine }, { data: ops }] = await Promise.all([
+  const [{ data: mine }, { data: ops }, { data: rate }] = await Promise.all([
     supabase.from("trip_requests").select("id, status, picked_up_at, country_code").eq("customer_id", viewer.id).in("status", ["open", "booked"]).gte("created_at", since).order("created_at", { ascending: false }).limit(1),
     supabase.from("business_members").select("business_id, businesses ( slug, operator_profiles ( status, kinds ) )").eq("user_id", viewer.id),
+    supabase.rpc("pending_rating"),
   ]);
   const opOf = (m: any) => { const p = m.businesses?.operator_profiles; return Array.isArray(p) ? p[0] : p; };
   const op = (ops ?? []).find((m: any) => opOf(m)?.status === "approved") as any;
@@ -44,5 +45,6 @@ export async function GET() {
     trip: mine?.[0] ?? null,
     offer: offer ? { id: offer.id, price: Number(offer.price_xcd), km: offer.distance_km != null ? Number(offer.distance_km) : null } : null,
     waiting, opSlug: op?.businesses?.slug ?? null,
+    rate: rate ?? null,
   }, { headers: { "cache-control": "private, no-store" } });
 }
