@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, CarFront, Compass, Home, LayoutGrid, type LucideIcon } from "lucide-react";
+import { DoorOpen, CarFront, Compass, Home, LayoutGrid, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -21,7 +21,7 @@ const items: NavItem[] = [
   { href: "/ride", label: "Ride", Icon: CarFront, live: true },
   { href: "/services", label: "Services", Icon: LayoutGrid, live: true },
   { href: "/explore", label: "Explore", Icon: Compass, live: true },
-  { href: "/guides", label: "Guides", Icon: BookOpen, live: true },
+  { href: "/gateway", label: "Gateway", Icon: DoorOpen, live: true },
   // { href: "/bookings", label: "Bookings", Icon: CalendarCheck, live: false },
   // { href: "/saved", label: "Saved", Icon: Heart, live: false },
 ];
@@ -33,6 +33,8 @@ function useActive(country: string) {
   return (href: string) => {
     const full = `/${country}${href}`;
     if (href === "") return pathname === full;
+    // The guides are Gateway's reference library.
+    if (href === "/gateway" && pathname.startsWith(`/${country}/guides`)) return true;
     if (href === "/explore") return pathname.startsWith(full) || pathname.includes("/business/");
     return pathname.startsWith(full);
   };

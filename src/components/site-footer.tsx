@@ -14,7 +14,7 @@ export function SiteFooter({ country, countries }: { country: Country; countries
       links: [
         { href: `/${c}/explore`, label: "All businesses" },
         { href: `/${c}/services`, label: "Services" },
-        { href: `/${c}/guides`, label: "Guides" },
+        { href: `/${c}/gateway`, label: "Gateway: return, business, property" },
         { href: "/?choose=1", label: "Destinations" },
       ],
     },

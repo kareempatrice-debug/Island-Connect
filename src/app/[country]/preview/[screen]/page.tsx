@@ -6,6 +6,9 @@ import { InsightsPanel } from "@/components/admin/insights";
 import { TripChat } from "@/components/trips/trip-chat";
 import { TripDetail, type QuoteView, type TripView } from "@/components/trips/trip-detail";
 import { Container } from "@/components/ui";
+import { GatewayRequestForm } from "@/components/gateway/request-form";
+import { RequestView, type MessageRow, type RequestRow } from "@/components/gateway/request-view";
+import { serviceBySlug } from "@/data/gateway";
 import { isSupabaseConfigured } from "@/lib/data";
 import { TRIP_KIND_LABEL, TRIP_STATUS_LABEL, fmtWhen, fmtXcd } from "@/lib/trips";
 
@@ -16,7 +19,7 @@ import { TRIP_KIND_LABEL, TRIP_STATUS_LABEL, fmtWhen, fmtXcd } from "@/lib/trips
  */
 export const metadata: Metadata = { title: "Trips preview", robots: { index: false } };
 
-const SCREENS = ["trips", "trip", "trip-booked", "operator", "operator-sent", "operator-accepted", "operator-completed", "chat", "admin", "admin-approved", "dashboard"] as const;
+const SCREENS = ["trips", "trip", "trip-booked", "operator", "operator-sent", "operator-accepted", "operator-completed", "chat", "admin", "admin-approved", "dashboard", "gateway-apply", "gateway-request", "agency-request"] as const;
 export function generateStaticParams() {
   return ["gd", "vc"].flatMap((country) => SCREENS.map((screen) => ({ country, screen })));
 }
@@ -48,6 +51,55 @@ export default async function TripsPreview({ params }: { params: Promise<{ count
   const s = sample(country);
   const base = `/${country}/preview`;
   const btn = "inline-flex h-11 items-center justify-center rounded-full bg-primary px-5 font-semibold text-primary-ink";
+
+  // ---------- Gateway sample screens ----------
+  if (screen.startsWith("gateway-") || screen === "agency-request") {
+    const svc = serviceBySlug(country === "vc" ? "vc-customs-rn" : "gd-rn-concession")!;
+    const agencyName = country === "vc" ? "Customs and Excise Department (Comptroller of Customs)" : "Returning Nationals Facilitation Bureau, Ministry of Finance";
+    if (screen === "gateway-apply") {
+      return (
+        <main><Container className="max-w-2xl py-8">
+          {banner}
+          <h1 className="text-3xl font-semibold">{svc.title}</h1>
+          <p className="mt-2 text-sm">Goes to <strong className="text-ink">{agencyName}</strong></p>
+          <p className="mt-3">{svc.intro}</p>
+          <div className="mt-6 rounded-2xl bg-raised p-5 ring-1 ring-line/60"><GatewayRequestForm service={svc} name="Marcia Charles" phone="+44 7700 900123" /></div>
+        </Container></main>
+      );
+    }
+    const req: RequestRow = {
+      id: "sample", reference: "IC-2026-00042", service_slug: svc.slug, kind: "application", status: screen === "agency-request" ? "received" : "needs_info",
+      details: { full_name: "Marcia Charles", phone: "+44 7700 900123", country_now: "United Kingdom", years_abroad: country === "vc" ? "14" : "12", return_date: inDays(60).slice(0, 10), vehicle: "Importing a vehicle", goods_value: "48000" },
+      documents: ["u/passport.pdf", "u/proof-of-years-abroad.pdf", "u/packing-list.pdf"], appointment_at: null, created_at: inDays(-3), agencies: { name: agencyName },
+    };
+    const msgs: MessageRow[] = [
+      { id: 1, body: "Thank you, Ms Charles. We have received your application. Please also send your last two years of UK tax returns as proof of residence.", from_agency: true, documents: [], created_at: inDays(-2) },
+      ...(screen === "gateway-request" ? [] : [{ id: 2, body: "Attached are my P60s for 2024 and 2025.", from_agency: false, documents: ["u/p60-2024-2025.pdf"], created_at: inDays(-1) }]),
+    ];
+    const urls = new Map<string, string>();
+    return (
+      <main><Container className="max-w-2xl space-y-5 py-8">
+        {banner}
+        {screen === "agency-request" && <p className="rounded-xl bg-deep px-4 py-2 text-sm font-semibold text-white">Agency portal · {agencyName}</p>}
+        <RequestView r={{ ...req, status: screen === "agency-request" ? "in_review" : "needs_info" }} messages={msgs} urls={urls} viewerIsAgency={screen === "agency-request"} />
+        <div className="rounded-2xl bg-raised p-4 ring-1 ring-line/60">
+          <textarea rows={3} placeholder={screen === "agency-request" ? "Reply to the applicant, ask for documents, or explain a decision" : "Write to the agency, or send more documents"} className="w-full rounded-xl border border-line bg-raised p-3 text-base" />
+          <div className="mt-2 flex justify-end"><span className={btn}>Send</span></div>
+        </div>
+        {screen === "agency-request" && (
+          <div className="space-y-3 rounded-2xl bg-raised p-4 ring-1 ring-line/60">
+            <p className="font-semibold text-ink">Update status</p>
+            <div className="flex flex-wrap gap-2">
+              {["Received", "In review", "Need more information", "Approve", "Decline", "Close"].map((l) => (
+                <span key={l} className={`inline-flex h-10 items-center rounded-full px-4 text-sm font-semibold ${l === "Approve" ? "bg-primary text-primary-ink" : l === "Decline" ? "border border-line text-danger" : "border border-line text-ink"}`}>{l}</span>
+              ))}
+            </div>
+            <p className="text-xs">The applicant is notified of every change.</p>
+          </div>
+        )}
+      </Container></main>
+    );
+  }
 
   if (screen === "trips") {
     return (

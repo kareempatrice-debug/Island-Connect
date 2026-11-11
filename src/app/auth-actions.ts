@@ -119,6 +119,7 @@ export async function deleteAccountAction(_: FormState, form: FormData): Promise
     }
   };
   await removeFolder("operator-documents", data.user.id).catch(() => undefined);
+  await removeFolder("gateway-documents", data.user.id).catch(() => undefined);
   for (const id of ((erased as string[] | null) ?? [])) await removeFolder("business-media", id).catch(() => undefined);
 
   // 3. Delete the account itself; everything else linked to it is removed by the database.

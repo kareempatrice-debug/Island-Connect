@@ -1000,3 +1000,32 @@ describe("licensing compliance", () => {
     expect(res.rows).toHaveLength(1);
   });
 });
+
+describe("Gateway requests to agencies", () => {
+  it("lets a person send a request with documents, the agency reply and update it, and keeps it private", async () => {
+    const P = "00000000-0000-0000-0000-000000000095", A = "00000000-0000-0000-0000-000000000096";
+    await db.exec(`insert into auth.users (id, email) values ('${P}', 'returning@example.com'), ('${A}', 'officer@example.gov') on conflict do nothing`);
+    const res = (await as("authenticated", P, () => db.query<{ r: any }>(`select public.submit_gateway_request($1::jsonb) as r`, [JSON.stringify({
+      agency: "gd-returning-nationals", service: "gd-rn-concession", kind: "application",
+      details: { name: "Test Person", years_abroad: 12 }, documents: [`${P}/passport.pdf`, "someone-else/x.pdf"] })]))).rows[0].r;
+    expect(res.reference).toMatch(/^IC-\d{4}-\d{5}$/);
+    const req = (await db.query<{ documents: string[]; status: string; agency_id: string }>(`select documents, status, agency_id from public.gateway_requests where id = $1`, [res.id])).rows[0];
+    expect(req.documents).toEqual([`${P}/passport.pdf`]);
+    expect((await as("authenticated", STRANGER, () => db.query(`select 1 from public.gateway_requests where id = $1`, [res.id]))).rows).toHaveLength(0);
+    await expect(as("authenticated", A, () => db.query(`select public.agency_update_request($1, 'approved')`, [res.id]))).rejects.toThrow(/Only the agency/);
+    await as("authenticated", ADMIN, () => db.query(`select public.admin_set_agency_member($1, 'officer@example.gov', true)`, [req.agency_id]));
+    expect((await as("authenticated", A, () => db.query(`select 1 from public.gateway_requests where id = $1`, [res.id]))).rows).toHaveLength(1);
+    await as("authenticated", A, () => db.query(`select public.add_gateway_message($1, 'Please send proof of your years abroad.')`, [res.id]));
+    await as("authenticated", A, () => db.query(`select public.agency_update_request($1, 'needs_info')`, [res.id]));
+    await as("authenticated", P, () => db.query(`select public.add_gateway_message($1, 'Attached', $2)`, [res.id, [`${P}/tax-returns.pdf`]]));
+    const after = (await db.query<{ status: string }>(`select status from public.gateway_requests where id = $1`, [res.id])).rows[0];
+    expect(after.status).toBe("in_review");
+    const msgs = (await as("authenticated", P, () => db.query<{ from_agency: boolean }>(`select from_agency from public.gateway_messages where request_id = $1 order by id`, [res.id]))).rows;
+    expect(msgs.map((m) => m.from_agency)).toEqual([true, false]);
+  });
+  it("keeps journey progress private to each person", async () => {
+    const P = "00000000-0000-0000-0000-000000000095";
+    await as("authenticated", P, () => db.query(`insert into public.journey_progress (user_id, country_code, journey, step) values ($1, 'gd', 'return-home', 'check-eligibility')`, [P]));
+    expect((await as("authenticated", STRANGER, () => db.query(`select 1 from public.journey_progress`))).rows).toHaveLength(0);
+  });
+});

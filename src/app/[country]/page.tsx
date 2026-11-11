@@ -9,6 +9,7 @@ import { categoryVisual, toneClasses } from "@/components/visuals";
 import { countryImagery, fallbackImagery } from "@/data/photos";
 import { data, getCountries, getCountry } from "@/lib/data";
 import { guideSections } from "@/lib/guides";
+import { journeyBySlug } from "@/data/gateway";
 
 // Served ready-made from Netlify and refreshed at most every 5 minutes (or straight away when a listing changes).
 export const revalidate = 300;
@@ -41,12 +42,11 @@ export default async function CountryHome({ params }: { params: Promise<{ countr
   const [country, countries] = await Promise.all([getCountry(code), getCountries()]);
   const c = country!;
   const imagery = countryImagery[code] ?? fallbackImagery;
-  const [categories, islands, featured, recent, articles] = await Promise.all([
+  const [categories, islands, featured, recent] = await Promise.all([
     data.getCategories(code),
     data.getIslands(code),
     data.getFeatured(code, 6),
     data.getRecent(code, 6),
-    data.getArticles(code),
   ]);
   const enabled = new Set(categories.map((x) => x.slug));
   const counts = await Promise.all(
@@ -239,25 +239,26 @@ export default async function CountryHome({ params }: { params: Promise<{ countr
       </section>
 
       {/* Guides */}
-      <Section id="guides" title="Moving, buying or starting out" intro={`Practical guides written for ${c.name}, each linked to the official sources it relies on.`}>
+      <Section id="guides" title="Gateway: come home, start a business, invest" intro={`Step-by-step journeys you can follow from anywhere, with applications and appointments sent straight to the ${c.name} agencies that handle them.`}>
         <ul className="grid gap-5 md:grid-cols-3">
           {guideSections.map((g) => {
-            const count = articles.filter((a) => a.section === g.slug).length;
+            const journey = { "returning-home": "return-home", "property-investment": "buy-property", "start-a-business": "start-a-business" }[g.slug as string] ?? "";
+            const steps = journeyBySlug(code, journey)?.steps.length ?? 0;
             const photo = imagery.guides[g.slug];
             return (
               <li key={g.slug}>
-                <Link href={`/${code}/guides/${g.slug}`} className="group flex h-full flex-col overflow-hidden rounded-panel bg-raised shadow-card ring-1 ring-line/60 transition hover:shadow-lift">
+                <Link href={journey ? `/${code}/gateway/${journey}` : `/${code}/guides/${g.slug}`} className="group flex h-full flex-col overflow-hidden rounded-panel bg-raised shadow-card ring-1 ring-line/60 transition hover:shadow-lift">
                   <div className="relative aspect-[16/9] overflow-hidden bg-deep">
                     {photo && <PlacePhoto photoKey={photo} sizes="(min-width: 768px) 33vw, 100vw" className="transition duration-500 group-hover:scale-[1.03]" />}
                     <span className="absolute left-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-[0.75rem] font-semibold text-[#1E2933]">
-                      {count ? `${count} guide${count === 1 ? "" : "s"}` : "In preparation"}
+                      {steps ? `${steps} steps` : "In preparation"}
                     </span>
                   </div>
                   <div className="flex flex-1 flex-col p-5">
-                    <h3 className="text-xl font-semibold">{g.title}</h3>
-                    <p className="mt-2 flex-1">{g.intro}</p>
+                    <h3 className="text-xl font-semibold">{journeyBySlug(code, journey)?.title ?? g.title}</h3>
+                    <p className="mt-2 flex-1">{journeyBySlug(code, journey)?.intro ?? g.intro}</p>
                     <span className="mt-4 inline-flex items-center gap-1 font-semibold text-link">
-                      Open guide <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" aria-hidden="true" />
+                      Start <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" aria-hidden="true" />
                     </span>
                   </div>
                 </Link>
